@@ -1,0 +1,15 @@
+*.csv
+*.ipynb_checkpoints
+*__pycache__
+*.Rproj
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.png
+*.pdf
+*.gz
+*.html
+*catboost_info
+*.tmp
+*.json
