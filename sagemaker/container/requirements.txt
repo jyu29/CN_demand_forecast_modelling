@@ -1,0 +1,6 @@
+gluonts==0.3.3
+fbprophet
+isoweek
+plotly==3.10.0
+matplotlib
+joblib

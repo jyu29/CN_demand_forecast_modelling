@@ -1,0 +1,6 @@
+FROM 150258775384.dkr.ecr.eu-west-1.amazonaws.com/mxnet-gluonts-training-0.3.3-cpu:latest
+
+COPY src/ /opt/program
+COPY config/ /opt/program
+
+ENTRYPOINT ["python"]

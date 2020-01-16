@@ -1,0 +1,166 @@
+import pandas as pd
+import numpy as np
+import re
+import isoweek
+from copy import deepcopy
+from joblib import Parallel, delayed
+import subprocess
+import pickle
+from os import listdir
+from os.path import isfile, join
+
+from gluonts.model.prophet import ProphetPredictor
+
+
+def get_next_week_id(week_id):
+    '''
+    ARGUMENTS:
+    
+    date ( integer ): week identifier in the format 'year'+'week_number'
+    
+    RETURNS:
+    
+    next week in the same format as the date argument
+    '''
+    if not(isinstance(week_id, (int, np.integer))):
+        return 'DATE ARGUMENT NOT AN INT'
+    if len(str(week_id)) != 6:
+        return 'UNVALID DATE FORMAT'
+
+    year = week_id // 100
+    week = week_id % 100
+
+    if week < 52:
+        return week_id + 1
+    elif week == 52:
+        last_week = isoweek.Week.last_week_of_year(year).week
+        if last_week == 52:
+            return (week_id // 100 + 1) * 100 + 1
+        elif last_week == 53:
+            return week_id + 1
+        else:
+            return 'UNVALID ISOWEEK.LASTWEEK NUMBER'
+    elif week == 53:
+        if isoweek.Week.last_week_of_year(year).week == 52:
+            return 'UNVALID WEEK NUMBER'
+        else:
+            return (date // 100 + 1) * 100 + 1
+    else:
+        return 'UNVALID DATE'
+
+
+def get_next_n_week(week_id, n):
+    next_n_week = [week_id]
+    for i in range(n-1):
+        week_id = get_next_week_id(week_id)
+        next_n_week.append(week_id)
+        
+    return next_n_week
+
+
+def week_id_to_date(week_id):
+    assert isinstance(week_id, (int, np.integer, pd.Series))
+    
+    if isinstance(week_id, (int, np.integer)):
+        return pd.to_datetime(str(week_id) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
+    else:
+        return pd.to_datetime(week_id.astype(str) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
+    
+
+def train_input_fn(train_file_path):
+    with open(train_file_path, 'rb') as file:
+        response = pickle.load(file)
+    return response
+
+    
+def forecast_cutoff(train, cutoff_week_id):
+        
+    nb_ts = len(train)
+    
+    def configure_seasonality(model):
+        model.add_seasonality(
+            name='yearly', 
+            period=365.25, 
+            fourier_order=27,
+        )
+        model.add_seasonality(
+            name='biannual',
+            period=365.25/2, 
+            fourier_order=5, 
+        )
+        return model
+
+    estimator = ProphetPredictor(
+        freq=prediction_freq,
+        prediction_length=prediction_length,
+        prophet_params={'weekly_seasonality' : False,
+                        'daily_seasonality' : False,
+                        'yearly_seasonality' : False,
+                        'n_changepoints' : 36,
+                        'changepoint_range' : 0.6970858418088761,
+                        'changepoint_prior_scale' : 1.9131406810094054,
+                        'seasonality_prior_scale' : 2.0461437728104253},
+        init_model=configure_seasonality)
+    
+    predictor = estimator.predict(train)
+    forecasts = list(predictor)
+    
+    week_id_range = get_next_n_week(cutoff_week_id, horizon)
+    
+    res = pd.DataFrame(
+        {'cutoff_week_id' : cutoff_week_id,
+         'cutoff_date' : week_id_to_date(cutoff_week_id),
+         'week_id' : week_id_range * nb_ts,
+         'date' : [week_id_to_date(w) for w in week_id_range] * nb_ts,
+         'model' : np.array([np.repeat(x['model'], prediction_length) for x in train]).flatten(),
+         'yhat' : np.array([x.quantile(0.5).round().astype(int) for x in forecasts]).flatten()})
+    
+    res.loc[res['yhat'] < 0, 'yhat'] = 0
+    
+    res.to_csv(model_dir + '/Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
+    
+    
+    
+def forecast_with_prophet(cutoff_files_path='gluonts_data/', max_jobs=-1, only_last=True):
+        
+    #cutoff_files = ut.get_files_list(cf.bucket,
+    #                                 cf.s3_path_refined_data + 'gluonts_data/')
+                                    
+    cutoff_files = [f for f in listdir(cutoff_files_path) if isfile(join(cutoff_files_path, f))]
+
+    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
+    
+    if only_last:
+        cutoff_weeks = np.array([np.max(cutoff_weeks)])
+
+    if max_jobs <= 0:
+        max_jobs = len(cutoff_weeks)
+        
+    Parallel(n_jobs=max_jobs, verbose=1)\
+            (delayed(forecast_cutoff)(cutoff_week_id) for cutoff_week_id in cutoff_weeks)
+
+
+
+if __name__ == "__main__":
+    
+    
+    #subprocess.run(["pip freeze"])
+    
+    #print("Inside MAIN...")
+    
+    #subprocess.run(["ls", "/opt/ml/input/data/training"])
+    
+    train_dir = '/opt/ml/input/data/training'
+    model_dir = '/opt/ml/model'
+    
+    horizon = 10
+    horizon_freq = '1W-SUN'
+
+    prediction_length = horizon
+    prediction_freq = '1W-SUN'
+    season_length = 52
+    
+    train_input = train_input_fn(train_dir + '/gluonts_ds_cutoff_201922.pkl')
+    
+    #forecast_with_prophet(cutoff_files_path='gluonts_data/', max_jobs=-1, only_last=True)
+    forecast_with_prophet(cutoff_files_path='gluonts_data/', max_jobs=-1, only_last=True)

@@ -1,0 +1,18 @@
+# Check out image Dockerfile @ https://github.com/aws/sagemaker-mxnet-container/blob/master/docker/1.4.1/py3/Dockerfile.cpu
+FROM 763104351884.dkr.ecr.eu-west-1.amazonaws.com/mxnet-training:1.4.1-cpu-py3
+
+# Set proxy variables
+ENV http_proxy=http://proxy-internet-aws-eu.subsidia.org:3128
+ENV https_proxy=http://proxy-internet-aws-eu.subsidia.org:3128
+ENV no_proxy=169.254.169.254,127.0.0.1
+
+# Create SageMaker program path
+RUN mkdir -p /opt/program
+ENV PATH="/opt/program:${PATH}"
+
+# Install dependencies
+COPY requirements.txt /opt/program
+WORKDIR /opt/program
+RUN pip install -r requirements.txt
+
+CMD ["/bin/bash"]
