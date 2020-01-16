@@ -2,6 +2,7 @@ import boto3
 import pandas as pd
 import numpy as np
 import isoweek
+import io
 
 
 def get_next_week_id(week_id):
@@ -72,3 +73,26 @@ def download_file_from_S3(bucket, s3_file_path, local_path):
         s3_file_path +
         " to: " +
         local_path)
+
+
+def write_csv_S3(df, bucket, file_path, sep = '|', compression=None):
+    
+    # /!\ only works with 'gzip' or None compression atm
+    assert compression in ["gzip", None]
+    
+    s3client = boto3.client("s3")
+    
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer, index=False, sep=sep)
+    csv_buffer.seek(0)
+        
+    if compression == None:
+        s3client.put_object(Bucket=bucket, Key=file_path, Body=csv_buffer.getvalue())
+        
+    if compression == "gzip":
+        gz_buffer = io.BytesIO()
+        with gzip.GzipFile(mode="w", fileobj=gz_buffer) as gz_file:
+            gz_file.write(bytes(csv_buffer.getvalue(), 'utf-8'))
+        s3client.put_object(Bucket=bucket, Key=file_path, Body=gz_buffer.getvalue())
+
+    print('>> Data written on s3://' + bucket + '/' + file_path)

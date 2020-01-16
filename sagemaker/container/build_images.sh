@@ -3,8 +3,7 @@
 # This script builds the Docker image and pushes it to ECR to be ready for use
 # The argument to this script is the image name.
 
-image=$1
-algorithm_name=apo-demand-forecast-training #$1
+algorithm_name=$1
 
 # Update docker daemon proxy
 sudo su

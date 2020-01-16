@@ -87,7 +87,8 @@ def model_fn(cutoff_week_id, hyperparameters):
     
     res.loc[res['yhat'] < 0, 'yhat'] = 0
     
-    res.to_csv(model_dir + '/Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
+    #res.to_csv(model_dir + '/Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
+    write_csv_S3(res, 'fcst-workspace', 'oaitel05/Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
     
     return compute_wape(res)
     
