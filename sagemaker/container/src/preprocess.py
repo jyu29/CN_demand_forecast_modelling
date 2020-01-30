@@ -4,14 +4,13 @@ import re
 from gluonts.dataset.common import ListDataset
 from gluonts.transform import FieldName
 
-import src.tools.utils as ut
-import config as cf
+import utils as ut
 
 
-def format_cutoff_train_data(only_last=True):
+def format_cutoff_train_data(conf, only_last=True):
 
-    cutoff_files = ut.get_files_list(cf.bucket, 
-                                     cf.s3_path_refined_data + 'cutoff_data/')
+    cutoff_files = ut.get_files_list(config.bucket, 
+                                     config.s3_path_refined_data + 'cutoff_data/')
     cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
     
     if only_last:
@@ -23,8 +22,8 @@ def format_cutoff_train_data(only_last=True):
     
         print('Generating GluonTS dataset for cutoff ' + str(cutoff_week) + '...')
     
-        train_data_cutoff = ut.read_csv_S3(cf.bucket,
-                                           cf.s3_path_refined_data +\
+        train_data_cutoff = ut.read_csv_S3(conf.bucket,
+                                           conf.s3_path_refined_data +\
                                            'cutoff_data/train_data_cutoff_' +\
                                            str(cutoff_week) + '.csv',
                                            parse_dates=['date'])

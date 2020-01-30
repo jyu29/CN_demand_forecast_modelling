@@ -4,11 +4,10 @@ import re
 from gluonts.dataset.common import ListDataset
 from gluonts.transform import FieldName
 
-import src.tools.utils as ut
-import config as cf
+import utils as ut
 
 
-def format_cutoff_train_data(only_last=True):
+def format_cutoff_train_data(conf, only_last=True):
 
     cutoff_files = ut.get_files_list(cf.bucket, 
                                      cf.s3_path_refined_data + 'cutoff_data/')
