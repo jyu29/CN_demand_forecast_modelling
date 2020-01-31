@@ -7,11 +7,11 @@ from gluonts.transform import FieldName
 import utils as ut
 
 
-def format_cutoff_train_data(conf, only_last=True):
+def format_cutoff_train_data(config, only_last=True):
 
-    cutoff_files = ut.get_files_list(cf.bucket, 
-                                     cf.s3_path_refined_data + 'cutoff_data/')
-    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
+    cutoff_files = ut.get_files_list(config.get_train_bucket_input(), 
+                                     config.get_train_path_refined_data_input())
+    cutoff_weeks = np.array([int(re.findall('\d+', f.split('/')[-2])[0]) for f in cutoff_files]) # Remove prefixes from file paths to make sure scope name digits dont get parsed
     
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])
@@ -22,8 +22,8 @@ def format_cutoff_train_data(conf, only_last=True):
     
         print('Generating GluonTS dataset for cutoff ' + str(cutoff_week) + '...')
     
-        train_data_cutoff = ut.read_csv_S3(cf.bucket,
-                                           cf.s3_path_refined_data +\
+        train_data_cutoff = ut.read_csv_S3(conf.bucket,
+                                           conf.s3_path_refined_data +\
                                            'cutoff_data/train_data_cutoff_' +\
                                            str(cutoff_week) + '.csv',
                                            parse_dates=['date'])

@@ -42,8 +42,14 @@ class ProgramConfiguration(object):
     def get_train_path_refined_data_input(self):
         return self._config['train']['path_refined_data_input']
     
+    def get_train_path_refined_data_intermediate(self):
+        return self._config['train']['path_refined_data_intermediate']
+    
     def get_train_path_refined_data_output(self):
         return self._config['train']['path_refined_data_output']
+    
+    def get_image_name(self):
+        return self._config['train']['image_name']
     
     def get_train_image(self):
         return self._config['train']['docker_image']

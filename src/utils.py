@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import isoweek
 import io
+import itertools
 
 
 def get_next_week_id(week_id):
@@ -75,6 +76,15 @@ def download_file_from_S3(bucket, s3_file_path, local_path):
         local_path)
 
 
+def write_pickle_S3(obj, bucket, file_path):
+    
+    s3client = boto3.client("s3")
+    pickle_obj = pickle.dumps(obj)
+    s3client.put_object(Bucket=bucket, Key=file_path, Body=pickle_obj)
+    
+    print('>> Data written on s3://' + bucket + '/' + file_path)
+
+
 def write_csv_S3(df, bucket, file_path, sep = '|', compression=None):
     
     # /!\ only works with 'gzip' or None compression atm
@@ -96,3 +106,62 @@ def write_csv_S3(df, bucket, file_path, sep = '|', compression=None):
         s3client.put_object(Bucket=bucket, Key=file_path, Body=gz_buffer.getvalue())
 
     print('>> Data written on s3://' + bucket + '/' + file_path)
+    
+    
+def get_all_s3_objects(s3client, **base_kwargs):
+    """
+    List all s3 Keys.
+
+   :param s3client: the boto s3 client(boto client).
+   :param base_kwargs: some key-pair value arguments.
+   :return: A collection of s3 Keys(collection).
+   """
+    continuation_token = None
+    # Function's signature for printing purpose.
+    func_signature = "\n>> Using the function: get_all_s3_objects"
+    while True:
+        list_kwargs = dict(MaxKeys=1000, **base_kwargs)
+        if continuation_token:
+            list_kwargs['ContinuationToken'] = continuation_token
+        response = s3client.list_objects_v2(**list_kwargs)
+        yield response.get('Contents', [])
+        if not response.get('IsTruncated'):
+            break
+        continuation_token = response.get('NextContinuationToken')
+        
+
+def get_s3_subdirectories_bis(bucket, path):
+    s3client = boto3.client('s3')
+    # Get a collection of all s3 items inside the path_s3 directory.
+    keys_generator = get_all_s3_objects(s3client=s3client, Bucket=bucket, Prefix=path)
+    # Converting the generator(a collection) to a list.
+    keys_generator_list = list(keys_generator)
+    # We use itertools.chain.from_iterable to flatten embedded list of s3 keys.
+    merged_keys_list = list(itertools.chain.from_iterable(keys_generator_list))
+    list_files = set([object_key['Key'] for object_key in merged_keys_list])
+    
+    return [path.get('Prefix') for path in keys_generator_list.get('CommonPrefixes')]
+
+
+def get_files_list(bucket, path):
+
+    l = []
+    conn = boto3.client('s3')
+    for key in conn.list_objects(Bucket=bucket, Prefix=path)['Contents']:
+        content = key['Key'].replace(path, "")
+        if len(content) > 0 :
+            l.append(key['Key'].replace(path, ""))
+            
+    return l
+
+
+def get_s3_subdirectories(bucket_name, path):
+    
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(bucket_name)
+    
+    files = bucket.meta.client.list_objects(Bucket=bucket.name, Delimiter='/', Prefix=path)
+    l = []
+    for file in files.get('CommonPrefixes'):
+        l.append(file.get('Prefix'))
+    return l
