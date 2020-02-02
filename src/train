@@ -53,14 +53,15 @@ if __name__ == "__main__":
     print("Run Env:", os.environ["RUN_ENV"])
     print("Only Last:", os.environ["ONLY_LAST"])
     print("Content /opt/ml/input/data/training", os.listdir("/opt/ml/input/data/training"))
+    print("Content /opt/program:", os.listdir("/opt/program"))
     
-    config_file = "prod.yaml" if os.environ["RUN_ENV"]=="prod" else "dev.yaml"
-    config = cf.ProgramConfiguration(config_file, "functional.yaml")
+    config_file = "prod.yml" if os.environ["RUN_ENV"]=="prod" else "dev.yml"
+    config = cf.ProgramConfiguration(config_file, "functional.yml")
     
     # Get actives sales for error computation
-    download_file_from_S3('fcst-workspace',
-                          'qlik/data/clean/active_sales.csv',
-                          '/opt/ml/input/data/active_sales.csv')
+    ut.download_file_from_S3('fcst-workspace',
+                             'qlik/data/clean/active_sales.csv',
+                             '/opt/ml/input/data/active_sales.csv')
                           
                           
     # Preprocess

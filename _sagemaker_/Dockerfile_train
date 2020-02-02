@@ -1,0 +1,19 @@
+FROM 150258775384.dkr.ecr.eu-west-1.amazonaws.com/mxnet-gluonts-training-0.3.3-cpu:latest
+
+COPY src/ /opt/program
+COPY conf/ /opt/program
+
+#RUN pip install -r requirements.txt
+RUN pip install pyyaml==3.13
+RUN pip install pyarrow==0.15.1
+
+ARG run_env
+ENV RUN_ENV=$run_env
+ARG only_last
+ENV ONLY_LAST=$only_last
+
+
+ENV SM_CHANNEL_TRAIN /opt/ml/input/data/training
+ENV SM_MODEL_DIR /opt/ml/model
+
+ENTRYPOINT ["python"]

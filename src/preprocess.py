@@ -4,6 +4,7 @@ import numpy as np
 import re
 from gluonts.dataset.common import ListDataset
 from gluonts.transform import FieldName
+import pickle
 
 import utils as ut
 
@@ -22,7 +23,8 @@ def format_cutoff_train_data(train_dir, config, only_last=True):
     cutoff_files = next(os.walk(train_dir))[1]
     
     # Remove prefixes from file paths (to make sure the scope name's digits dont get parsed), and exctract week number
-    cutoff_weeks = np.array([int(re.findall('\d+', f.split('/')[-2])[0]) for f in cutoff_files])
+    #cutoff_weeks = np.array([int(re.findall('\d+', f.split('/')[-2])[0]) for f in cutoff_files])
+    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
     
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])

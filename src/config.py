@@ -1,6 +1,6 @@
 from datetime import datetime
 import yaml
-
+import os
 
 class ProgramConfiguration(object):
     """
@@ -60,6 +60,9 @@ class ProgramConfiguration(object):
     def get_global_subnets(self):
         return self._config_tech['global']['subnets'].split(', ')
     
+    def get_train_volume_size_in_gb(self):
+        return self._config_tech['global']['volume_size_in_gb']
+    
     def get_train_bucket_input(self):
         return self._config_tech['train']['bucket_input']
     
@@ -90,3 +93,9 @@ class ProgramConfiguration(object):
     
     def get_train_instance_count(self):
         return self._config_tech['train']['instance_count']
+    
+    def get_train_hyperparameters(self):
+        hyperparameters = self._config_tech['train']['hyperparameters']
+        for key in hyperparameters:
+            hyperparameters[key] = str(hyperparameters[key])
+        return hyperparameters

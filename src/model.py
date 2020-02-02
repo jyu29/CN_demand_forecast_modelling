@@ -22,10 +22,6 @@ def train_input_fn(train_file_path):
     with open(train_file_path, 'rb') as file:
         response = pickle.load(file)
     return response
-
-
-with open('/full/path/to/file', 'wb') as f:
-    pickle.dump(object, f)
     
     
 def compute_wape(res):

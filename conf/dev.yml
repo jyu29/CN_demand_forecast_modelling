@@ -1,11 +1,13 @@
 global:
     tags:
-        project: APO
-        algorithm: prophet
-        environment: dev
+        Key: project
+        Value: apo
+    algorithm: prophet
+    environment: dev
     role_arn: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
     security_group_ids: sg-0186b5ab868f43e42
     subnets: subnet-0f87a7ed73f4ead6d, subnet-02c60aed04f0d4ee5
+    volume_size_in_gb: 10
     
 train:
     bucket_input: fcst-refined-demand-forecast-dev

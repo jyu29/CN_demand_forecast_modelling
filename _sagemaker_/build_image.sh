@@ -4,18 +4,18 @@
 # The argument to this script is the image name.
 
 algorithm_name=$1
+run_env=$2
+only_last=$3
 
 # Update docker daemon proxy
-sudo su
 
-cat <<EOF >> /etc/sysconfig/docker
-export HTTPS_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
-export HTTP_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
-export NO_PROXY=169.254.169.254,127.0.0.1
-EOF
-
-service docker restart
-exit
+#sudo cat <<EOF >> /etc/sysconfig/docker
+#export HTTPS_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
+#export HTTP_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
+#export NO_PROXY=169.254.169.254,127.0.0.1
+#EOF
+#
+#sudo service docker restart
 
 # Update shell session proxy
 export HTTPS_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
@@ -23,7 +23,6 @@ export HTTP_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
 export NO_PROXY=169.254.169.254,127.0.0.1
 
 # Build image
-cd container
 chmod -R +x src/
 
 # Get FCST United ECR account ID
@@ -44,6 +43,9 @@ $(aws ecr get-login --region ${region} --registry-ids ${account} --no-include-em
 
 # Build the docker image locally with the image name and then push it to ECR
 # with the full name.
-docker build  --no-cache --pull --file 'Dockerfile_train' -t ${algorithm_name} .
+docker build  --no-cache --pull --file '_sagemaker_/Dockerfile_train' -t ${algorithm_name} \
+              --build-arg run_env=${run_env} \
+              --build-arg only_last=${only_last} \
+              .
 docker tag ${algorithm_name} ${fullname}
 docker push ${fullname}

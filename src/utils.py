@@ -1,9 +1,11 @@
 import boto3
-import pandas as pd
-import numpy as np
-import isoweek
+import datetime
 import io
+import isoweek
 import itertools
+import numpy as np
+import os
+import pandas as pd
 
 
 def get_next_week_id(week_id):
@@ -127,6 +129,33 @@ def get_s3_subdirectories(bucket_name, path):
     for file in files.get('CommonPrefixes'):
         l.append(file.get('Prefix'))
     return l
+
+
+def read_parquet_folder_as_pandas(path, verbosity=1):
+    files = [f for f in os.listdir(path) if f.endswith("parquet")]
+    if verbosity > 0:
+        print("{} parquet files found. Beginning reading...".format(len(files)), end="")
+        start = datetime.datetime.now()
+        
+    df_list = [pd.read_parquet(os.path.join(path, f)) for f in files]
+    df = pd.concat(df_list, ignore_index=True)
+    
+    if verbosity > 0:
+        end = datetime.datetime.now()
+        print(" Finished. Took {}".format(end-start))
+    
+    return df
+
+
+def read_parquet_as_pandas(path, verbosity=1):
+    """
+    Workaround for pandas not being able to read folder-style parquet files
+    """
+    if os.path.isdir(path):
+        if verbosity>1: print("Parquet file is actually a folder")
+        return read_parquet_folder_as_pandas(path, verbosity)
+    else:
+        return pd.read_parquet(path)
 
 
 ########### UNUSDE ##########
