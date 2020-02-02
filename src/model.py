@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import re
 import isoweek
-from copy import deepcopy
+#from copy import deepcopy
 from joblib import Parallel, delayed
 import subprocess
 import pickle
@@ -42,7 +42,7 @@ def compute_wape(res):
     
 def model_fn(cutoff_week_id, config, hyperparameters):
 
-    train = train_input_fn(train_dir + '/gluonts_ds_cutoff_' + str(cutoff_week_id) + '.pkl')
+    train = train_input_fn(os.environ['SM_CHANNEL_TRAIN'] + '/gluonts_ds_cutoff_' + str(cutoff_week_id) + '.pkl')
         
     nb_ts = len(train)
     
