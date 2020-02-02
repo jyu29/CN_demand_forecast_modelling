@@ -4,56 +4,89 @@ import yaml
 
 class ProgramConfiguration(object):
     """
-    Class used to handle and maintain all parameters of this program (timeouts, some other values...)
+    Class used to handle and maintain all configurations of this program
     """
-    _config = None
-    _config_directory = None
-
-    def __init__(self, config_file_path):
+    _config_tech = None
+    _config_func = None
+    
+    def __init__(self, config_tech_path, config_func_path):
         """
         Constructor - Loads the given external YAML configuration file. Raises an error if not able to do it.
         :param config_file_path: (string) full path to the YAML configuration file
         """
-        if os.path.exists(config_file_path):
-            self._config_directory = os.path.dirname(config_file_path)
-            with open(config_file_path, 'r') as f:
-                self._config = yaml.load(f)
+        if os.path.exists(config_tech_path):
+            with open(config_tech_path, 'r') as f:
+                self._config_tech = yaml.load(f)
         else:
-            raise Exception("Could not load external YAML configuration file '{}'".format(config_file_path))
-            
+            raise Exception("Could not load external YAML configuration file '{}'".format(config_tech_path))
+           
+        if os.path.exists(config_func_path):
+            with open(config_func_path, 'r') as f:
+                self._config_func = yaml.load(f)
+        else:
+            raise Exception("Could not load external YAML configuration file '{}'".format(config_func_path))
+    
+    
+    def get_scope(self):
+        return self._config_func['scope']
+    
+    def get_horizon(self):
+        return self._config_func['horizon']
+    
+    def get_horizon_freq(self):
+        return self._config_func['horizon_freq']
+    
+    def get_prediction_length(self):
+        return self._config_func['prediction_length']
+    
+    def get_prediction_freq(self):
+        return self._config_func['prediction_freq']
+    
+    def get_season_length(self):
+        return self._config_func['season_length']
+    
+    ###
+    
+    
     def get_global_tags(self):
-        return self._config['global']['tags']
+        return self._config_tech['global']['tags']
     
     def get_global_role_arn(self):
-        return self._config['global']['role_arn']
+        return self._config_tech['global']['role_arn']
     
     def get_global_security_group_ids(self):
-        return self._config['global']['security_group_ids'].split(', ')
+        return self._config_tech['global']['security_group_ids'].split(', ')
     
     def get_global_subnets(self):
-        return self._config['global']['subnets'].split(', ')
+        return self._config_tech['global']['subnets'].split(', ')
     
     def get_train_bucket_input(self):
-        return self._config['train']['bucket_input']
+        return self._config_tech['train']['bucket_input']
     
     def get_train_bucket_output(self):
-        return self._config['train']['bucket_output']
+        return self._config_tech['train']['bucket_output']
     
     def get_train_path_refined_data_input(self):
-        return self._config['train']['path_refined_data_input']
+        return self._config_tech['train']['path_refined_data_input']
+    
+    def get_train_path_refined_data_intermediate(self):
+        return self._config_tech['train']['path_refined_data_intermediate']
     
     def get_train_path_refined_data_output(self):
-        return self._config['train']['path_refined_data_output']
+        return self._config_tech['train']['path_refined_data_output']
     
-    def get_train_image(self):
-        return self._config['train']['docker_image']
+    def get_train_image_name(self):
+        return self._config_tech['train']['image_name']
+    
+    def get_train_docker_image(self):
+        return self._config_tech['train']['docker_image']
     
     def get_train_job_name(self):
         now_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
-        return self._config['train']['job_name'] + '-' + now_str
+        return self._config_tech['train']['job_name'] + '-' + now_str
     
     def get_train_instance_type(self):
-        return self._config['train']['instance_type']
+        return self._config_tech['train']['instance_type']
     
     def get_train_instance_count(self):
-        return self._config['train']['instance_count']
+        return self._config_tech['train']['instance_count']

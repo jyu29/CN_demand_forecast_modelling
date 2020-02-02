@@ -108,6 +108,29 @@ def write_csv_S3(df, bucket, file_path, sep = '|', compression=None):
     print('>> Data written on s3://' + bucket + '/' + file_path)
     
     
+def delete_S3(bucket, path):
+
+    s3 = boto3.resource('s3')
+    bucket_obj = s3.Bucket(bucket)
+    bucket_obj.objects.filter(Prefix=path).delete()
+    
+    print('>> Data deleted on s3://' + bucket + '/' + path)
+    
+
+def get_s3_subdirectories(bucket_name, path):
+    
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(bucket_name)
+    
+    files = bucket.meta.client.list_objects(Bucket=bucket.name, Delimiter='/', Prefix=path)
+    l = []
+    for file in files.get('CommonPrefixes'):
+        l.append(file.get('Prefix'))
+    return l
+
+
+########### UNUSDE ##########
+
 def get_all_s3_objects(s3client, **base_kwargs):
     """
     List all s3 Keys.
@@ -152,16 +175,4 @@ def get_files_list(bucket, path):
         if len(content) > 0 :
             l.append(key['Key'].replace(path, ""))
             
-    return l
-
-
-def get_s3_subdirectories(bucket_name, path):
-    
-    s3 = boto3.resource('s3')
-    bucket = s3.Bucket(bucket_name)
-    
-    files = bucket.meta.client.list_objects(Bucket=bucket.name, Delimiter='/', Prefix=path)
-    l = []
-    for file in files.get('CommonPrefixes'):
-        l.append(file.get('Prefix'))
     return l

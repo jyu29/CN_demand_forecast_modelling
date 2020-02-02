@@ -4,13 +4,11 @@ import yaml
 
 def create_training_job(config):
     
-    training_job_name = config.get_train_job_name()
-    
     sm = boto3.client('sagemaker')
     resp = sm.create_training_job(
-            TrainingJobName = training_job_name, 
+            TrainingJobName = config.get_train_job_name(), 
             AlgorithmSpecification={
-                'TrainingImage': config.get_train_image(),
+                'TrainingImage': config.get_train_docker_image(),
             }, 
             RoleArn=config.get_global_role_arn(),
             InputDataConfig=[
@@ -30,10 +28,13 @@ def create_training_job(config):
             ResourceConfig={
                             'InstanceType': config.get_train_instance_type(),
                             'InstanceCount': config.get_train_instance_count()
-                        }, 
-            StoppingCondition={
-                                'MaxRuntimeInSeconds': 600
-                            },
+                        },
             HyperParameters=config.get_train_hyperparameters(),
-            Tags=config.get_global_tags()
+            Tags=[
+                config.get_global_tags()
+               ],
+            VpcConfig={ 
+                      'SecurityGroupIds': config.get_global_security_group_ids(),
+                      'Subnets': config.get_global_subnets()
+                    }
     )
