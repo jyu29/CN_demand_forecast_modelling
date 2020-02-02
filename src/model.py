@@ -74,14 +74,14 @@ def model_fn(cutoff_week_id, config, hyperparameters):
     predictor = estimator.predict(train)
     forecasts = list(predictor)
     
-    week_id_range = ut.get_next_n_week(cutoff_week_id, horizon)
+    week_id_range = ut.get_next_n_week(cutoff_week_id, config.get_horizon())
     
     res = pd.DataFrame(
         {'cutoff_week_id' : cutoff_week_id,
          'cutoff_date' : ut.week_id_to_date(cutoff_week_id),
          'week_id' : week_id_range * nb_ts,
          'date' : [ut.week_id_to_date(w) for w in week_id_range] * nb_ts,
-         'model' : np.array([np.repeat(x['model'], prediction_length) for x in train]).flatten(),
+         'model' : np.array([np.repeat(x['model'], config.get_prediction_length()) for x in train]).flatten(),
          'yhat' : np.array([x.quantile(0.5).round().astype(int) for x in forecasts]).flatten()})
     
     res.loc[res['yhat'] < 0, 'yhat'] = 0

@@ -30,8 +30,8 @@ if __name__ == '__main__':
     #os.environ["ONLY_LAST"] = args.only_last
     
     # Create Docker image for training
-    #print("Building Docker Image...")
-    #subprocess.call(['sh', '_sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last])
+    print("Building Docker Image...")
+    subprocess.call(['sh', '_sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last])
     #os.system('sh _sagemaker_/build_image.sh ' + config.get_train_image_name())
     
     # Preprocessing file

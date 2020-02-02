@@ -12,7 +12,6 @@ ENV RUN_ENV=$run_env
 ARG only_last
 ENV ONLY_LAST=$only_last
 
-
 ENV SM_CHANNEL_TRAIN /opt/ml/input/data/training
 ENV SM_MODEL_DIR /opt/ml/model
 
