@@ -16,10 +16,10 @@ pipeline {
                 sh('''
                     if [ -d /var/lib/jenkins/.conda/envs/fcst_modeling_demand ]; then rm -rf /var/lib/jenkins/.conda/envs/fcst_modeling_demand; fi
                     conda create -n fcst_modeling_demand python=3
-                    source activate fcst_modeling_demand
-                    pip3 install -r requirements.txt
+                    conda init /bin/sh
+                    conda activate fcst_modeling_demand
                     python3 main.py --environment ${run_env} --only_last ${only_last}
-                    source deactivate
+                    conda deactivate
                     ''')
                 }
         }
