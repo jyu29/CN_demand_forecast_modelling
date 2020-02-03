@@ -14,7 +14,7 @@ pipeline {
             }
             steps {
                 sh('''
-                    conda env create --force -n fcst_modeling_demand python=3
+                    conda create -n fcst_modeling_demand python=3
                     conda activate fcst_modeling_demand
                     pip3 install -r requirements.txt
                     python3 main.py --environment ${run_env} --only_last ${only_last}
