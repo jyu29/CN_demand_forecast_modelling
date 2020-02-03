@@ -26,13 +26,10 @@ if __name__ == '__main__':
     config_file = "conf/prod.yml" if args.environment=="prod" else "conf/dev.yml"
     config = cf.ProgramConfiguration(config_file, "conf/functional.yml")
     
-    #os.environ["RUN_ENV"] = args.environment
-    #os.environ["ONLY_LAST"] = args.only_last
-    
     # Create Docker image for training
     print("Building Docker Image...")
-    subprocess.call(['sh', '_sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last])
-    #os.system('sh _sagemaker_/build_image.sh ' + config.get_train_image_name())
+    subprocess.call(['sh', '_sagemaker_/build_image.sh',
+                     config.get_train_image_name(), args.environment, args.only_last])
     
     # Preprocessing file
     #pp.format_cutoff_train_data(config, only_last=eval(args.only_last))

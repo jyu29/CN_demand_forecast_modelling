@@ -14,10 +14,8 @@ pipeline {
             }
             steps {
                 sh('''
-                    conda env create --force -n fcst_modeling_demand python=3
-                    conda activate fcst_modeling_demand
-                    pip install -r requirements.txt
-                    python main.py --environment ${run_env} --only_last ${only_last}
+                    pip3 install pyyaml==3.13
+                    python3 main.py --environment ${run_env} --only_last ${only_last}
                     conda deactivate
                     ''')
                 }
