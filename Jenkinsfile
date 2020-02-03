@@ -4,6 +4,7 @@ pipeline {
         branch = 'develop'
         gitUrl = 'https://github.com/dktunited/forecast-modeling-demand.git'
         run_env = "${runenvinjob}"
+        only_last = "${only_last}"
     }
     stages {
         stage('Prepare data and make forecasts') {
@@ -13,7 +14,7 @@ pipeline {
             }
             steps {
                 sh('''
-                    python main.py --environment ${run_env} --only_last True
+                    python main.py --environment ${run_env} --only_last ${only_last}
                     ''')
                 }
         }
