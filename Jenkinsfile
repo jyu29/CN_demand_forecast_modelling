@@ -14,6 +14,7 @@ pipeline {
             }
             steps {
                 sh('''
+                    if [ -d /var/lib/jenkins/.conda/envs/fcst_modeling_demand ]; then rm -rf /var/lib/jenkins/.conda/envs/fcst_modeling_demand; fi
                     conda create -n fcst_modeling_demand python=3
                     source ~/anaconda3/etc/profile.d/conda.sh
                     conda activate fcst_modeling_demand
