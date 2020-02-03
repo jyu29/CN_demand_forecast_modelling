@@ -1,4 +1,2 @@
 pyyaml==3.13
 pyarrow==0.15.1
-//fastparquet==0.3.2
-//python-snappy==0.5.4
