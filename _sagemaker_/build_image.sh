@@ -9,13 +9,13 @@ only_last=$3
 
 # Update docker daemon proxy
 
-sudo cat <<EOF >> /etc/sysconfig/docker
-export HTTPS_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
-export HTTP_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
-export NO_PROXY=169.254.169.254,127.0.0.1
-EOF
+#sudo cat <<EOF >> /etc/sysconfig/docker
+#export HTTPS_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
+#export HTTP_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
+#export NO_PROXY=169.254.169.254,127.0.0.1
+#EOF
 
-sudo service docker restart
+#sudo service docker restart
 
 # Update shell session proxy
 export HTTPS_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
