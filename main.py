@@ -35,12 +35,12 @@ if __name__ == '__main__':
     #p = subprocess.Popen(['sh', 'sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last],
     #                     stdout=sys.stdout, stderr=sys.stderr).communicate()
     #p.wait()
-    if p.returncode == 0:
-        print("Creating Training Job...")
-        sg.create_training_job(config)
+    #if p.returncode == 0:
+    #    print("Creating Training Job...")
+    #   sg.create_training_job(config)
     # Preprocessing file
     #pp.format_cutoff_train_data(config, only_last=eval(args.only_last))
     
     # Train model
-    #print("Creating Training Job...")
-    #sg.create_training_job(config)
+    print("Creating Training Job...")
+    sg.create_training_job(config)
