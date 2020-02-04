@@ -17,9 +17,9 @@ import _sagemaker_.sagemaker as sg
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--environment', choices=['prepord','prod'], default="preprod",
+    parser.add_argument('--environment', choices=['preprod','prod'], default="preprod",
                         help="'preprod' or 'prod', to set the right configurations")
-    parser.add_argument('--only_last', default='True',
+    parser.add_argument('--only_last', choices=['True','False'], default='True',
                         help='Run only for last week?')
     args = parser.parse_args()
     
