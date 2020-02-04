@@ -3,7 +3,7 @@ pipeline {
     environment {
         branch = 'develop'
         gitUrl = 'https://github.com/dktunited/forecast-modeling-demand.git'
-        run_env = "${runenvinjob}"
+        run_env = "${run_env}"
         only_last = "${only_last}"
     }
     stages {
