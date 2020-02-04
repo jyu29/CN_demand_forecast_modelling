@@ -29,11 +29,11 @@ if __name__ == '__main__':
     
     # Create Docker image for training
     print("Building Docker Image...")
-    #subprocess.call(['sh', '_sagemaker_/build_image.sh',
-    #            config.get_train_image_name(), args.environment, args.only_last])
+    subprocess.call(['sh', '_sagemaker_/build_image.sh',
+                config.get_train_image_name(), args.environment, args.only_last])
 
-    p = subprocess.Popen(['sh', 'sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last],
-                         stdout=sys.stdout, stderr=sys.stderr).communicate()
+    #p = subprocess.Popen(['sh', 'sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last],
+    #                     stdout=sys.stdout, stderr=sys.stderr).communicate()
     p.wait()
     if p.returncode == 0:
         print("Creating Training Job...")
