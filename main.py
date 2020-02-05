@@ -38,7 +38,7 @@ if __name__ == '__main__':
     print("Monitoring training job status...")
     client = boto3.client('sagemaker')
     while True:
-        status = client.describe_training_job(TrainingJobName=sg_resp["TrainingJobName"])['SecondaryStatusTransitions']['Status']
+        status = client.describe_training_job(TrainingJobName=sg_resp["TrainingJobArn"].split("/")[-1])['SecondaryStatusTransitions']['Status']
         print(status)
         if status in ['Starting', 'LaunchingMLInstances', 'PreparingTrainingStack', 'Downloading', 'DownloadingTrainingImage', 'Training', 'Uploading']:
             time.sleep(config.get_monitor_sleep())
