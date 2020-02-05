@@ -3,7 +3,7 @@ FROM 150258775384.dkr.ecr.eu-west-1.amazonaws.com/mxnet-gluonts-training-0.3.3-c
 COPY src/ /opt/program
 COPY conf/ /opt/program
 
-#RUN pip install -r requirements.txt
+#RUN pip install -r requirements. # todo : fix the requirement.txt issue
 RUN pip install pyyaml==3.13
 RUN pip install pyarrow==0.15.1
 
@@ -12,7 +12,7 @@ ENV RUN_ENV=$run_env
 ARG only_last
 ENV ONLY_LAST=$only_last
 
-ENV SM_CHANNEL_TRAIN /opt/ml/input/data/training
+ENV SM_CHANNEL_TRAIN /opt/ml/input/data/training # todo : add the sagemaker variables to the base image
 ENV SM_MODEL_DIR /opt/ml/model
 
 ENTRYPOINT ["python"]

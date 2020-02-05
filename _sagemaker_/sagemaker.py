@@ -43,3 +43,4 @@ def create_training_job(config):
                       'Subnets': config.get_global_subnets()
                     }
     )
+    return resp

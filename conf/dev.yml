@@ -12,7 +12,7 @@ global:
 train:
     bucket_input: fcst-refined-demand-forecast-dev
     bucket_output: fcst-refined-demand-forecast-dev
-    path_refined_data_input: specific/domyos_nov_2019/train_data_cutoff/
+    path_refined_data_input: specific/domyos_nov_2019/train_data_cutoff
     path_refined_data_intermediate: specific/domyos_nov_2019/train_data_cutoff_gluonts/
     path_refined_data_output: model/results/domyos_nov_2019/
     image_name: demand-forecast-prophet-training
