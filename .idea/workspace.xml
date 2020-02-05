@@ -77,7 +77,14 @@
       <option name="project" value="LOCAL" />
       <updated>1580899600496</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="fix: sagemaker describe_training_job, use arn to conclude job_name">
+      <created>1580900743013</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1580900743016</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -85,17 +92,18 @@
     <MESSAGE value="fix: remove proxy config in /etc/sysconfig/docker for Jenkins" />
     <MESSAGE value="feat: add sagemaker training job monitoring loop" />
     <MESSAGE value="fix: sagemaker training job monitoring loop" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: sagemaker training job monitoring loop" />
+    <MESSAGE value="fix: sagemaker describe_training_job, use arn to conclude job_name" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: sagemaker describe_training_job, use arn to conclude job_name" />
   </component>
   <component name="WindowStateProjectService">
     <state x="439" y="260" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1580823108796">
       <screen x="0" y="0" width="1440" height="900" />
     </state>
     <state x="439" y="260" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1440.900@0.0.1440.900" timestamp="1580823108796" />
-    <state x="129" y="-1131" key="CommitChangelistDialog2" timestamp="1580899599876">
+    <state x="129" y="-1131" key="CommitChangelistDialog2" timestamp="1580900742306">
       <screen x="-330" y="-1200" width="1920" height="1200" />
     </state>
-    <state x="129" y="-1131" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580899599876" />
+    <state x="129" y="-1131" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580900742306" />
     <state x="344" y="52" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@0.0.1440.900" timestamp="1580809229252" />
     <state x="386" y="85" width="667" height="729" key="find.popup" timestamp="1580853007931">
       <screen x="0" y="0" width="1440" height="900" />
