@@ -1,5 +1,5 @@
 global:
-    tags:
+    tags: # todo : add multiple tags
         Key: project
         Value: apo
     algorithm: prophet
@@ -18,7 +18,7 @@ train:
     image_name: demand-forecast-prophet-training
     docker_image: 150258775384.dkr.ecr.eu-west-1.amazonaws.com/demand-forecast-prophet-training:latest
     job_name: demand-forecast-prophet-training
-    instance_type: ml.m5.2xlarge
+    instance_type: ml.c5.2xlarge
     instance_count: 1
     hyperparameters:
         yearly_order: 25
@@ -30,4 +30,7 @@ train:
         changepoint_range: 0.69
         changepoint_prior_scale: 1.91
         seasonality_prior_scale: 2.04
+
+monitor:
+    sleep: 300
         

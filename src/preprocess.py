@@ -17,14 +17,13 @@ def write_train_input_fn(pkl_object, train_file_path):
         
 def format_cutoff_train_data(train_dir, config, only_last=True):
 
-    #cutoff_files = ut.get_s3_subdirectories(config.get_train_bucket_input(), 
-    #                                        config.get_train_path_refined_data_input())
+    #cutoff_files = ut.get_s3_subdirectories(config.get_train_bucket_input(), config.get_train_path_refined_data_input())
     
     cutoff_files = next(os.walk(train_dir))[1]
     
-    # Remove prefixes from file paths (to make sure the scope name's digits dont get parsed), and exctract week number
+    # Remove prefixes from file paths (to make sure the scope name's digits dont get parsed), and extract week number
     #cutoff_weeks = np.array([int(re.findall('\d+', f.split('/')[-2])[0]) for f in cutoff_files])
-    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
+    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('train_data_cutoff_') and f[-1].isdigit()])
     
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])

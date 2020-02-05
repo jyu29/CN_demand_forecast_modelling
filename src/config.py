@@ -99,3 +99,6 @@ class ProgramConfiguration(object):
         for key in hyperparameters:
             hyperparameters[key] = str(hyperparameters[key])
         return hyperparameters
+
+    def get_monitor_sleep(self):
+        return self._config_tech['monitor']['sleep']

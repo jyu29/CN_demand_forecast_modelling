@@ -21,15 +21,13 @@ def create_training_job(config):
                                     'DataSource': {
                                         'S3DataSource': {
                                             'S3DataType': 'S3Prefix',
-                                            'S3Uri': 's3://' + config.get_train_bucket_input() + '/' + \
-                                                      config.get_train_path_refined_data_input()
+                                            'S3Uri': 's3://' + config.get_train_bucket_input() + '/' + config.get_train_path_refined_data_input()
                                         }
                                     },
                                 },
                             ], 
             OutputDataConfig={
-                                'S3OutputPath': 's3://' + config.get_train_bucket_output() + '/' + \
-                                                      config.get_train_path_refined_data_output()
+                                'S3OutputPath': 's3://' + config.get_train_bucket_output() + '/' + config.get_train_path_refined_data_output()
                             },
             ResourceConfig={
                             'InstanceType': config.get_train_instance_type(),

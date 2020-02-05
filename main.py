@@ -1,17 +1,16 @@
 """
 Python script to orcherstrate demand forecast modeling:
 - Creates Training Docker Image
-- Preprocesses ( reformats ) model input data
-- Pops instance to train
+- Pops instance to  preprocess ( reformat ) model input data, train a fprophet model, then output predictions
 @author: oaitelkadi ( Ouiame Ait El Kadi )
 """
 import argparse
-import subprocess
+import boto3
 import os
-import sys
+import subprocess
+import time
 
 import src.config as cf
-#import src.preprocess as pp
 import _sagemaker_.sagemaker as sg
 
 
@@ -31,16 +30,20 @@ if __name__ == '__main__':
     print("Building Docker Image...")
     subprocess.call(['sh', '_sagemaker_/build_image.sh',
                 config.get_train_image_name(), args.environment, args.only_last])
-
-    #p = subprocess.Popen(['sh', 'sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last],
-    #                     stdout=sys.stdout, stderr=sys.stderr).communicate()
-    #p.wait()
-    #if p.returncode == 0:
-    #    print("Creating Training Job...")
-    #   sg.create_training_job(config)
-    # Preprocessing file
-    #pp.format_cutoff_train_data(config, only_last=eval(args.only_last))
     
     # Train model
     print("Creating Training Job...")
     sg.create_training_job(config)
+
+    # Monitor status training job
+    print("Monitoring training job status...")
+    client = boto3.client('sagemaker')
+    while True:
+        status = client.describe_training_job(TrainingJobName=config.get_train_job_name())['SecondaryStatusTransitions']['Status']
+        print(status)
+        if status in ['Starting', 'LaunchingMLInstances', 'PreparingTrainingStack', 'Downloading', 'DownloadingTrainingImage', 'Training', 'Uploading']:
+            time.sleep(config.get_monitor_sleep())
+        elif status == 'Completed':
+            break
+        else:
+            raise Exception('Training job has failed !')
