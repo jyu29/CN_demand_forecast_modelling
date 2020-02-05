@@ -3,7 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="9cb6d846-acb2-4d23-94a0-0d1c64c746f1" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/_sagemaker_/Dockerfile_train" beforeDir="false" afterPath="$PROJECT_DIR$/_sagemaker_/Dockerfile_train" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/conf/dev.yml" beforeDir="false" afterPath="$PROJECT_DIR$/conf/dev.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train" beforeDir="false" afterPath="$PROJECT_DIR$/src/train" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +86,14 @@
       <option name="project" value="LOCAL" />
       <updated>1580900743016</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="fix: sagemaker describe_training_job, use latest status">
+      <created>1580902274223</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1580902274223</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -93,17 +102,18 @@
     <MESSAGE value="feat: add sagemaker training job monitoring loop" />
     <MESSAGE value="fix: sagemaker training job monitoring loop" />
     <MESSAGE value="fix: sagemaker describe_training_job, use arn to conclude job_name" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: sagemaker describe_training_job, use arn to conclude job_name" />
+    <MESSAGE value="fix: sagemaker describe_training_job, use latest status" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: sagemaker describe_training_job, use latest status" />
   </component>
   <component name="WindowStateProjectService">
     <state x="439" y="260" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1580823108796">
       <screen x="0" y="0" width="1440" height="900" />
     </state>
     <state x="439" y="260" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1440.900@0.0.1440.900" timestamp="1580823108796" />
-    <state x="129" y="-1131" key="CommitChangelistDialog2" timestamp="1580900742306">
+    <state x="129" y="-1131" key="CommitChangelistDialog2" timestamp="1580902273742">
       <screen x="-330" y="-1200" width="1920" height="1200" />
     </state>
-    <state x="129" y="-1131" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580900742306" />
+    <state x="129" y="-1131" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580902273742" />
     <state x="344" y="52" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@0.0.1440.900" timestamp="1580809229252" />
     <state x="386" y="85" width="667" height="729" key="find.popup" timestamp="1580853007931">
       <screen x="0" y="0" width="1440" height="900" />

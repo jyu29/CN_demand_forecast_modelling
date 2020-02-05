@@ -1,6 +1,6 @@
 import argparse
 import os
-
+import subprocess
 import config as cf
 import preprocess as pp
 import model as m
@@ -46,23 +46,28 @@ if __name__ == "__main__":
                        'changepoint_range': args.changepoint_range,
                        'changepoint_prior_scale': args.changepoint_prior_scale,
                        'seasonality_prior_scale': args.seasonality_prior_scale}
-    
-    train_dir = '/opt/ml/input/data/training' # args.train #
-    model_dir = '/opt/ml/model' # args.model_dir #
-    
-    print("Run Env:", os.environ["RUN_ENV"])
-    print("Only Last:", os.environ["ONLY_LAST"])
-    print("Content /opt/ml/input/data/training", os.listdir("/opt/ml/input/data/training"))
-    #print("Content /opt/program:", os.listdir("/opt/program"))
-    
+
     config_file = "prod.yml" if os.environ["RUN_ENV"]=="prod" else "dev.yml"
     config = cf.ProgramConfiguration(config_file, "functional.yml")
+
+    print("Run Env:", os.environ["RUN_ENV"])
+    print("Only Last:", os.environ["ONLY_LAST"])
+    print("Train_dir": os.environ["SM_CHANNEL_TRAIN"])
+
+    train_dir = "/opt/ml/input/data/training" #os.environ["SM_CHANNEL_TRAIN"]
+    model_dir = "/opt/ml/model" #os.environ["SM_MODEL_DIR"]
+
+    subprocess.run(["aws", "s3", "cp",
+                    "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_refined_data_input(),
+                     train_dir + "/", "--recursive"]) # todo : investigate sagemaker data download error, shouldn't have to do this explicitly with the api call !
+
+    print("Content /opt/ml/input/data/training", os.listdir("/opt/ml/input/data/training"))
+    #print("Content /opt/program:", os.listdir("/opt/program"))
     
     # Get actives sales for error computation
     ut.download_file_from_S3('fcst-workspace',
                              'qlik/data/clean/active_sales.csv',
                              '/opt/ml/input/data/active_sales.csv') # todo : handle active_sales file more properly
-                          
                           
     # Preprocess
     pp.format_cutoff_train_data(train_dir, config)
