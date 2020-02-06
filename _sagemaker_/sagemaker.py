@@ -17,13 +17,14 @@ def create_training_job(config):
             RoleArn=config.get_global_role_arn(),
             InputDataConfig=[
                                 {
-                                    'ChannelName': 'train',
+                                    'ChannelName': 'training', # todo : check if it changes anything "ing"
                                     'DataSource': {
                                         'S3DataSource': {
                                             'S3DataType': 'S3Prefix',
                                             'S3Uri': 's3://' + config.get_train_bucket_input() + '/' + config.get_train_path_refined_data_input()
                                         }
                                     },
+                                    # 'InputMode' : 'File', # todo : check if it changes sthg
                                 },
                             ], 
             OutputDataConfig={
@@ -44,3 +45,5 @@ def create_training_job(config):
                     }
     )
     return resp
+
+# todo : create hyperparameter tuning job

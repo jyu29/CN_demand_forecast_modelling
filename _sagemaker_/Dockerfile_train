@@ -16,5 +16,6 @@ ENV ONLY_LAST=$only_last
 ENV SM_CHANNEL_TRAIN /opt/ml/input/data/training
 # todo : add the sagemaker variables to the base image
 ENV SM_MODEL_DIR /opt/ml/model
+ENV SM_DATA_DIR /opt/ml/input/data
 
 ENTRYPOINT ["python"]

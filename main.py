@@ -32,7 +32,7 @@ if __name__ == '__main__':
     
     # Train model
     print("Creating Training Job...")
-    sg_resp = sg.create_training_job(config)
+    sg_resp = sg.create_training_job(config)  # todo : add env variables to hyperparameters, checkout create_algorithm()
 
     # Monitor status training job
     print("Monitoring training job status...")

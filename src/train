@@ -54,23 +54,25 @@ if __name__ == "__main__":
     print("Only Last:", os.environ["ONLY_LAST"])
     print("Train_dir:", os.environ["SM_CHANNEL_TRAIN"])
 
-    train_dir = "/opt/ml/input/data/training" #os.environ["SM_CHANNEL_TRAIN"]
-    model_dir = "/opt/ml/model" #os.environ["SM_MODEL_DIR"]
+    train_dir = os.environ["SM_CHANNEL_TRAIN"]
+    model_dir = os.environ["SM_MODEL_DIR"]
+    data_dir = os.environ["SM_DATA_DIR"]
 
-    subprocess.run(["aws", "s3", "cp",
-                    "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_refined_data_input(),
-                    train_dir + "/", "--recursive"]) # todo : investigate sagemaker data download error, shouldn't have to do this explicitly with the api call !
+    #subprocess.run(["aws", "s3", "cp",
+    #                "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_refined_data_input(),
+    #                train_dir + "/", "--recursive"]) # todo : investigate sagemaker data download error, shouldn't have to do this explicitly with the api call !
 
     print("Content /opt/ml/input/data/training", os.listdir("/opt/ml/input/data/training"))
     #print("Content /opt/program:", os.listdir("/opt/program"))
     
     # Get actives sales for error computation
-    ut.download_file_from_S3('fcst-workspace',
-                             'qlik/data/clean/active_sales.csv',
-                             '/opt/ml/input/data/active_sales.csv') # todo : handle active_sales file more properly
-                          
+    subprocess.run(["aws", "s3", "cp",
+                    "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_active_sales(),
+                    data_dir + "/active_sales", "--recursive"])
+
+    only_last = os.environ["ONLY_LAST"]
     # Preprocess
-    pp.format_cutoff_train_data(train_dir, config)
+    pp.format_cutoff_train_data(train_dir, config, only_last=only_last)
     
     # Launch model training
-    m.train_model_fn(train_dir, config, hyperparameters)
+    m.train_model_fn(train_dir, config, hyperparameters, only_last=only_last)

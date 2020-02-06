@@ -26,7 +26,8 @@ def train_input_fn(train_file_path):
     
 def compute_wape(res):
 
-    active_sales = pd.read_csv('/opt/ml/input/data/active_sales.csv', sep='|', parse_dates=['date'])
+    #active_sales = pd.read_csv('/opt/ml/input/data/active_sales.csv', sep='|', parse_dates=['date'])
+    active_sales = pd.read_parquet(os.environ["SM_DATA_DIR"] + '/active_sales')
                               
     res = pd.merge(res, active_sales, how="left")
     res["ae"] = np.abs(res["yhat"] - res["y"])
@@ -93,7 +94,7 @@ def model_fn(cutoff_week_id, config, hyperparameters):
     return compute_wape(res)
     
     
-def train_model_fn(cutoff_files_path, config, hyperparameters, max_jobs=-1, only_last=True):
+def train_model_fn(cutoff_files_path, config, hyperparameters, max_jobs=-1, only_last=True): # todo : handle only last
                                     
     cutoff_files = [f for f in listdir(cutoff_files_path) if isfile(join(cutoff_files_path, f))]
 

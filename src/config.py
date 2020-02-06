@@ -77,6 +77,9 @@ class ProgramConfiguration(object):
     
     def get_train_path_refined_data_output(self):
         return self._config_tech['train']['path_refined_data_output']
+
+    def get_train_path_active_sales(self):
+        return self._config_tech['train']['path_active_sales']
     
     def get_train_image_name(self):
         return self._config_tech['train']['image_name']

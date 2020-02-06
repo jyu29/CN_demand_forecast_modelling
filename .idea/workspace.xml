@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="9cb6d846-acb2-4d23-94a0-0d1c64c746f1" name="Default Changelist" comment="">
+    <list default="true" id="9cb6d846-acb2-4d23-94a0-0d1c64c746f1" name="Default Changelist" comment="fix: Dockerfile todo comment considered as env var">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/_sagemaker_/Dockerfile_train" beforeDir="false" afterPath="$PROJECT_DIR$/_sagemaker_/Dockerfile_train" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/_sagemaker_/build_image.sh" beforeDir="false" afterPath="$PROJECT_DIR$/_sagemaker_/build_image.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/_sagemaker_/sagemaker.py" beforeDir="false" afterPath="$PROJECT_DIR$/_sagemaker_/sagemaker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/conf/dev.yml" beforeDir="false" afterPath="$PROJECT_DIR$/conf/dev.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/conf/prod.yml" beforeDir="false" afterPath="$PROJECT_DIR$/conf/prod.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train" beforeDir="false" afterPath="$PROJECT_DIR$/src/train" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -105,7 +114,14 @@
       <option name="project" value="LOCAL" />
       <updated>1580905416836</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="fix: Dockerfile todo comment considered as env var">
+      <created>1580906527178</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1580906527178</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -117,18 +133,27 @@
     <MESSAGE value="fix: sagemaker describe_training_job, use latest status" />
     <MESSAGE value="fix: sagemaker api call data download issue + clean monitoring" />
     <MESSAGE value="fix: print syntax error" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: print syntax error" />
+    <MESSAGE value="fix: Dockerfile todo comment considered as env var" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: Dockerfile todo comment considered as env var" />
   </component>
   <component name="WindowStateProjectService">
     <state x="439" y="260" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1580823108796">
       <screen x="0" y="0" width="1440" height="900" />
     </state>
     <state x="439" y="260" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1440.900@0.0.1440.900" timestamp="1580823108796" />
-    <state x="129" y="-1131" key="CommitChangelistDialog2" timestamp="1580905416383">
+    <state x="129" y="-1131" key="CommitChangelistDialog2" timestamp="1580986061633">
       <screen x="-330" y="-1200" width="1920" height="1200" />
     </state>
-    <state x="129" y="-1131" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580905416383" />
+    <state x="129" y="-1131" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580986061633" />
     <state x="344" y="52" key="CommitChangelistDialog2/-330.-1200.1920.1200/0.0.1440.900@0.0.1440.900" timestamp="1580809229252" />
+    <state x="309" y="-756" key="com.intellij.ide.util.TipDialog" timestamp="1580917886832">
+      <screen x="-330" y="-1200" width="1920" height="1200" />
+    </state>
+    <state x="309" y="-756" key="com.intellij.ide.util.TipDialog/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580917886832" />
+    <state x="419" y="-676" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1580922631447">
+      <screen x="-330" y="-1200" width="1920" height="1200" />
+    </state>
+    <state x="419" y="-676" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/-330.-1200.1920.1200/0.0.1440.900@-330.-1200.1920.1200" timestamp="1580922631447" />
     <state x="386" y="85" width="667" height="729" key="find.popup" timestamp="1580853007931">
       <screen x="0" y="0" width="1440" height="900" />
     </state>

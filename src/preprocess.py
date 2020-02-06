@@ -9,20 +9,18 @@ import pickle
 import utils as ut
 
 
-
 def write_train_input_fn(pkl_object, train_file_path):
     with open(train_file_path, 'wb') as file:
         pickle.dump(pkl_object, file)
         
         
-def format_cutoff_train_data(train_dir, config, only_last=True):
+def format_cutoff_train_data(train_dir, config, only_last=True): # todo : handle only last
 
     #cutoff_files = ut.get_s3_subdirectories(config.get_train_bucket_input(), config.get_train_path_refined_data_input())
     
     cutoff_files = next(os.walk(train_dir))[1]
     
-    # Remove prefixes from file paths (to make sure the scope name's digits dont get parsed), and extract week number
-    #cutoff_weeks = np.array([int(re.findall('\d+', f.split('/')[-2])[0]) for f in cutoff_files])
+    # Extract week_number # todo : check if week = last_week
     cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('train_data_cutoff_') and f[-1].isdigit()])
     
     if only_last:
