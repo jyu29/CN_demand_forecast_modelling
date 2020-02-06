@@ -49,4 +49,4 @@ docker build  --no-cache --rm --pull --file '_sagemaker_/Dockerfile_train' -t ${
               .
 docker tag ${algorithm_name} ${fullname}
 docker push ${fullname}
-docker rmi ${fullname}
+docker image remove ${fullname}

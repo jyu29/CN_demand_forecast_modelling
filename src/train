@@ -50,27 +50,17 @@ if __name__ == "__main__":
     config_file = "prod.yml" if os.environ["RUN_ENV"]=="prod" else "dev.yml"
     config = cf.ProgramConfiguration(config_file, "functional.yml")
 
-    print("Run Env:", os.environ["RUN_ENV"])
-    print("Only Last:", os.environ["ONLY_LAST"])
-    print("Train_dir:", os.environ["SM_CHANNEL_TRAIN"])
-
     train_dir = os.environ["SM_CHANNEL_TRAIN"]
     model_dir = os.environ["SM_MODEL_DIR"]
     data_dir = os.environ["SM_DATA_DIR"]
-
-    #subprocess.run(["aws", "s3", "cp",
-    #                "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_refined_data_input(),
-    #                train_dir + "/", "--recursive"]) # todo : investigate sagemaker data download error, shouldn't have to do this explicitly with the api call !
-
-    print("Content /opt/ml/input/data/training", os.listdir("/opt/ml/input/data/training"))
-    #print("Content /opt/program:", os.listdir("/opt/program"))
     
-    # Get actives sales for error computation
+    # Get actives sales for error computation ( not necessary for train, but fundamental for the hyperopt module
     subprocess.run(["aws", "s3", "cp",
                     "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_active_sales(),
                     data_dir + "/active_sales", "--recursive"])
 
     only_last = os.environ["ONLY_LAST"]
+
     # Preprocess
     pp.format_cutoff_train_data(train_dir, config, only_last=only_last)
     

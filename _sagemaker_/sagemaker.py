@@ -8,7 +8,7 @@ def create_training_job(config):
     resp = sm.create_training_job(
             TrainingJobName = config.get_train_job_name(),
             StoppingCondition = {
-                                    'MaxRuntimeInSeconds': 86400
+                                    'MaxRuntimeInSeconds': config.get_train_max_run_time()
                                 },
             AlgorithmSpecification={
                 'TrainingImage': config.get_train_docker_image(),
@@ -24,7 +24,6 @@ def create_training_job(config):
                                             'S3Uri': 's3://' + config.get_train_bucket_input() + '/' + config.get_train_path_refined_data_input()
                                         }
                                     },
-                                    # 'InputMode' : 'File', # todo : check if it changes sthg
                                 },
                             ], 
             OutputDataConfig={

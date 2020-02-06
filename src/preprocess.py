@@ -14,7 +14,7 @@ def write_train_input_fn(pkl_object, train_file_path):
         pickle.dump(pkl_object, file)
         
         
-def format_cutoff_train_data(train_dir, config, only_last=True): # todo : handle only last
+def format_cutoff_train_data(train_dir, config, only_last=True):
 
     #cutoff_files = ut.get_s3_subdirectories(config.get_train_bucket_input(), config.get_train_path_refined_data_input())
     

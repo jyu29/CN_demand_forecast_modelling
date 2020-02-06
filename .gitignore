@@ -13,3 +13,4 @@
 *catboost_info
 *.tmp
 *.json
+*.idea
