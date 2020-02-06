@@ -96,6 +96,9 @@ class ProgramConfiguration(object):
     
     def get_train_instance_count(self):
         return self._config_tech['train']['instance_count']
+
+    def get_train_max_run_time(self):
+        return self._config_tech['train']['max_run_time']
     
     def get_train_hyperparameters(self):
         hyperparameters = self._config_tech['train']['hyperparameters']
