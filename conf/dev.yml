@@ -21,7 +21,7 @@ train:
     job_name: demand-forecast-prophet-training
     instance_type: ml.c5.2xlarge
     instance_count: 1
-    run_max_time: 86400
+    max_run_time: 86400
     hyperparameters:
         yearly_order: 25
         quaterly_order': 5
