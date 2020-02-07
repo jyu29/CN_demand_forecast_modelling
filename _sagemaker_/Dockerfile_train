@@ -3,10 +3,7 @@ FROM 150258775384.dkr.ecr.eu-west-1.amazonaws.com/mxnet-gluonts-training-0.3.3-c
 COPY src/ /opt/program
 COPY conf/ /opt/program
 
-#RUN pip install -r requirements.txt # todo : fix the requirement.txt issue
-RUN pip install pyyaml==3.13
-RUN pip install pyarrow==0.15.1
-RUN pip install awscli==1.17.10
+RUN pip install -r requirements.txt
 
 ARG run_env
 ENV RUN_ENV=$run_env

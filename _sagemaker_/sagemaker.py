@@ -17,7 +17,7 @@ def create_training_job(config):
             RoleArn=config.get_global_role_arn(),
             InputDataConfig=[
                                 {
-                                    'ChannelName': 'training', # todo : check if it changes anything "ing"
+                                    'ChannelName': 'training',
                                     'DataSource': {
                                         'S3DataSource': {
                                             'S3DataType': 'S3Prefix',

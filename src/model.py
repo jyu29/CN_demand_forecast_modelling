@@ -27,9 +27,9 @@ def train_input_fn(train_file_path):
     
 def compute_wape(res):
 
-    #active_sales = pd.read_csv('/opt/ml/input/data/active_sales.csv', sep='|', parse_dates=['date'])
+    # This function is necessary for the hyperop part, to enable SageMaker's hyperopt module to choose the right parameters based on the WAPE
     active_sales = pd.read_parquet(os.environ["SM_DATA_DIR"] + '/active_sales')
-    active_sales['date'] = pd.to_datetime(active_sales['date'])
+    active_sales['date'] = pd.to_datetime(active_sales['date']) # Since the predictions' date column is a datetime, this step is necessary for a smooth merge right after
 
     res = pd.merge(res, active_sales, how="left")
     res["ae"] = np.abs(res["yhat"] - res["y"])
@@ -88,8 +88,8 @@ def model_fn(cutoff_week_id, config, hyperparameters):
          'yhat' : np.array([x.quantile(0.5).round().astype(int) for x in forecasts]).flatten()})
     
     res.loc[res['yhat'] < 0, 'yhat'] = 0
-    
-    #res.to_csv(model_dir + '/Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
+
+    # Write predictions to S3
     ut.write_csv_S3(res, config.get_train_bucket_output(),
                     config.get_train_path_refined_data_output()+'Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
     
@@ -100,17 +100,17 @@ def train_model_fn(cutoff_files_path, config, hyperparameters, max_jobs=-1, only
                                     
     cutoff_files = [f for f in listdir(cutoff_files_path) if isfile(join(cutoff_files_path, f))]
 
-    #cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
     cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('gluonts_ds_cutoff_')])
 
-    print("Inside train_model_fn:", only_last)
-    print(cutoff_weeks)
+    print('Available cutoff weeks:', cutoff_weeks)
 
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])
 
     if max_jobs <= 0:
         max_jobs = len(cutoff_weeks)
+
+    print('Training cutoff(s):', cutoff_weeks)
         
     all_res = Parallel(n_jobs=max_jobs, verbose=1)\
             (delayed(model_fn)(cutoff_week_id, config, hyperparameters) for cutoff_week_id in cutoff_weeks)

@@ -30,15 +30,15 @@ if __name__ == '__main__':
     print("Building Docker Image...")
     subprocess.call(['sh', '_sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last])
     
-    # Train model
+    # Create a SageMaker training job through an API call
     print("Creating Training Job...")
-    sg_resp = sg.create_training_job(config)  # todo : add env variables to hyperparameters, checkout create_algorithm()
+    sg_resp = sg.create_training_job(config)  # todo : david suggestion - add env variables to hyperparameters, checkout create_algorithm()
 
-    # Monitor status training job
+    # Monitor the status of the launched training job
     print("Monitoring training job status...")
     client = boto3.client('sagemaker')
     while True:
-        status = client.describe_training_job(TrainingJobName=sg_resp["TrainingJobArn"].split("/")[-1])['SecondaryStatusTransitions'][-1]['Status']
+        status = client.describe_training_job(TrainingJobName=sg_resp["TrainingJobArn"].split("/")[-1])['SecondaryStatus'][-1]
         print(status)
         if status in ['Starting', 'LaunchingMLInstances', 'PreparingTrainingStack', 'Downloading', 'DownloadingTrainingImage', 'Training', 'Uploading']:
             time.sleep(config.get_monitor_sleep())

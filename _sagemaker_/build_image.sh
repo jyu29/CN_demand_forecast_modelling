@@ -7,7 +7,7 @@ algorithm_name=$1
 run_env=$2
 only_last=$3
 
-# Update docker daemon proxy
+# Update docker daemon proxy, this step was necessary for SageMaker notebook instances ( to be corrected by William D. ), but Jenkins is configured right
 
 #sudo cat <<EOF >> /etc/sysconfig/docker
 #export HTTPS_PROXY=http://proxy-internet-aws-eu.subsidia.org:3128
