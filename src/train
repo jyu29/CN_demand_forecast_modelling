@@ -55,7 +55,7 @@ if __name__ == "__main__":
     train_dir = os.environ["SM_CHANNEL_TRAIN"]
     model_dir = os.environ["SM_MODEL_DIR"]
     data_dir = os.environ["SM_DATA_DIR"]
-    only_last = os.environ["ONLY_LAST"]
+    only_last = eval(os.environ["ONLY_LAST"])
     
     # Get actives sales for error computation ( not necessary for train, but fundamental for the hyperopt module )
     subprocess.run(["aws", "s3", "cp",
