@@ -22,7 +22,6 @@ pipeline {
                     pip install -r requirements.txt
                     python main.py --environment ${run_env} --only_last ${only_last}
                     conda deactivate
-                    rm -rf /var/lib/jenkins/workspace/forecast-modeling-demand/
                     ''')
                 }
         }
@@ -30,12 +29,12 @@ pipeline {
     
     //post {
     //        failure {
-    //                mail to: 'ouiame.aitelkadi@decathlon.com',
+    //                mail to: 'forecastunited@decathlon.net',
     //                subject: '[FAILED] Pipeline Demand Forecast has failed', body: "${env.BUILD_URL}"
     //               }
     //
     //        unstable {
-    //                mail to: 'ouiame.aitelkadi@decathlon.com',
+    //                mail to: 'forecastunited@decathlon.net',
     //                subject: '[UNSTABLE] Pipeline Demand Forecast is unstable', body: "${env.BUILD_URL}"
     //               }
     //   }
