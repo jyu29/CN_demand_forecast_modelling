@@ -22,6 +22,7 @@ pipeline {
                     pip install -r requirements.txt
                     python main.py --environment ${run_env} --only_last ${only_last}
                     conda deactivate
+                    rm -rf /var/lib/jenkins/workspace/forecast-modeling-demand/
                     ''')
                 }
         }
