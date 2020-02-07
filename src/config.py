@@ -1,6 +1,7 @@
 from datetime import datetime
 import yaml
 import os
+import subprocess
 
 class ProgramConfiguration(object):
     """
@@ -26,8 +27,9 @@ class ProgramConfiguration(object):
                 self._config_func = yaml.load(f)
         else:
             raise Exception("Could not load external YAML configuration file '{}'".format(config_func_path))
-    
-    
+
+    ######## Functional config ########
+
     def get_scope(self):
         return self._config_func['scope']
     
@@ -46,11 +48,11 @@ class ProgramConfiguration(object):
     def get_season_length(self):
         return self._config_func['season_length']
     
-    ###
-    
+    ######## Technical config ########
     
     def get_global_tags(self):
-        return self._config_tech['global']['tags']
+        tags = self._config_tech['global']['tags']
+        return [{'Key': key, 'Value': tags.get(key)} for key in tags.keys()] # Format required by the SageMaker boto3 API for tags
     
     def get_global_role_arn(self):
         return self._config_tech['global']['role_arn']
@@ -71,26 +73,29 @@ class ProgramConfiguration(object):
         return self._config_tech['train']['bucket_output']
     
     def get_train_path_refined_data_input(self):
-        return self._config_tech['train']['path_refined_data_input']
+        return 'specific/' + self.get_scope() + '/train_data_cutoff'
     
     def get_train_path_refined_data_intermediate(self):
-        return self._config_tech['train']['path_refined_data_intermediate']
+        return 'specific/' + self.get_scope() + '/train_data_cutoff_gluonts/'
     
     def get_train_path_refined_data_output(self):
-        return self._config_tech['train']['path_refined_data_output']
+        return 'model/results/' + self.get_scope() + '/'
 
     def get_train_path_active_sales(self):
-        return self._config_tech['train']['path_active_sales']
+        return 'global/active_sales'
     
     def get_train_image_name(self):
         return self._config_tech['train']['image_name']
     
     def get_train_docker_image(self):
-        return self._config_tech['train']['docker_image']
+        # 150258775384.dkr.ecr.eu-west-1.amazonaws.com/<IMAGE_NAME>:latest
+        aws_account = subprocess.check_output(["aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text"]).strip().decode('UTF-8')
+        aws_region = subprocess.check_output(["aws", "configure", "get", "region"]).strip().decode('UTF-8')
+        return aws_account + '.dkr.ecr.' + aws_region + '.amazonaws.com/' + self.get_train_image_name() + ':latest'
     
     def get_train_job_name(self):
         now_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
-        return self._config_tech['train']['job_name'] + '-' + now_str
+        return self.get_train_image_name() + '-' + now_str
     
     def get_train_instance_type(self):
         return self._config_tech['train']['instance_type']

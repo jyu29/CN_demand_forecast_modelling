@@ -1,27 +1,20 @@
 global:
-    tags: # todo : add multiple tags
-        Key: project
-        Value: apo
-    algorithm: prophet
-    environment: prod
+    tags:
+        project: apo
+        algorithm: prophet
+        environment: prod
     role_arn: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-PROD
     security_group_ids: sg-0186b5ab868f43e42
     subnets: subnet-0f87a7ed73f4ead6d, subnet-02c60aed04f0d4ee5
     volume_size_in_gb: 10
-    
+
 train:
     bucket_input: fcst-refined-demand-forecast-prod
     bucket_output: fcst-refined-demand-forecast-prod
-    path_refined_data_input: specific/domyos_nov_2019/train_data_cutoff
-    path_refined_data_intermediate: specific/domyos_nov_2019/train_data_cutoff_gluonts/
-    path_refined_data_output: model/results/domyos_nov_2019/
-    path_active_sales: global/active_sales
-    image_name: demand-forecast-prophet-training # todo : rely solely on this entry for docker image and job name
-    docker_image: 150258775384.dkr.ecr.eu-west-1.amazonaws.com/demand-forecast-prophet-training:latest
-    job_name: demand-forecast-prophet-training
+    image_name: demand-forecast-prophet-training
     instance_type: ml.c5.2xlarge
     instance_count: 1
-    max_run_time: 86400
+    max_run_time: 86400 # seconds
     hyperparameters:
         yearly_order: 25
         quaterly_order': 5
@@ -35,4 +28,3 @@ train:
 
 monitor:
     sleep: 300 # seconds
-        
