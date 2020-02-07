@@ -28,15 +28,15 @@ pipeline {
         }
     }
     
-    post {
-            failure { 
-                    mail to: 'ouiame.aitelkadi@decathlon.com',
-                    subject: '[FAILED] Pipeline Demand Forecast has failed', body: "${env.BUILD_URL}"
-                    }
-        
-            unstable {
-                    mail to: 'ouiame.aitelkadi@decathlon.com',
-                    subject: '[UNSTABLE] Pipeline Demand Forecast is unstable', body: "${env.BUILD_URL}"
-                    }
-        }
+    //post {
+    //        failure {
+    //                mail to: 'ouiame.aitelkadi@decathlon.com',
+    //                subject: '[FAILED] Pipeline Demand Forecast has failed', body: "${env.BUILD_URL}"
+    //               }
+    //
+    //        unstable {
+    //                mail to: 'ouiame.aitelkadi@decathlon.com',
+    //                subject: '[UNSTABLE] Pipeline Demand Forecast is unstable', body: "${env.BUILD_URL}"
+    //               }
+    //   }
 }
