@@ -104,7 +104,8 @@ def train_model_fn(cutoff_files_path, config, hyperparameters, max_jobs=-1, only
     cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('gluonts_ds_cutoff_')])
 
     print("Inside train_model_fn:", only_last)
-    
+    print(cutoff_weeks)
+
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])
 

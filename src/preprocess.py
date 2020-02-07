@@ -25,8 +25,11 @@ def format_cutoff_train_data(train_dir, config, only_last=True):
 
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])
-    else:
-        ut.delete_S3(config.get_train_bucket_input(), config.get_train_path_refined_data_intermediate())
+    #else:
+    #    ut.delete_S3(config.get_train_bucket_input(), config.get_train_path_refined_data_intermediate())
+
+    print(only_last)
+    print(cutoff_weeks)
 
     for cutoff_week in cutoff_weeks:
     
