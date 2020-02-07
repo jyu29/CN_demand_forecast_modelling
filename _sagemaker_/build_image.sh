@@ -43,10 +43,10 @@ $(aws ecr get-login --region ${region} --registry-ids ${account} --no-include-em
 
 # Build the docker image locally with the image name and then push it to ECR
 # with the full name.
-docker build  --no-cache --rm --pull --file '_sagemaker_/Dockerfile_train' -t ${algorithm_name} \
+docker build  --no-cache --rm --force-rm --pull --file '_sagemaker_/Dockerfile_train' -t ${algorithm_name} \
               --build-arg run_env=${run_env} \
               --build-arg only_last=${only_last} \
               .
 docker tag ${algorithm_name} ${fullname}
 docker push ${fullname}
-docker image remove ${fullname}
+docker rmi ${algorithm_name}
