@@ -35,9 +35,7 @@ def create_training_job(config):
                             'VolumeSizeInGB': config.get_train_volume_size_in_gb()
                         },
             HyperParameters=config.get_train_hyperparameters(),
-            Tags=[
-                config.get_global_tags()
-               ],
+            Tags=config.get_global_tags(),
             VpcConfig={ 
                       'SecurityGroupIds': config.get_global_security_group_ids(),
                       'Subnets': config.get_global_subnets()
