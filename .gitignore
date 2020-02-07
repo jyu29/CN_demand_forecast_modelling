@@ -6,11 +6,9 @@
 .Rhistory
 .RData
 .Ruserdata
-*.png
 *.pdf
 *.gz
 *.html
-*catboost_info
 *.tmp
 *.json
 *.idea
