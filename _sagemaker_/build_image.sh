@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # This script builds the Docker image and pushes it to ECR to be ready for use
-# The argument to this script is the image name.
+# The arguments to this script are the image name, the run environment ( dev / prod ) and which weeks to run ( only last = True / False )
 
 algorithm_name=$1
 run_env=$2

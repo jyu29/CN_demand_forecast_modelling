@@ -100,7 +100,8 @@ def train_model_fn(cutoff_files_path, config, hyperparameters, max_jobs=-1, only
                                     
     cutoff_files = [f for f in listdir(cutoff_files_path) if isfile(join(cutoff_files_path, f))]
 
-    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
+    #cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files])
+    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('gluonts_ds_cutoff_')])
     
     if only_last:
         cutoff_weeks = np.array([np.min(cutoff_weeks)]) #max
