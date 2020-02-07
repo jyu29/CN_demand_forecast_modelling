@@ -50,3 +50,4 @@ docker build  --no-cache --rm --force-rm --pull --file '_sagemaker_/Dockerfile_t
 docker tag ${algorithm_name} ${fullname}
 docker push ${fullname}
 docker rmi ${algorithm_name}
+docker rmi ${fullname}
