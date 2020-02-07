@@ -12,7 +12,8 @@ class ProgramConfiguration(object):
     def __init__(self, config_tech_path, config_func_path):
         """
         Constructor - Loads the given external YAML configuration file. Raises an error if not able to do it.
-        :param config_file_path: (string) full path to the YAML configuration file
+        :param config_tech_file_path: (string) full path to the YAML configuration file
+        :param config_func_file_path: (string) full path to the YAML configuration file
         """
         if os.path.exists(config_tech_path):
             with open(config_tech_path, 'r') as f:

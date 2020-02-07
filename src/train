@@ -47,19 +47,22 @@ if __name__ == "__main__":
                        'changepoint_prior_scale': args.changepoint_prior_scale,
                        'seasonality_prior_scale': args.seasonality_prior_scale}
 
+    print(hyperparameters)
+
     config_file = "prod.yml" if os.environ["RUN_ENV"]=="prod" else "dev.yml"
     config = cf.ProgramConfiguration(config_file, "functional.yml")
 
     train_dir = os.environ["SM_CHANNEL_TRAIN"]
     model_dir = os.environ["SM_MODEL_DIR"]
     data_dir = os.environ["SM_DATA_DIR"]
+    only_last = os.environ["ONLY_LAST"]
     
-    # Get actives sales for error computation ( not necessary for train, but fundamental for the hyperopt module
+    # Get actives sales for error computation ( not necessary for train, but fundamental for the hyperopt module )
     subprocess.run(["aws", "s3", "cp",
                     "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_active_sales(),
                     data_dir + "/active_sales", "--recursive"])
 
-    only_last = os.environ["ONLY_LAST"]
+    print("Only last:", only_last)
 
     # Preprocess
     pp.format_cutoff_train_data(train_dir, config, only_last=only_last)

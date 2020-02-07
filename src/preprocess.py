@@ -15,14 +15,14 @@ def write_train_input_fn(pkl_object, train_file_path):
         
         
 def format_cutoff_train_data(train_dir, config, only_last=True):
-
-    #cutoff_files = ut.get_s3_subdirectories(config.get_train_bucket_input(), config.get_train_path_refined_data_input())
     
     cutoff_files = next(os.walk(train_dir))[1]
     
-    # Extract week_number # todo : check if week = last_week
+    # Extract week_number # todo : check if week = current week
     cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('train_data_cutoff_') and f[-1].isdigit()])
-    
+
+    print("Cutoff weeks:", cutoff_weeks)
+
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])
     else:
