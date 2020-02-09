@@ -12,3 +12,4 @@
 *.tmp
 *.json
 *.idea
+*.DS_Store

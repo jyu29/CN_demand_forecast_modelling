@@ -12,7 +12,6 @@ Here are the GitHub links to the other blocks of the project:
 - [Data Refining](https://github.com/dktunited/forecast-data-refining-demand.git)
 - [Monitoring](https://github.com/dktunited/forecast-monitoring.git)
 
-
 ## Description
 
 This ML block is orchestrated by a `main.py` file with two command options:
@@ -52,5 +51,5 @@ This brick is scheduled through Jenkins:
 - The hereinabove job is called upon by this [Run Pipeline](https://forecast-jenkins.subsidia.org/job/forecast-pipeline-demand/) job
 
 ## TODO
-- Separate data perprocessing (last transformation) from training by having it be run on a different image
+- Separate data preprocessing (last transformation) from training by having it be run on a different image
 - Document functions + Logging + Tests
