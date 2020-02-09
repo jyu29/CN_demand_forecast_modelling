@@ -11,6 +11,7 @@ Here are the GitHub links to the other blocks of the project:
 - [Data Ingestion](https://github.com/dktunited/forecast-data-ingestion.git)
 - [Data Refining](https://github.com/dktunited/forecast-data-refining-demand.git)
 - [Monitoring](https://github.com/dktunited/forecast-monitoring.git)
+- [Automation](https://github.com/dktunited/forecast-automation.git)
 
 ## Description
 
