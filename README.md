@@ -42,7 +42,7 @@ Through a `boto3` API call with the necessary configurations (set from [dev](htt
 
 *PS: You can access SageMaker's training jobs in the AWS console right [here](https://eu-west-1.console.aws.amazon.com/sagemaker/home?region=eu-west-1#/jobs)*
 
-### 3. Monitor the status of the training job
+#### 3. Monitor the status of the training job
 To prevent our `main.py` script from exiting after creating the training job, we implemented a loop to check on the status of the created training job through `boto3` API calls to SageMaker again. This loop reports periodically on the status of the job and terminates with the final status of the training job, that is either **successfully completed** or **failed**.
 
 ## Scheduling
