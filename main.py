@@ -32,7 +32,7 @@ if __name__ == '__main__':
     
     # Create a SageMaker training job through an API call
     print("Creating Training Job...")
-    sg_resp = sg.create_training_job(config)  # todo : david suggestion - add env variables to hyperparameters, checkout create_algorithm()
+    sg_resp = sg.fct_create_training_job(config)  # todo : david suggestion - add env variables to hyperparameters, checkout create_algorithm()
 
     # Monitor the status of the launched training job
     print("Monitoring training job status...")

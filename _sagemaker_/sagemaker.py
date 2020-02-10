@@ -2,7 +2,7 @@ import json
 import boto3
 import yaml
 
-def create_training_job(config):
+def fct_create_training_job(config):
     
     sm = boto3.client('sagemaker')
     resp = sm.create_training_job(
