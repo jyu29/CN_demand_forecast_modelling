@@ -11,7 +11,7 @@ import subprocess
 import time
 
 import src.config as cf
-import _sagemaker_.sagemaker as sg
+import sagemaker_handling.sagemaker as sgmk
 
 
 if __name__ == '__main__':
@@ -28,11 +28,11 @@ if __name__ == '__main__':
     
     # Create Docker image for training
     print("Building Docker Image...")
-    subprocess.call(['sh', '_sagemaker_/build_image.sh', config.get_train_image_name(), args.environment, args.only_last])
+    subprocess.call(['sh', 'sagemaker_handling/build_image.sh', config.get_train_image_name(), args.environment, args.only_last])
     
     # Create a SageMaker training job through an API call
     print("Creating Training Job...")
-    sg_resp = sg.fct_create_training_job(config)  # todo : david suggestion - add env variables to hyperparameters, checkout create_algorithm()
+    sg_resp = sgmk.fct_create_training_job(config)  # todo : david suggestion - add env variables to hyperparameters, checkout create_algorithm()
 
     # Monitor the status of the launched training job
     print("Monitoring training job status...")
