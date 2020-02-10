@@ -22,9 +22,9 @@ def parse_args():
     parser.add_argument('--yearly_seasonality', type=bool, default=False)
     
     parser.add_argument('--n_changepoints', type=int, default=36)
-    parser.add_argument('--changepoint_range', type=float, default=0.69)
-    parser.add_argument('--changepoint_prior_scale', type=float, default=1.91)
-    parser.add_argument('--seasonality_prior_scale', type=float, default=2.04)
+    parser.add_argument('--changepoint_range', type=float, default=0.6970858418088761)
+    parser.add_argument('--changepoint_prior_scale', type=float, default=1.9131406810094054)
+    parser.add_argument('--seasonality_prior_scale', type=float, default=2.0461437728104253)
     
     # data, model, and output directories
     parser.add_argument('--output_data_dir', type=str, default=os.environ.get('SM_OUTPUT_DATA_DIR'))
