@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import subprocess
+import config as cf
+import preprocess as pp
+import model as m
+import utils as ut
+
+
+def parse_args():
+
+    parser = argparse.ArgumentParser()
+
+    # hyperparameters sent by the client are passed as command-line arguments to the script
+    parser.add_argument('--yearly_order', type=int, default=27)
+    parser.add_argument('--quaterly_order', type=int, default=5)
+    
+    parser.add_argument('--weekly_seasonality', type=bool, default=False)
+    parser.add_argument('--daily_seasonality', type=bool, default=False)
+    parser.add_argument('--yearly_seasonality', type=bool, default=False)
+    
+    parser.add_argument('--n_changepoints', type=int, default=36)
+    parser.add_argument('--changepoint_range', type=float, default=0.6970858418088761)
+    parser.add_argument('--changepoint_prior_scale', type=float, default=1.9131406810094054)
+    parser.add_argument('--seasonality_prior_scale', type=float, default=2.0461437728104253)
+    
+    # data, model, and output directories
+    parser.add_argument('--output_data_dir', type=str, default=os.environ.get('SM_OUTPUT_DATA_DIR'))
+    parser.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))
+    parser.add_argument('--train', type=str, default=os.environ.get('SM_CHANNEL_TRAIN'))
+    parser.add_argument('--test', type=str, default=os.environ.get('SM_CHANNEL_TEST'))
+
+    return parser.parse_known_args()
+
+    
+if __name__ == "__main__":
+
+    args, _ = parse_args()
+    
+    hyperparameters = {'yearly_order': args.yearly_order,
+                       'quaterly_order': args.quaterly_order,
+                       'weekly_seasonality': args.weekly_seasonality,
+                       'daily_seasonality': args.daily_seasonality,
+                       'yearly_seasonality': args.yearly_seasonality,
+                       'n_changepoints': args.n_changepoints,
+                       'changepoint_range': args.changepoint_range,
+                       'changepoint_prior_scale': args.changepoint_prior_scale,
+                       'seasonality_prior_scale': args.seasonality_prior_scale}
+
+    print(hyperparameters)
+
+    config_file = "prod.yml" if os.environ["RUN_ENV"]=="prod" else "dev.yml"
+    config = cf.ProgramConfiguration(config_file, "functional.yml")
+
+    train_dir = os.environ["SM_CHANNEL_TRAIN"]
+    model_dir = os.environ["SM_MODEL_DIR"]
+    data_dir = os.environ["SM_DATA_DIR"]
+    only_last = eval(os.environ["ONLY_LAST"])
+    
+    # Get actives sales for error computation ( not necessary for train, but fundamental for the hyperopt module )
+    subprocess.run(["aws", "s3", "cp",
+                    "s3://" + config.get_train_bucket_input() + "/" + config.get_train_path_active_sales(),
+                    data_dir + "/active_sales", "--recursive"])
+
+    print("Only last:", only_last)
+
+    # Preprocess
+    pp.format_cutoff_train_data(train_dir, config, only_last=only_last)
+    
+    # Launch model training
+    m.train_model_fn(train_dir, config, hyperparameters, only_last=only_last)
