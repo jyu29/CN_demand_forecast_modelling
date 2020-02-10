@@ -25,15 +25,20 @@ pipeline {
         }
     }
     
-    //post {
-    //        failure {
-    //                mail to: 'forecastunited@decathlon.net',
-    //                subject: '[FAILED] Pipeline Demand Forecast has failed', body: "${env.BUILD_URL}"
-    //               }
-    //
-    //        unstable {
-    //                mail to: 'forecastunited@decathlon.net',
-    //                subject: '[UNSTABLE] Pipeline Demand Forecast is unstable', body: "${env.BUILD_URL}"
-    //               }
-    //   }
+    post {
+            success {
+                    mail to: 'forecastunited@decathlon.net',
+                    subject: '[SUCCESS] Demand Forecast RUN Pipeline has finished successfully', body: "${env.BUILD_URL}"
+                   }
+
+            failure {
+                    mail to: 'forecastunited@decathlon.net',
+                    subject: '[FAILED] Demand Forecast RUN Pipeline has failed', body: "${env.BUILD_URL}"
+                   }
+
+            unstable {
+                    mail to: 'forecastunited@decathlon.net',
+                    subject: '[UNSTABLE] Demand Forecast RUN Pipeline is unstable', body: "${env.BUILD_URL}"
+                   }
+       }
 }
