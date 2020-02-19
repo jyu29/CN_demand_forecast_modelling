@@ -11,7 +11,7 @@ global:
 train:
     bucket_input: fcst-refined-demand-forecast-dev
     bucket_output: fcst-refined-demand-forecast-dev
-    image_name: demand-forecast-prophet-training
+    image_name: demand-forecast-prophet-training-dev
     instance_type: ml.c5.4xlarge
     instance_count: 1
     max_run_time: 86400 # seconds
