@@ -1,6 +1,6 @@
-scope: domyos_nov_2019
-horizon: 10
+scope: full_scope
+horizon: 16
 horizon_freq: 1W-SUN
-prediction_length: 10
+prediction_length: 16
 prediction_freq: 1W-SUN
 season_length: 52

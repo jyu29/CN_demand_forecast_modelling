@@ -43,8 +43,12 @@ def compute_wape(res):
     return cutoff_abs_error, cutoff_target_sum
 
     
-def model_fn(cutoff_weeks, config, hyperparameters, n_jobs):
-       
+def model_fn(cutoff_week_id, config, hyperparameters):
+
+    train = train_input_fn(os.environ['SM_CHANNEL_TRAIN'] + '/gluonts_ds_cutoff_' + str(cutoff_week_id) + '.pkl')
+        
+    nb_ts = len(train)
+    
     def configure_seasonality(model):
         model.add_seasonality(
             name='yearly', 
@@ -70,62 +74,48 @@ def model_fn(cutoff_weeks, config, hyperparameters, n_jobs):
                         'seasonality_prior_scale' : hyperparameters['seasonality_prior_scale']},
         init_model=configure_seasonality)
     
-    def forecast_ts(ts):
+    predictor = estimator.predict(train)
+    forecasts = list(predictor)
+    
+    week_id_range = ut.get_next_n_week(cutoff_week_id, config.get_horizon())
+    
+    res = pd.DataFrame(
+        {'cutoff_week_id' : cutoff_week_id,
+         'cutoff_date' : ut.week_id_to_date(cutoff_week_id),
+         'week_id' : week_id_range * nb_ts,
+         'date' : [ut.week_id_to_date(w) for w in week_id_range] * nb_ts,
+         'model' : np.array([np.repeat(x['model'], config.get_prediction_length()) for x in train]).flatten(),
+         'yhat' : np.array([x.quantile(0.5).round().astype(int) for x in forecasts]).flatten()})
+    
+    res.loc[res['yhat'] < 0, 'yhat'] = 0
 
-        predictor = estimator.predict([ts])
-        forecasts = list(predictor)
-        
-        week_id_range = ut.get_next_n_week(cutoff_week_id, config.get_horizon())
-        
-        res_ts = pd.DataFrame({
-            'cutoff_week_id' : cutoff_week_id,
-            'cutoff_date' : ut.week_id_to_date(cutoff_week_id),
-            'week_id' : week_id_range,
-            'date' : [ut.week_id_to_date(w) for w in week_id_range],
-            'model' : np.repeat(ts['model'], config.get_prediction_length()),
-            'yhat' : np.array([x.quantile(0.5).round().astype(int) \
-                               for x in forecasts]).flatten()
-        })
+    # Write predictions to S3
+    ut.write_csv_S3(res, config.get_train_bucket_output(),
+                    config.get_train_path_refined_data_output()+'Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
     
-        return res_ts
-
-    all_res = []
-    
-    for cutoff_week_id in cutoff_weeks:
-        
-        print("Forecasting cutoff "+ str(cutoff_week_id) + "...")
-        
-        train = train_input_fn(os.environ['SM_CHANNEL_TRAIN'] + '/gluonts_ds_cutoff_' + str(cutoff_week_id) + '.pkl')
-                
-        res = pd.concat(Parallel(n_jobs=n_jobs, verbose=1) \
-                       (delayed(forecast_ts)(ts) for ts in train))
-    
-        res.loc[res['yhat'] < 0, 'yhat'] = 0
-        
-        ut.write_csv_S3(res, config.get_train_bucket_output(),
-                        config.get_train_path_refined_data_output() + 'Facebook_Prophet_cutoff_' + str(cutoff_week_id) + '.csv')
-        
-        all_res.append(compute_wape(res))
-     
-    return all_res
+    return compute_wape(res)
     
     
-def train_model_fn(cutoff_files_path, config, hyperparameters, n_jobs=-1, only_last=True):
+def train_model_fn(cutoff_files_path, config, hyperparameters, max_jobs=-1, only_last=True):
                                     
     cutoff_files = [f for f in listdir(cutoff_files_path) if isfile(join(cutoff_files_path, f))]
 
     print(cutoff_files)
 
-    cutoff_weeks = np.sort([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('gluonts_ds_cutoff_')])
+    cutoff_weeks = np.array([int(re.findall('\d+', f)[0]) for f in cutoff_files if f.startswith('gluonts_ds_cutoff_')])
 
     print('Available cutoff weeks:', cutoff_weeks)
 
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])
 
+    if max_jobs <= 0:
+        max_jobs = len(cutoff_weeks)
+
     print('Training cutoff(s):', cutoff_weeks)
         
-    all_res = model_fn(cutoff_weeks, config, hyperparameters, n_jobs)
+    all_res = Parallel(n_jobs=max_jobs, verbose=1)\
+            (delayed(model_fn)(cutoff_week_id, config, hyperparameters) for cutoff_week_id in cutoff_weeks)
     
     l_cutoff_abs_error = [x[0] for x in all_res]
     l_cutoff_target_sum = [x[1] for x in all_res]
