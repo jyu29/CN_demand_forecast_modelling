@@ -122,7 +122,7 @@ def train_model_fn(cutoff_files_path, config, hyperparameters, n_jobs=-1, only_l
 
     if only_last:
         cutoff_weeks = np.array([np.max(cutoff_weeks)])
-
+    
     print('Training cutoff(s):', cutoff_weeks)
         
     all_res = model_fn(cutoff_weeks, config, hyperparameters, n_jobs)
