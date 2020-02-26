@@ -1,0 +1,13 @@
+name: forecast-modeling-demand
+channels:
+  - defaults
+dependencies:
+  - python=3.6.5
+  - pip=20.0.2
+  - boto3=1.11.0
+  - pandas=1.0.0
+  - s3fs=0.4.0
+  - nb_conda=2.2.1
+  - pip:
+      - awscli==1.17.4
+      - sagemaker==1.50.9.post0
