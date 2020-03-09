@@ -18,13 +18,13 @@ class ProgramConfiguration(object):
         """
         if os.path.exists(config_tech_path):
             with open(config_tech_path, 'r') as f:
-                self._config_tech = yaml.load(f)
+                self._config_tech = yaml.load(f, Loader=yaml.BaseLoader)
         else:
             raise Exception("Could not load external YAML configuration file '{}'".format(config_tech_path))
            
         if os.path.exists(config_func_path):
             with open(config_func_path, 'r') as f:
-                self._config_func = yaml.load(f)
+                self._config_func = yaml.load(f, Loader=yaml.BaseLoader)
         else:
             raise Exception("Could not load external YAML configuration file '{}'".format(config_func_path))
 

@@ -7,7 +7,9 @@ import numpy as np
 import os
 import pandas as pd
 import pickle
-
+import s3fs
+import pyarrow.parquet as pq
+import json
 
 def get_next_week_id(week_id):
     """
@@ -44,8 +46,33 @@ def get_next_week_id(week_id):
             return (date // 100 + 1) * 100 + 1
     else:
         return 'UNVALID DATE'
+    
 
+def get_last_week_id(week_id):
+    """
+    ARGUMENTS:
+    
+    date ( integer ): week identifier in the format 'year'+'week_number'
+    
+    RETURNS:
+    
+    last week in the same format as the date argument
+    """
+    if not(isinstance(week_id, (int, np.integer))):
+        return 'DATE ARGUMENT NOT AN INT'
+    if len(str(week_id)) != 6:
+        return 'UNVALID DATE FORMAT'
 
+    last_year = (week_id // 100) - 1
+    week = week_id % 100
+
+    if week > 1:
+        return week_id - 1
+    elif week == 1:
+        return int(str(last_year) + str(isoweek.Week.last_week_of_year(last_year).week))
+    else:
+        return 'UNVALID DATE'
+    
 def get_next_n_week(week_id, n):
     next_n_week = [week_id]
     for i in range(n-1):
@@ -62,6 +89,22 @@ def week_id_to_date(week_id):
     else:
         return pd.to_datetime(week_id.astype(str) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
     
+def date_to_week_id(date):
+    assert isinstance(date, (str, pd.Timestamp, pd.Series))
+    
+    if isinstance(date, (str, pd.Timestamp)):
+        date = pd.Timestamp(date)
+        if date.dayofweek == 6: # If sunday, replace by next monday to get the correct iso week
+            date = date + pd.Timedelta(1, unit='D')
+        week_id = int(str(date.isocalendar()[0]) + str(date.isocalendar()[1]).zfill(2))
+        return week_id
+    else:
+        df = pd.DataFrame({'date' : pd.to_datetime(date)})
+        df['dow'] = df['date'].dt.dayofweek
+        df.loc[df['dow'] == 6, 'date'] = df.loc[df['dow'] == 6, 'date'] + pd.Timedelta(1, unit='D')
+        df['week_id'] = df['date'].apply(lambda x: int(str(x.isocalendar()[0]) + str(x.isocalendar()[1]).zfill(2)))
+        return df['week_id']
+        
 
 def download_file_from_S3(bucket, s3_file_path, local_path):
     # Any clients created from this session will use credentials
@@ -70,13 +113,7 @@ def download_file_from_S3(bucket, s3_file_path, local_path):
     s3client = boto3.client('s3')
     s3client.download_file(bucket, s3_file_path, local_path)
 
-    return print(
-        "downloaded " +
-        bucket +
-        "/" +
-        s3_file_path +
-        " to: " +
-        local_path)
+    return print("downloaded " + bucket + "/" + s3_file_path + " to: " + local_path)
 
 
 def write_pickle_S3(obj, bucket, file_path):
@@ -158,6 +195,19 @@ def read_parquet_as_pandas(path, verbosity=1):
     else:
         return pd.read_parquet(path)
 
+
+def read_parquet_S3(bucket, file_path):
+    
+    fs = s3fs.S3FileSystem()
+    s3_adress = "s3://{}/{}".format(bucket, file_path)
+    
+    pqdataset = pq.ParquetDataset(s3_adress, filesystem=fs)
+    table = pqdataset.read()
+    df = table.to_pandas() 
+
+    print('>> Data read from', s3_adress)
+    
+    return df
 
 ########### UNUSDE ##########
 
