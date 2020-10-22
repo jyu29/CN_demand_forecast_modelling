@@ -1,6 +1,0 @@
-scope: full_scope
-horizon: 16
-horizon_freq: 1W-SUN
-prediction_length: 16
-prediction_freq: 1W-SUN
-season_length: 52

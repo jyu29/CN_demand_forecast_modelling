@@ -1,3 +1,0 @@
-pyyaml==3.13
-pyarrow==0.15.1
-awscli==1.17.10
