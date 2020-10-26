@@ -1,35 +1,38 @@
-import json
 import s3fs
 import datetime
+import yaml
+import pprint
+import io
+import boto3
 import numpy as np
 import pandas as pd
 
 
-def read_json(file_path):
+def read_yml(file_path):
     """
-    Read a local JSON file and return a python dictionary
-    :param file_path: (string) full path to the JSON file
+    Read a local yaml file and return a python dictionary
+    :param file_path: (string) full path to the yaml file
     :return: (dict) data loaded
     """
 
     if file_path[:2] == "s3":
         fs = s3fs.S3FileSystem()
         with fs.open(file_path, 'r') as f:
-            json_dict = json.load(f)
+            yaml_dict = yaml.safe_load(f)
     else:
         with open(file_path) as f:
-            json_dict = json.load(f)
+            yaml_dict = yaml.safe_load(f)
 
-    return json_dict
+    return yaml_dict
 
 
-def pretty_print_json(json_str):
+def pretty_print_dict(dict_to_print):
     """
-    Pretty prints a json
-    :param json: (str), json in 'str' format
+    Pretty prints a dictionary
+    :param dict: python dictionary
     """
 
-    print(json.dumps(json_str, indent=4, sort_keys=True))
+    pprint.pprint(dict_to_print)
 
 
 def get_current_week():
