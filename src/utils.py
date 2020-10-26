@@ -77,3 +77,33 @@ def week_id_to_date(week_id):
         return pd.to_datetime(str(week_id) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
     else:
         return pd.to_datetime(week_id.astype(str) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
+
+
+def read_csv_s3(bucket, file_path, header='infer', sep=',', parse_dates=False, names=None, usecols=None,
+                compression='infer', escapechar=None):
+    """
+    Read a CSV file hosted on a S3 bucket, load and return as pandas dataframe
+    :param bucket: (string) S3 source bucket
+    :param file_path: (string) full path to the CSV file within this S3 bucket
+    :param header: (string) optional, default is 'infer'
+    :param sep: (string) optional, default is ';' (the separator char within the file)
+    :param parse_dates: (list or bool) optional, default is False (names of date or datetime columns)
+    :param names: (list) optional, default is None (use it to specify value for the read_csv underlying method called)
+    :param usecols: (list) optional, default is None (use it to specify value for the read_csv underlying method called)
+    :param compression: (string) optional, default is 'infer'
+    :param escapechar: (string) optional, default is None (One-character string used to escape other characters)
+    :return: (pandas DataFrame) data loaded
+    """
+    file_object = boto3.client('s3').get_object(Bucket=bucket, Key=file_path)
+    file_body = io.BytesIO(file_object['Body'].read())
+
+    data = pd.read_csv(file_body,
+                       header=header,
+                       sep=sep,
+                       parse_dates=parse_dates,
+                       names=names,
+                       usecols=usecols,
+                       compression=compression,
+                       escapechar=escapechar)
+
+    return data
