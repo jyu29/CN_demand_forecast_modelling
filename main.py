@@ -10,6 +10,8 @@ import src.utils as ut
 import src.sagemaker_utils as su
 import argparse
 
+fs = s3fs.S3FileSystem()
+
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
