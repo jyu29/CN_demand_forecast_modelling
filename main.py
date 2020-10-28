@@ -30,18 +30,14 @@ if __name__ == '__main__':
     # import parameters
     params_full_path = f"s3://fcst-config/forecast-modeling-demand/{environment}.yml"
     params = ut.read_yml(params_full_path)
-
     print(f"Starting modeling for cutoff {cutoff} in {environment} environment with parameters:")
     ut.pretty_print_dict(params)
 
-    # Define df_jobs
-    df_jobs = su.generate_df_jobs(run_name, [cutoff], params['buckets']['refined-data'], params['paths']['run_input_path'])
-    df_jobs.apply(lambda row: su.generate_input_data(row, s3fs.S3FileSystem(), params), axis=1)
-    # df_jobs = some_function_to_generate_df_jobs()
+    # Monitoring DataFrame creation
+    df_jobs = su.generate_df_jobs(base_name, [cutoff], params['buckets']['refined-data'], f"{params['paths']['refined_path']}{base_name}")
 
-    # Export parameter on AWS S3
-
-    # Generate data
+    # Feature generation
+    df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
 
     # Launch training job
 
