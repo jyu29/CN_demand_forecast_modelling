@@ -4,6 +4,7 @@ import yaml
 import pprint
 import io
 import boto3
+import gzip
 import numpy as np
 import pandas as pd
 
@@ -107,3 +108,45 @@ def read_csv_s3(bucket, file_path, header='infer', sep=',', parse_dates=False, n
                        escapechar=escapechar)
 
     return data
+
+
+def to_uri(bucket, key):
+    """
+    List all files under a S3 bucket
+    :param bucket: (string) name of the S3 bucket
+    :param key: (string) S3 key
+    :return: (string) URI format
+    """
+    return f's3://{bucket}/{key}'
+
+
+def write_df_to_csv_on_s3(df, bucket, filename, sep=',', header=True, index=False, compression=None, verbose=True):
+    """
+    Write an in-memory pandas DataFrame to a CSV file on a S3 bucket
+    :param df: (pandas DataFrame) the data to save
+    :param bucket: (string) S3 bucket name
+    :param filename: (string) full path to the CSV file within the given bucket
+    :param sep: (string) separator char to use
+    :param header: (bool or list of str) header value of the underlying 'to_csv' function called
+    :param index: (bool) index value of the underlying 'to_csv' function called
+    :param compression: (string) Optional. Default is None. If set to "gzip" then file is written in a compressed .gz
+    format
+    :param verbose: (bool) Optional. Default is True. If True, will display the writing path.
+    """
+    if verbose:
+        print("Writing {} records to {}".format(len(df), to_uri(bucket, filename)))
+    # Create buffer
+    csv_buffer = io.StringIO()
+    # Write dataframe to buffer
+    df.to_csv(csv_buffer, sep=sep, header=header, index=index)
+    buffer = csv_buffer
+
+    # Handle potential compression
+    if compression == "gzip":
+        gz_buffer = io.BytesIO()
+        with gzip.GzipFile(mode="w", fileobj=gz_buffer) as gz_file:
+            gz_file.write(bytes(csv_buffer.getvalue(), 'utf-8'))
+        buffer = gz_buffer
+
+    # Write buffer to S3 object
+    boto3.resource('s3').Object(bucket, filename).put(Body=buffer.getvalue())
