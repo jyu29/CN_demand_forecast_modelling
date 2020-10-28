@@ -15,15 +15,15 @@ def generate_df_jobs(base_name, cutoffs, bucket, run_input_path):
 
     # Global
     df_jobs['cutoff'] = cutoffs
-    df_jobs['base_job_name'] = [f'{run_name}-{c}' for c in df_jobs['cutoff']]
+    df_jobs['base_job_name'] = [f'{base_name}-{c}' for c in df_jobs['cutoff']]
 
     # Training
-    df_jobs['train_path'] = [f's3://{bucket}/{run_input_path}train_{c}.json' for c in df_jobs['cutoff']]
+    df_jobs['train_path'] = [f's3://{bucket}/{run_input_path}-{c}/input/train_{c}.json' for c in df_jobs['cutoff']]
     df_jobs['training_job_name'] = np.nan
     df_jobs['training_status'] = 'NotStarted'
 
     # Inference
-    df_jobs['predict_path'] = [f's3://{bucket}/{run_input_path}predict_{c}.json' for c in df_jobs['cutoff']]
+    df_jobs['predict_path'] = [f's3://{bucket}/{run_input_path}-{c}/input/predict_{c}.json' for c in df_jobs['cutoff']]
     df_jobs['transform_job_name'] = np.nan
     df_jobs['transform_status'] = 'NotStarted'
 
@@ -32,12 +32,13 @@ def generate_df_jobs(base_name, cutoffs, bucket, run_input_path):
 
 def generate_input_data(row, fs, parameters):
     params = {'cutoff': row['cutoff'],
+              'run_name': row['base_job_name'],
               'bucket': parameters['buckets']['refined-data'],
               'cat_cols': parameters['functional_parameters']['cat_cols'],
               'min_ts_len': parameters['functional_parameters']['min_ts_len'],
               'prediction_length': parameters['functional_parameters']['prediction_length'],
               'clean_data_path': parameters['paths']['clean_data_path'],
-              'run_input_path': parameters['paths']['run_input_path'],
+              'refined_path': f"{parameters['paths']['refined_path']}{row['base_job_name']}/",
               'hist_rec_method': parameters['functional_parameters']['target_hist_rec_method'],
               'cluster_keys': parameters['functional_parameters']['target_cluster_keys'],
               'patch_covid': parameters['functional_parameters']['patch_covid'],
