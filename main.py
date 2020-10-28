@@ -23,18 +23,19 @@ if __name__ == '__main__':
     # Defining variables
     environment = args.environment
     cutoff = int(args.cutoff)
-    base_name = f"pipeline-{environment}"
 
     assert type(cutoff) == int
 
     # import parameters
     params_full_path = f"s3://fcst-config/forecast-modeling-demand/{environment}.yml"
     params = ut.read_yml(params_full_path)
+    params['run_name'] = f"pipeline-{environment}-{cutoff}"
+    params['paths']['refined_path_full'] = f"{params['paths']['refined_path']}{params['run_name']}/"
     print(f"Starting modeling for cutoff {cutoff} in {environment} environment with parameters:")
     ut.pretty_print_dict(params)
 
     # Monitoring DataFrame creation
-    df_jobs = su.generate_df_jobs(base_name, [cutoff], params['buckets']['refined-data'], f"{params['paths']['refined_path']}{base_name}")
+    df_jobs = su.generate_df_jobs(params['run_name'], [cutoff], params['buckets']['refined-data'], f"{params['paths']['refined_path_full']}")
 
     # Feature generation
     df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
