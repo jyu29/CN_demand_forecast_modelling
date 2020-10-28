@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import json
 import random
 import time
 import datetime
@@ -138,7 +137,7 @@ class dynamic_feature_handler:
             for m, mini_df in df.groupby('model'):
                 value = mini_df[self.feat_name].to_list()[-self.proj_length:]
                 df_future = df_future.append(pd.DataFrame({'model': m,
-                                                           'week_id': weekrange,
+                                                           'week_id': all_week,
                                                            self.feat_name: value
                                                            }))
             df = df.append(df_future)
