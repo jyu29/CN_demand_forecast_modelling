@@ -22,8 +22,10 @@ if __name__ == '__main__':
 
     # Defining variables
     environment = args.environment
-    cutoff = args.cutoff
-    run_name = f"{environment}-{cutoff}"
+    cutoff = int(args.cutoff)
+    base_name = f"pipeline-{environment}"
+
+    assert type(cutoff) == int
 
     # import parameters
     params_full_path = f"s3://fcst-config/forecast-modeling-demand/{environment}.yml"
