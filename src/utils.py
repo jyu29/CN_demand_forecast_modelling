@@ -30,7 +30,7 @@ def read_yml(file_path):
 def pretty_print_dict(dict_to_print):
     """
     Pretty prints a dictionary
-    :param dict: python dictionary
+    :param dict_to_print: python dictionary
     """
 
     pprint.pprint(dict_to_print)
