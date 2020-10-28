@@ -1,10 +1,12 @@
-import pandas as pd
-import numpy as np
+import datetime
 import random
 import time
-import datetime
-import src.utils as ut
+
+import numpy as np
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+
+import src.utils as ut
 
 ###############################################################################
 ########################### Dynamic Feature Handler ###########################
