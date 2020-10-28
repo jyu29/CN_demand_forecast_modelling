@@ -39,6 +39,9 @@ if __name__ == '__main__':
     # Feature generation
     df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
 
-    # Launch training job
-
-    # Launch batch transform
+    ## SAGEMAKER ##
+    sm_handler = su.SagemakerHandler(df_jobs, params)
+    # Training Job
+    sm_handler.launch_training_jobs()
+    # Transform job
+    sm_handler.launch_transform_jobs()
