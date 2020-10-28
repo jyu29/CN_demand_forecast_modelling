@@ -187,12 +187,13 @@ class refined_data_handler():
     def __init__(self, params):
 
         assert 'cutoff' in params
+        assert 'run_name' in params
         assert 'bucket' in params
         assert 'cat_cols' in params
         assert 'min_ts_len' in params
         assert 'prediction_length' in params
         assert 'clean_data_path' in params
-        assert 'run_input_path' in params
+        assert 'refined_path' in params
         assert 'hist_rec_method' in params
         assert 'dyn_cols' in params
 
@@ -209,6 +210,7 @@ class refined_data_handler():
                     assert 'patch_covid' in params['dyn_cols'][c]
 
         self.params = params
+        self.run_name = params['run_name']
         self.cutoff = params['cutoff']
         self.bucket = params['bucket']
         self.cat_cols = params['cat_cols']
@@ -219,7 +221,7 @@ class refined_data_handler():
         self.paths = {'actual_sales': f"{params['clean_data_path']}df_actual_sales.csv",
                       'model_info': f"{params['clean_data_path']}df_model_info.csv",
                       'mrp': f"{params['clean_data_path']}df_mrp.csv",
-                      'run_input': params['run_input_path']}
+                      'refined': f"{params['refined_path']}"}
 
         self._input_data_imported = False
 
@@ -287,13 +289,13 @@ class refined_data_handler():
 
         # Writing jsonline files on S3
         # Train dataset
-        path = f"s3://{self.bucket}/{self.paths['run_input']}train_{self.cutoff}.json"
+        path = f"s3://{self.bucket}/{self.paths['refined']}input/train_{self.cutoff}.json"
         with fs.open(path, 'w') as fp:
             fp.write(self.train_jsonline)
         print(f"Uploaded dataset to {path}")
 
         # Test dataset
-        path = f"s3://{self.bucket}/{self.paths['run_input']}predict_{self.cutoff}.json"
+        path = f"s3://{self.bucket}/{self.paths['refined']}input/predict_{self.cutoff}.json"
         with fs.open(path, 'w') as fp:
             fp.write(self.predict_jsonline)
         print(f"Uploaded dataset to {path}")
