@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # Defining variables
     environment = args.environment
     if args.list_cutoff == 'today':
-        list_cutoff = [ut.get_current_week]
+        list_cutoff = [ut.get_current_week()]
     else:
         list_cutoff = json.loads(args.list_cutoff)
 
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Feature generation
     df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
 
-    ## SAGEMAKER ##
+    # SAGEMAKER #
     sm_handler = su.SagemakerHandler(df_jobs, params)
     # Training Job
     sm_handler.launch_training_jobs()
