@@ -5,10 +5,12 @@ Python script to orchestrate demand forecast modeling:
 - Pops instance to  preprocess train a DeepAR model, then output predictions
 @author: benbouillet ( Benjamin Bouillet )
 """
-import s3fs
-import src.utils as ut
-import src.sagemaker_utils as su
 import argparse
+import json
+
+import s3fs
+import src.sagemaker_utils as su
+import src.utils as ut
 
 fs = s3fs.S3FileSystem()
 
@@ -17,25 +19,31 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--environment', choices=['dev', 'prod'], default="dev",
                         help="'dev' or 'prod', to set the right configurations")
-    parser.add_argument('--cutoff', default=ut.get_current_week(), help="cutoff in format YYYYWW or 'today'")
+    parser.add_argument('--list_cutoff', default=str([ut.get_current_week()]), help="List of cutoffs in format YYYYWW between brackets or 'today'")
     args = parser.parse_args()
 
     # Defining variables
     environment = args.environment
-    cutoff = int(args.cutoff)
+    if args.list_cutoff == 'today':
+        list_cutoff = [ut.get_current_week]
+    else:
+        list_cutoff = json.loads(args.list_cutoff)
 
-    assert type(cutoff) == int
+    for cutoff in list_cutoff:
+        assert type(cutoff) == int
 
     # import parameters
     params_full_path = f"s3://fcst-config/forecast-modeling-demand/{environment}.yml"
     params = ut.read_yml(params_full_path)
-    params['run_name'] = f"pipeline-{environment}-{cutoff}"
-    params['paths']['refined_path_full'] = f"{params['paths']['refined_path']}{params['run_name']}/"
-    print(f"Starting modeling for cutoff {cutoff} in {environment} environment with parameters:")
+    refined_path = params['paths']['refined_path']
+    run_name = params['functional_parameters']['run_name']
+    algo = params['functional_parameters']['algorithm']
+    params['paths']['refined_path_full'] = f"{refined_path}{run_name}/{algo}"
+    print(f"Starting modeling for cutoff {list_cutoff} in {environment} environment with parameters:")
     ut.pretty_print_dict(params)
 
     # Monitoring DataFrame creation
-    df_jobs = su.generate_df_jobs(params['run_name'], [cutoff], params['buckets']['refined-data'], f"{params['paths']['refined_path_full']}")
+    df_jobs = su.generate_df_jobs(run_name, list_cutoff, params['buckets']['refined-data'], f"{params['paths']['refined_path_full']}")
 
     # Feature generation
     df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
