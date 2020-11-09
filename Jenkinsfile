@@ -11,7 +11,7 @@ pipeline {
             }
             
             environment {
-                conda_env = 'forecast-modeling'
+                conda_env = 'forecast-modeling-demand'
             }
             steps {
                 git changelog: false, credentialsId: 'github_dktjenkins', poll: false, url: "${gitUrl}", branch: "${branch}"
