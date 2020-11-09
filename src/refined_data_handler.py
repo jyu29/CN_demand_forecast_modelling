@@ -18,33 +18,37 @@ class dynamic_feature_handler:
         If not, it will be applied for all models.
     """
 
-    def __init__(self, bucket, cutoff, feat_name, feat_path, hist_rec_method, proj_method, proj_length):
+    def __init__(self, cutoff, feat_name, hist_rec_method, proj_method, proj_length, 
+                 proj_value=None, df_feat=None, bucket=None, feat_path=None):
 
-        self.bucket = bucket
         self.cutoff = cutoff
         self.feat_name = feat_name
-        self.feat_path = feat_path
         self.hist_rec_method = hist_rec_method
         self.proj_method = proj_method
         self.proj_length = proj_length
+        self.proj_value = proj_value
+        self.df_feat = df_feat
+        self.bucket = bucket
+        self.feat_path = feat_path
 
     def import_input_datasets(self):
 
-        # Read CSV
-        df_feat = ut.read_csv_s3(self.bucket, self.feat_path, sep="|")
+        # Load data
+        if self.df_feat is None:
+            self.df_feat = ut.read_csv_s3(self.bucket, self.feat_path, sep="|")
 
         # Check columns
-        assert self.feat_name in df_feat.columns
-        assert 'week_id' in df_feat.columns
-        if 'model' in df_feat.columns:
+        assert self.feat_name in self.df_feat.columns
+        assert 'week_id' in self.df_feat.columns
+        if 'model' in self.df_feat.columns:
             print(f'    {self.feat_name} is defined at model level')
             self._model_level = True
         else:
             self._model_level = False
 
         # Save attributes
-        self.df_feat = df_feat[df_feat['week_id'] < self.cutoff].copy()
-        self.df_future_raw = df_feat[df_feat['week_id'] >= self.cutoff].copy()
+        self.df_feat = self.df_feat[self.df_feat['week_id'] < self.cutoff].copy()
+        self.df_future_raw = self.df_feat[self.df_feat['week_id'] >= self.cutoff].copy()
 
     def history_reconstruction(self):
 
@@ -64,8 +68,11 @@ class dynamic_feature_handler:
     def future_projection(self):
         assert hasattr(self, 'df_hist'), "History reconstruction must be done before future projection. " + \
             "If you don't want to do history reconstruction, please init `hist_rec_method` to None"
-
-        if self.proj_method == 'last_value':
+        
+        if self.proj_method == 'provided_value':
+            self.df_future = self._fut_proj_provided_value(self.df_hist)
+            
+        elif self.proj_method == 'last_value':
             self.df_future = self._fut_proj_last_value(self.df_hist)
 
         elif self.proj_method == 'seasonal_naive':
@@ -106,6 +113,23 @@ class dynamic_feature_handler:
 
         return complete_ts
 
+    def _fut_proj_provided_value(self, df):
+        
+        all_date = pd.Series(pd.date_range(start=ut.week_id_to_date(self.cutoff), periods=self.proj_length, freq='W'))
+        all_week = ut.date_to_week_id(all_date)
+
+        if self._model_level:
+            all_model = df['model'].sort_values().unique()
+            w, m = pd.core.reshape.util.cartesian_product([all_week, all_model])
+            df_future = pd.DataFrame({'model': m, 'week_id': w})
+            df_future[self.feat_name] = self.proj_value
+            df = df.append(df_future).sort_values(['model', 'week_id']).reset_index()
+        else:
+            df_future = pd.DataFrame({'week_id': all_week, self.feat_name: self.proj_value})
+            df = df.append(df_future).sort_values(['week_id'])
+
+        return df
+    
     def _fut_proj_last_value(self, df):
 
         all_date = pd.Series(pd.date_range(start=ut.week_id_to_date(self.cutoff), periods=self.proj_length, freq='W'))
@@ -117,8 +141,7 @@ class dynamic_feature_handler:
             df_last_values = df[['model', self.feat_name]].groupby('model').last()[self.feat_name]
             df_future = pd.DataFrame({'model': m, 'week_id': w})
             df_future = df_future.merge(df_last_values, on='model', how='inner')
-            df = df.append(df_future)
-            df = df.sort_values(['model', 'week_id']).reset_index()
+            df = df.append(df_future).sort_values(['model', 'week_id']).reset_index()
         else:
             last_value = df.loc[df['week_id'] == df['week_id'].max(), self.feat_name].values[0]
             df_future = pd.DataFrame({'week_id': all_week, self.feat_name: last_value})
@@ -142,8 +165,7 @@ class dynamic_feature_handler:
                                                            'week_id': all_week,
                                                            self.feat_name: value
                                                            }))
-            df = df.append(df_future)
-            df = df.sort_values(['model', 'week_id']).reset_index()
+            df = df.append(df_future).sort_values(['model', 'week_id']).reset_index()
         else:
             df.sort_values(['week_id'], inplace=True)
             value = df[self.feat_name].to_list()[-52:-52+self.proj_length]
@@ -188,13 +210,12 @@ class refined_data_handler():
     def __init__(self, params):
 
         assert 'cutoff' in params
-        assert 'run_name' in params
         assert 'bucket' in params
         assert 'cat_cols' in params
         assert 'min_ts_len' in params
         assert 'prediction_length' in params
         assert 'clean_data_path' in params
-        assert 'refined_path' in params
+        assert 'refined_data_path' in params
         assert 'hist_rec_method' in params
         assert 'dyn_cols' in params
 
@@ -211,7 +232,6 @@ class refined_data_handler():
                     assert 'patch_covid' in params['dyn_cols'][c]
 
         self.params = params
-        self.run_name = params['run_name']
         self.cutoff = params['cutoff']
         self.bucket = params['bucket']
         self.cat_cols = params['cat_cols']
@@ -222,14 +242,14 @@ class refined_data_handler():
         self.paths = {'actual_sales': f"{params['clean_data_path']}df_actual_sales.csv",
                       'model_info': f"{params['clean_data_path']}df_model_info.csv",
                       'mrp': f"{params['clean_data_path']}df_mrp.csv",
-                      'refined': f"{params['refined_path']}"}
+                      'refined': params['refined_data_path']}
 
         self._input_data_imported = False
 
         self.df_train = None
         self.df_predict = None
-        self.dyn_train = None
-        self.dyn_predict = None
+        self.dyn_train = {}
+        self.dyn_predict = {}
 
     def import_input_datasets(self):
 
@@ -264,12 +284,16 @@ class refined_data_handler():
         # Generating train/predict datasets for target data
         print(f"Generating target dataset for cutoff {self.cutoff}...")
         self._generate_target_data()
-
+        
+        # Generating train/predict datasets for dyn feature data
         if self.dyn_cols:
-            # Generating train/predict datasets for dyn feature data
             print(f"Generating dynamic features datasets for cutoff {self.cutoff}...")
             self._generate_dyn_feature_data()
-
+        
+        # Adding intra dyn col if rec method applied
+        if self.hist_rec_method:
+            self._add_intra_dyn_feature()
+            
         print("Generating jsonline file for train dataset...")
         # Merging target with categorical features & dynamic features if exists
         self.df_train = self._merge_target_and_features(self.df_train, self.dyn_train)
@@ -317,9 +341,13 @@ class refined_data_handler():
                 'Some models don\'t have the right number of categorical features'
 
         if self.dyn_cols:
+            nb_intra_dyn_feat = 0
+            if self.hist_rec_method:
+                nb_intra_dyn_feat = 1
+                
             # Test if right number of dynamic features
             df['dyn_feat_nb'] = df.apply(lambda x: len(x['dynamic_feat']), axis=1)
-            test = df[['dyn_feat_nb']] == len(self.params['dyn_cols'].keys())
+            test = df[['dyn_feat_nb']] == len(self.params['dyn_cols'].keys()) + nb_intra_dyn_feat
             assert test[test['dyn_feat_nb'] == True].shape[0] == df.shape[0], \
                 'Some models don\'t have the right number of dynamic features'
 
@@ -367,37 +395,61 @@ class refined_data_handler():
 
     def _generate_dyn_feature_data(self):
 
-        dyn_train = {}
-        dyn_predict = {}
-
         for feat in self.dyn_cols:
 
             start_time = time.time()
-
+            
             dyn_feat_handler = dynamic_feature_handler(
-                bucket=self.bucket,
                 cutoff=self.cutoff,
                 feat_name=feat,
-                feat_path=self.params['dyn_cols'][feat]['path'],
                 hist_rec_method=self.params['dyn_cols'][feat]['hist_rec_method'],
                 proj_method=self.params['dyn_cols'][feat]['proj_method'],
-                proj_length=self.prediction_length
+                proj_length=self.prediction_length,
+                proj_value=None,
+                df_feat=None,
+                bucket=self.bucket,
+                feat_path=self.params['dyn_cols'][feat]['path'],
             )
             dyn_feat_handler.import_input_datasets()
             dyn_feat_handler.history_reconstruction()
             dyn_feat_handler.future_projection()
 
-            dyn_train[feat] = dyn_feat_handler.df_hist
-            dyn_predict[feat] = dyn_feat_handler.df_future
+            self.dyn_train[feat] = dyn_feat_handler.df_hist
+            self.dyn_predict[feat] = dyn_feat_handler.df_future
 
             delta_time = str(int(time.time() - start_time))
             print(f"    Generated dynamic feature {feat} in {delta_time} seconds, " +
                   f"with history reconstruction method {self.params['dyn_cols'][feat]['hist_rec_method']} " +
                   f"and future projection method {self.params['dyn_cols'][feat]['proj_method']}")
 
-        self.dyn_train = dyn_train
-        self.dyn_predict = dyn_predict
-
+    def _add_intra_dyn_feature(self):
+        
+        start_time = time.time()
+        
+        feat = 'is_rec'
+        df_feat = self.df_train[['model', 'week_id', 'is_rec']]
+        
+        dyn_feat_handler = dynamic_feature_handler(
+                cutoff=self.cutoff,
+                feat_name=feat,
+                hist_rec_method=None,
+                proj_method='provided_value',
+                proj_length=self.prediction_length,
+                proj_value=0,
+                df_feat=df_feat,
+                bucket=None,
+                feat_path=None,
+            )
+        dyn_feat_handler.import_input_datasets()
+        dyn_feat_handler.history_reconstruction()
+        dyn_feat_handler.future_projection()
+        
+        self.dyn_train[feat] = dyn_feat_handler.df_hist
+        self.dyn_predict[feat] = dyn_feat_handler.df_future
+        
+        delta_time = str(int(time.time() - start_time))
+        print(f"    Generated intra dynamic feature {feat} in {delta_time} seconds")
+            
     def _history_reconstruction(self, df, hist_rec_method, min_ts_len):
 
         if hist_rec_method == 'cluster_avg':
@@ -415,8 +467,6 @@ class refined_data_handler():
     def _hist_rec_clust_avg(
             self, df, df_actual_sales, df_model_info, min_ts_len, cluster_keys=['family_label'],
             patch_covid=True):
-
-        covid_week_id = np.array([202011, 202012, 202013, 202014, 202015, 202016, 202017, 202018, 202019, 202020])
 
         # Create a complete TS dataframe
         all_model = df['model'].sort_values().unique()
@@ -452,6 +502,12 @@ class refined_data_handler():
 
         # Patch covid
         if patch_covid:
+            
+            # Identify the Covid weeks present in complete_ts
+            covid_week_id = np.intersect1d(complete_ts['week_id'].unique(),
+                                           np.array([202011, 202012, 202013, 202014, 202015, 
+                                                     202016, 202017, 202018, 202019, 202020]))
+            
             # Except for models sold only during the covid period...
             exceptions = complete_ts \
                 .loc[~complete_ts['week_id'].isin(covid_week_id)] \
@@ -513,24 +569,23 @@ class refined_data_handler():
             .reset_index()
 
         complete_ts = pd.merge(complete_ts, end_impl_period, how='left')
-
+    
         # Update y from 'min_ts_len' weeks ago to the end of the implementation period
-        complete_ts['y'] = np.where(
-            ((complete_ts['length'] <= min_ts_len) & (complete_ts['age'] <= 0)) |
-            ((complete_ts['length'] <= min_ts_len) & (complete_ts['age'] > 0) &
-             (complete_ts['age'] < complete_ts['end_impl_period'])),
-            complete_ts['fake_y'],
-            complete_ts['y'])
+        cond = ((complete_ts['length'] <= min_ts_len) & (complete_ts['age'] <= 0)) | \
+               ((complete_ts['length'] <= min_ts_len) & (complete_ts['age'] > 0) & \
+                (complete_ts['age'] < complete_ts['end_impl_period']))
+        complete_ts['y'] = np.where(cond, complete_ts['fake_y'], complete_ts['y'])
+        complete_ts['is_rec'] = np.where(cond, 1, 0)
 
         if patch_covid:
-            complete_ts['y'] = np.where(
-                complete_ts['week_id'].isin(covid_week_id),
-                complete_ts['fake_y'],
-                complete_ts['y'])
+            cond = complete_ts['week_id'].isin(covid_week_id)
+            complete_ts['y'] = np.where(cond, complete_ts['fake_y'], complete_ts['y'])
+            complete_ts['is_rec'] = np.where(cond, 1, complete_ts['is_rec'])
 
-        complete_ts = complete_ts[list(df)].dropna(subset=['y']).reset_index(drop=True)
+        # Format
+        complete_ts = complete_ts[list(df) + ['is_rec']].dropna(subset=['y']).reset_index(drop=True)
         complete_ts['y'] = complete_ts['y'].astype(int)
-
+        
         return complete_ts
 
     def _merge_target_and_features(self, df, feat_dict=None):
