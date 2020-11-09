@@ -202,7 +202,7 @@ class refined_data_handler():
             assert 'cluster_keys' in params
             assert 'patch_covid' in params
 
-        if params['dyn_cols'] != None:
+        if params['dyn_cols'] is not None:
             for c in params['dyn_cols']:
                 assert 'hist_rec_method' in params['dyn_cols'][c]
                 assert 'proj_method' in params['dyn_cols'][c]
