@@ -1,0 +1,73 @@
+buckets:
+  refined-data: fcst-workspace
+functional_parameters:
+  run_name: sunday-pipeline
+  algorithm: deepAR
+  cat_cols:
+  - model_label
+  - family_label
+  - sub_department_label
+  - department_label
+  - product_nature_label
+  - univers_label
+  - brand_label
+  context_length: 52
+  dyn_cols: null
+  epochs: 100
+  freq: W
+  likelihood: negative-binomial
+  min_ts_len: 104
+  patch_covid: false
+  prediction_length: 52
+  target_cluster_keys:
+  - family_label
+  target_hist_rec_method: cluster_avg
+  validation_length: 52
+  hyperparameters:
+    time_freq : W
+    prediction_length: 52
+    context_length: 52
+    epochs : 100
+    likelihood : negative-binomial
+  #  early_stopping_patience: 100
+  #  learning_rate: 1e-4
+  #  mini_batch_size: 128
+  #  num_layers: 3
+  #  num_cells: 40
+  #  dropout_rate: 0.1
+  #  cardinality: auto
+  #  embedding_dimension: 10
+  #  num_dynamic_feat: auto
+  #  num_eval_samples: 100
+  #  test_quantiles:
+  #  - 0.1
+  #  - 0.2
+  #  - 0.3
+  #  - 0.4
+  #  - 0.5
+  #  - 0.6
+  #  - 0.7
+  #  - 0.8
+  #  - 0.9
+paths:
+  clean_data_path: pov/data/clean/
+  params: forecast-modeling-demand/
+  refined_path: pov/data/refined/
+  #run_model_path: pov/data/refined/test/model/
+  #run_output_path: pov/data/refined/test/output/
+technical_parameters:
+  image_name_label: forecasting-deepar
+  max_train_instances: 10
+  max_transform_instances: 5
+  role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
+  tags:
+    Key: project
+    Value: demand-forecast
+  train_instance_type: ml.p3.2xlarge
+  train_max_run: 3600
+  train_max_wait: 3600
+  train_use_spot_instances: true
+  train_instance_count: 1
+  transform_instance_type: ml.c5.18xlarge
+  transform_instance_count: 1
+

@@ -33,7 +33,7 @@ if __name__ == '__main__':
         assert type(cutoff) == int
 
     # import parameters
-    params_full_path = f"s3://fcst-config/forecast-modeling-demand/{environment}.yml"
+    params_full_path = f"config/{environment}.yml"
     params = ut.read_yml(params_full_path)
     refined_path = params['paths']['refined_path']
     run_name = params['functional_parameters']['run_name']
