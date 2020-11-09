@@ -7,7 +7,7 @@ pipeline {
     stages {
         stage('Demand Forecast Modeling') {
             agent {
-              label 'PYLINUXT3MEDIUM'
+              label 'PYLINUXT3XLARGE'
             }
             
             environment {
