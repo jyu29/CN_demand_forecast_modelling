@@ -35,15 +35,19 @@ if __name__ == '__main__':
     # import parameters
     params_full_path = f"config/{environment}.yml"
     params = ut.read_yml(params_full_path)
-    refined_path = params['paths']['refined_data_path']
+    refined_specific_path = params['paths']['refined_specific_path']
     run_name = params['functional_parameters']['run_name']
     algo = params['functional_parameters']['algorithm']
-    params['paths']['refined_path_full'] = f"{refined_path}{run_name}/{algo}"
+    params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}"
     print(f"Starting modeling for cutoff {list_cutoff} in {environment} environment with parameters:")
     ut.pretty_print_dict(params)
 
     # Monitoring DataFrame creation
-    df_jobs = su.generate_df_jobs(run_name, list_cutoff, params['buckets']['refined-data'], f"{params['paths']['refined_path_full']}")
+    df_jobs = su.generate_df_jobs(run_name,
+                                  list_cutoff,
+                                  params['buckets']['refined-data'],
+                                  f"{params['paths']['refined_specific_path_full']}"
+                                  )
 
     # Feature generation
     df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
