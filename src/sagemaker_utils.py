@@ -37,8 +37,8 @@ def generate_input_data(row, fs, parameters):
               'cat_cols': parameters['functional_parameters']['cat_cols'],
               'min_ts_len': parameters['functional_parameters']['min_ts_len'],
               'prediction_length': parameters['functional_parameters']['prediction_length'],
-              'clean_data_path': parameters['paths']['clean_data_path'],
-              'refined_data_path': parameters['paths']['refined_path_full'],
+              'refined_global_path': parameters['paths']['refined_global_path'],
+              'refined_specific_path_full': parameters['paths']['refined_specific_path_full'],
               'hist_rec_method': parameters['functional_parameters']['target_hist_rec_method'],
               'cluster_keys': parameters['functional_parameters']['target_cluster_keys'],
               'patch_covid': parameters['functional_parameters']['patch_covid'],
@@ -75,7 +75,7 @@ class SagemakerHandler:
         self.max_transform_instances = params['technical_parameters']['max_transform_instances']
         self.train_use_spot_instances = params['technical_parameters']['train_use_spot_instances']
         self.bucket = params['buckets']['refined-data']
-        self.refined_path = params['paths']['refined_path_full']
+        self.refined_path = params['paths']['refined_specific_path_full']
         self.train_instance_count = params['technical_parameters']['train_instance_count']
         self.transform_instance_count = params['technical_parameters']['transform_instance_count']
         self.transform_instance_type = params['technical_parameters']['transform_instance_type']

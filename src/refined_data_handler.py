@@ -214,8 +214,8 @@ class refined_data_handler():
         assert 'cat_cols' in params
         assert 'min_ts_len' in params
         assert 'prediction_length' in params
-        assert 'clean_data_path' in params
-        assert 'refined_data_path' in params
+        assert 'refined_global_path' in params
+        assert 'refined_specific_path_full' in params
         assert 'hist_rec_method' in params
         assert 'dyn_cols' in params
 
@@ -239,10 +239,11 @@ class refined_data_handler():
         self.prediction_length = params['prediction_length']
         self.hist_rec_method = params['hist_rec_method']
         self.dyn_cols = params['dyn_cols']
-        self.paths = {'actual_sales': f"{params['clean_data_path']}df_actual_sales.csv",
-                      'model_info': f"{params['clean_data_path']}df_model_info.csv",
-                      'mrp': f"{params['clean_data_path']}df_mrp.csv",
-                      'refined': params['refined_data_path']}
+        self.paths = {'actual_sales': f"{params['refined_global_path']}actual_sales/df_actual_sales.csv",
+                      'model_info': f"{params['refined_global_path']}model_info/df_model_info.csv",
+                      'mrp': f"{params['refined_global_path']}mrp_status/df_mrp.csv",
+                      'specific': params['refined_specific_path_full']
+                      }
 
         self._input_data_imported = False
 
@@ -314,13 +315,13 @@ class refined_data_handler():
 
         # Writing jsonline files on S3
         # Train dataset
-        path = f"s3://{self.bucket}/{self.paths['refined']}input/train_{self.cutoff}.json"
+        path = f"s3://{self.bucket}/{self.paths['specific']}input/train_{self.cutoff}.json"
         with fs.open(path, 'w') as fp:
             fp.write(self.train_jsonline)
         print(f"Uploaded dataset to {path}")
 
         # Test dataset
-        path = f"s3://{self.bucket}/{self.paths['refined']}input/predict_{self.cutoff}.json"
+        path = f"s3://{self.bucket}/{self.paths['specific']}input/predict_{self.cutoff}.json"
         with fs.open(path, 'w') as fp:
             fp.write(self.predict_jsonline)
         print(f"Uploaded dataset to {path}")

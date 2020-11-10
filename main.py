@@ -17,7 +17,7 @@ fs = s3fs.S3FileSystem()
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--environment', choices=['dev', 'prod'], default="dev",
+    parser.add_argument('--environment', choices=['dev', 'prod', 'dev_old'], default="dev",
                         help="'dev' or 'prod', to set the right configurations")
     parser.add_argument('--list_cutoff', default=str([ut.get_current_week()]), help="List of cutoffs in format YYYYWW between brackets or 'today'")
     args = parser.parse_args()
@@ -35,10 +35,15 @@ if __name__ == '__main__':
     # import parameters
     params_full_path = f"config/{environment}.yml"
     params = ut.read_yml(params_full_path)
-    refined_specific_path = params['paths']['refined_specific_path']
+
+    # Getting variables for code readability below
     run_name = params['functional_parameters']['run_name']
     algo = params['functional_parameters']['algorithm']
-    params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}"
+
+    # Building custom full paths
+    refined_specific_path = params['paths']['refined_specific_path']
+    params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}/"
+
     print(f"Starting modeling for cutoff {list_cutoff} in {environment} environment with parameters:")
     ut.pretty_print_dict(params)
 
@@ -50,7 +55,7 @@ if __name__ == '__main__':
                                   )
 
     # Feature generation
-    df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
+    #df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
 
     # SAGEMAKER #
     sm_handler = su.SagemakerHandler(df_jobs, params)
