@@ -55,7 +55,7 @@ if __name__ == '__main__':
                                   )
 
     # Feature generation
-    #df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
+    df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
 
     # SAGEMAKER #
     sm_handler = su.SagemakerHandler(df_jobs, params)
