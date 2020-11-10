@@ -21,7 +21,7 @@ pipeline {
                 conda remove --name ${conda_env} --all
                 conda env create -f environment.yml
                 conda activate ${conda_env}
-                python main.py --environment ${run_env} --list_cutoff ${list_cutoff}
+                python main.py --environment ${run_env} --list_cutoff '${list_cutoff}'
                 conda deactivate
                 // conda remove --name ${conda_env} --all
                 ''')
