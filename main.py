@@ -35,7 +35,7 @@ if __name__ == '__main__':
     # import parameters
     params_full_path = f"config/{environment}.yml"
     params = ut.read_yml(params_full_path)
-    refined_path = params['paths']['refined_path']
+    refined_path = params['paths']['refined_data_path']
     run_name = params['functional_parameters']['run_name']
     algo = params['functional_parameters']['algorithm']
     params['paths']['refined_path_full'] = f"{refined_path}{run_name}/{algo}"

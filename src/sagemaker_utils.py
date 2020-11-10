@@ -38,7 +38,7 @@ def generate_input_data(row, fs, parameters):
               'min_ts_len': parameters['functional_parameters']['min_ts_len'],
               'prediction_length': parameters['functional_parameters']['prediction_length'],
               'clean_data_path': parameters['paths']['clean_data_path'],
-              'refined_path': parameters['paths']['refined_path_full'],
+              'refined_data_path': parameters['paths']['refined_path_full'],
               'hist_rec_method': parameters['functional_parameters']['target_hist_rec_method'],
               'cluster_keys': parameters['functional_parameters']['target_cluster_keys'],
               'patch_covid': parameters['functional_parameters']['patch_covid'],
