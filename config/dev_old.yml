@@ -1,6 +1,5 @@
 buckets:
-  clean-data: fcst-clean-dev
-  refined-data: fcst-refined-demand-forecast-dev
+  refined-data: fcst-workspace
 functional_parameters:
   run_name: sunday-pipeline
   algorithm: deepAR
@@ -51,7 +50,8 @@ functional_parameters:
   #  - 0.8
   #  - 0.9
 paths:
-  clean_data_path: datalake/
+  clean_data_path: pov/data/clean/
+  params: forecast-modeling-demand/
   refined_path: pov/data/refined/
   #run_model_path: pov/data/refined/test/model/
   #run_output_path: pov/data/refined/test/output/
