@@ -23,7 +23,7 @@ pipeline {
                 conda activate ${conda_env}
                 python -u main.py --environment ${run_env} --list_cutoff ${list_cutoff}
                 conda deactivate
-                // conda remove --name ${conda_env} --all
+                //conda remove --name ${conda_env} --all
                 ''')
             }
         }
