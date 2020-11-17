@@ -61,7 +61,7 @@ class dynamic_feature_handler:
                     f"History reconstruction algorithm `{self.hist_rec_method}` only exists at model-level for the moment")
         elif self.hist_rec_method is None:
             self.df_hist = self.df_feat
-            print(f"    No history reconstruction was applied")
+            print("    No history reconstruction was applied")
         else:
             raise NameError(f"History reconstruction algorithm `{self.hist_rec_method}` doesn't exist")
 
@@ -215,9 +215,10 @@ class refined_data_handler():
         assert 'min_ts_len' in params
         assert 'prediction_length' in params
         assert 'refined_global_path' in params
-        assert 'refined_specific_path_full' in params
         assert 'hist_rec_method' in params
         assert 'dyn_cols' in params
+        assert 'train_path' in params
+        assert 'predict_path' in params
 
         if params['hist_rec_method'] == 'cluster_avg':
             assert 'cluster_keys' in params
@@ -242,7 +243,8 @@ class refined_data_handler():
         self.paths = {'actual_sales': f"{params['refined_global_path']}actual_sales/df_actual_sales.csv",
                       'model_info': f"{params['refined_global_path']}model_info/df_model_info.csv",
                       'mrp': f"{params['refined_global_path']}mrp_status/df_mrp.csv",
-                      'specific': params['refined_specific_path_full']
+                      'train_path': params['train_path'],
+                      'predict_path': params['predict_path']
                       }
 
         self._input_data_imported = False
@@ -315,16 +317,14 @@ class refined_data_handler():
 
         # Writing jsonline files on S3
         # Train dataset
-        path = f"s3://{self.bucket}/{self.paths['specific']}input/train_{self.cutoff}.json"
-        with fs.open(path, 'w') as fp:
+        with fs.open(self.paths['train_path'], 'w') as fp:
             fp.write(self.train_jsonline)
-        print(f"Uploaded dataset to {path}")
+        print(f"Uploaded dataset to {self.paths['train_path']}")
 
         # Test dataset
-        path = f"s3://{self.bucket}/{self.paths['specific']}input/predict_{self.cutoff}.json"
-        with fs.open(path, 'w') as fp:
+        with fs.open(self.paths['predict_path'], 'w') as fp:
             fp.write(self.predict_jsonline)
-        print(f"Uploaded dataset to {path}")
+        print(f"Uploaded dataset to {self.paths['predict_path']}")
 
     def check_json_line(self, jsonline, future_proj_len=0):
         df = pd.read_json(jsonline, orient='records', lines=True)

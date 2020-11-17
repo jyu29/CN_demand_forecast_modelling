@@ -8,11 +8,9 @@ Python script to orchestrate demand forecast modeling:
 import argparse
 import json
 
-import s3fs
 import src.sagemaker_utils as su
 import src.utils as ut
 
-fs = s3fs.S3FileSystem()
 
 if __name__ == '__main__':
     
@@ -47,18 +45,12 @@ if __name__ == '__main__':
     print(f"Starting modeling for cutoff {list_cutoff} in {environment} environment with parameters:")
     ut.pretty_print_dict(params)
 
-    # Monitoring DataFrame creation
-    df_jobs = su.generate_df_jobs(run_name,
-                                  list_cutoff,
-                                  params['buckets']['refined-data'],
-                                  f"{params['paths']['refined_specific_path_full']}"
-                                  )
-
-    # Feature generation
-    df_jobs.apply(lambda row: su.generate_input_data(row, fs, params), axis=1)
-
     # SAGEMAKER #
-    sm_handler = su.SagemakerHandler(df_jobs, params)
+    sm_handler = su.SagemakerHandler(run_name, list_cutoff, params)
+    # Generating df_jobs
+    sm_handler.generate_df_jobs()
+    # Feature generation
+    sm_handler.generate_input_data_all_cutoffs()
     # Training Job
     sm_handler.launch_training_jobs()
     # Transform job

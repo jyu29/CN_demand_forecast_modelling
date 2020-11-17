@@ -1,54 +1,16 @@
-import sagemaker
-import boto3
 import time
-import pandas as pd
+from datetime import datetime
+
 import numpy as np
+import pandas as pd
+
+import boto3
+import s3fs
+import sagemaker
 import src.refined_data_handler as dh
 import src.utils as ut
 
 from sagemaker.amazon.amazon_estimator import get_image_uri
-
-
-def generate_df_jobs(run_name, cutoffs, bucket, run_input_path):
-    # Generating df_jobs
-    df_jobs = pd.DataFrame()
-
-    # Global
-    df_jobs['cutoff'] = cutoffs
-    df_jobs['base_job_name'] = [f'{run_name}-{c}' for c in df_jobs['cutoff']]
-
-    # Training
-    df_jobs['train_path'] = [f's3://{bucket}/{run_input_path}input/train_{c}.json' for c in df_jobs['cutoff']]
-    df_jobs['training_job_name'] = np.nan
-    df_jobs['training_status'] = 'NotStarted'
-
-    # Inference
-    df_jobs['predict_path'] = [f's3://{bucket}/{run_input_path}input/predict_{c}.json' for c in df_jobs['cutoff']]
-    df_jobs['transform_job_name'] = np.nan
-    df_jobs['transform_status'] = 'NotStarted'
-
-    return df_jobs
-
-
-def generate_input_data(row, fs, parameters):
-    params = {'cutoff': row['cutoff'],
-              'run_name': row['base_job_name'],
-              'bucket': parameters['buckets']['refined-data'],
-              'cat_cols': parameters['functional_parameters']['cat_cols'],
-              'min_ts_len': parameters['functional_parameters']['min_ts_len'],
-              'prediction_length': parameters['functional_parameters']['prediction_length'],
-              'refined_global_path': parameters['paths']['refined_global_path'],
-              'refined_specific_path_full': parameters['paths']['refined_specific_path_full'],
-              'hist_rec_method': parameters['functional_parameters']['target_hist_rec_method'],
-              'cluster_keys': parameters['functional_parameters']['target_cluster_keys'],
-              'patch_covid': parameters['functional_parameters']['patch_covid'],
-              'dyn_cols': parameters['functional_parameters']['dyn_cols']
-              }
-    data_handler = dh.refined_data_handler(params)
-    data_handler.import_input_datasets()
-    data_handler.generate_deepar_input_data(fs)
-
-    print(f"Cutoff {data_handler.cutoff} : {data_handler.df_train['model'].nunique()} models")
 
 
 class SagemakerHandler:
@@ -56,15 +18,19 @@ class SagemakerHandler:
     Sagemaker API handler. Allows for training and transform jobs.
     """
 
-    def __init__(self, df_jobs, params):
+    def __init__(self, run_name, list_cutoff, params):
         # tests
-        assert type(df_jobs) == pd.DataFrame, "df_jobs wrong format (expected pd.DataFrame)"
-        assert df_jobs.shape[0] > 0, "No job to start in `df_jobs`"
         assert 'technical_parameters' in params
         assert 'max_train_instances' in params['technical_parameters']
+        assert type(run_name) == str
+        assert type(list_cutoff) == list
+        for cutoff in list_cutoff:
+            assert type(cutoff) == int
 
         # Attributes
-        self.df_jobs = df_jobs
+        self.run_name = run_name
+        self.list_cutoff = list_cutoff
+        self.df_jobs = pd.DataFrame()
         self._columns_display = ['cutoff', 'base_job_name', 'training_job_name', 'training_status']
         self.max_train_instances = params['technical_parameters']['max_train_instances']
         self.role = params['technical_parameters']['role']
@@ -79,6 +45,22 @@ class SagemakerHandler:
         self.train_instance_count = params['technical_parameters']['train_instance_count']
         self.transform_instance_count = params['technical_parameters']['transform_instance_count']
         self.transform_instance_type = params['technical_parameters']['transform_instance_type']
+        self.run_input_path = params['paths']['refined_specific_path_full']
+        self.cat_cols = params['functional_parameters']['cat_cols']
+        self.min_ts_len = params['functional_parameters']['min_ts_len']
+        self.prediction_length = params['functional_parameters']['prediction_length']
+        self.refined_global_path = params['paths']['refined_global_path']
+        self.refined_specific_path_full = params['paths']['refined_specific_path_full']
+        self.target_hist_rec_method = params['functional_parameters']['target_hist_rec_method']
+        self.target_cluster_keys = params['functional_parameters']['target_cluster_keys']
+        self.patch_covid = params['functional_parameters']['patch_covid']
+        self.dyn_cols = params['functional_parameters']['dyn_cols']
+
+        # Timestamp definition
+        if params['functional_parameters']['run_timestamp_suffix']:
+            self.run_suffix = self._get_timestamp()
+        else:
+            self.run_suffix = ""
 
         if self.train_use_spot_instances:
             self.train_max_wait = 3600
@@ -91,6 +73,57 @@ class SagemakerHandler:
         self.image_name = get_image_uri(boto3.Session().region_name, self.image_name_label)
 
         self.hyperparameters = params['functional_parameters']['hyperparameters']
+
+    def _get_timestamp(self):
+        timestamp_suffix = "-" + datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S-%f')[:-3]
+
+        return timestamp_suffix
+
+    def generate_df_jobs(self):
+        # Global
+        self.df_jobs['cutoff'] = self.list_cutoff
+        self.df_jobs['base_job_name'] = [f'{self.run_name}-{c}' for c in self.df_jobs['cutoff']]
+
+        # Training
+        self.df_jobs['train_path'] = [f's3://{self.bucket}/{self.run_input_path}{n}/input/train_{c}{self.run_suffix}.json' for (c, n) in zip(self.df_jobs['cutoff'], self.df_jobs['base_job_name'])]
+        self.df_jobs['training_job_name'] = np.nan
+        self.df_jobs['training_status'] = 'NotStarted'
+
+        # Inference
+        self.df_jobs['predict_path'] = [f's3://{self.bucket}/{self.run_input_path}{n}/input/predict_{c}{self.run_suffix}.json' for (c, n) in zip(self.df_jobs['cutoff'], self.df_jobs['base_job_name'])]
+        self.df_jobs['transform_job_name'] = np.nan
+        self.df_jobs['transform_status'] = 'NotStarted'
+
+        # Saving incomplete df_jobs
+        # ut.write_df_to_csv_on_s3(self.df_jobs,
+        #                          self.bucket,
+        #                          f"{self.refined_path}{self.run_name}/df_jobs{self.run_suffix}.csv",
+        #                          verbose=False)
+
+    def generate_input_data_all_cutoffs(self):
+        fs = s3fs.S3FileSystem()
+        self.df_jobs.apply(lambda row: self.generate_input_data(row, fs), axis=1)
+
+    def generate_input_data(self, row, fs):
+        params = {'cutoff': row['cutoff'],
+                  'run_name': row['base_job_name'],
+                  'train_path': row['train_path'],
+                  'predict_path': row['predict_path'],
+                  'bucket': self.bucket,
+                  'cat_cols': self.cat_cols,
+                  'min_ts_len': self.min_ts_len,
+                  'prediction_length': self.prediction_length,
+                  'refined_global_path': self.refined_global_path,
+                  'hist_rec_method': self.target_hist_rec_method,
+                  'cluster_keys': self.target_cluster_keys,
+                  'patch_covid': self.patch_covid,
+                  'dyn_cols': self.dyn_cols
+                  }
+        data_handler = dh.refined_data_handler(params)
+        data_handler.import_input_datasets()
+        data_handler.generate_deepar_input_data(fs)
+
+        print(f"Cutoff {data_handler.cutoff} : {data_handler.df_train['model'].nunique()} models")
 
     def identify_jobs_to_start(self, max_running_instances, job_type):
         """Returns the jobs to start by analyzing the Sagemaker jobs monitoring dataframe
@@ -174,26 +207,26 @@ class SagemakerHandler:
 
                 # Update, save & display df_jobs
                 self.update_jobs_status(job_type)
-                ut.write_df_to_csv_on_s3(self.df_jobs,
-                                         self.bucket,
-                                         f"{self.refined_path}{base_job_name}/"+'df_jobs.csv',
-                                         verbose=False)
+                # ut.write_df_to_csv_on_s3(self.df_jobs,
+                #                          self.bucket,
+                #                          f"{self.refined_path}{self.run_name}/" + 'df_jobs{self.run_suffix}.csv',
+                #                          verbose=False)
 
             # Waiting for jobs status to propagate to Sagemaker API
             time.sleep(10)
             self.update_jobs_status(job_type)
-            ut.write_df_to_csv_on_s3(self.df_jobs,
-                                     self.bucket,
-                                     f"{self.refined_path}{base_job_name}/" + 'df_jobs.csv',
-                                     verbose=False)
+            # ut.write_df_to_csv_on_s3(self.df_jobs,
+            #                          self.bucket,
+            #                          f"{self.refined_path}{self.run_name}/" + 'df_jobs{self.run_suffix}.csv',
+            #                          verbose=False)
 
         # Waiting for jobs status to propagate to Sagemaker API
         time.sleep(10)
         self.update_jobs_status(job_type)
-        ut.write_df_to_csv_on_s3(self.df_jobs,
-                                 self.bucket,
-                                 f"{self.refined_path}{base_job_name}/" + 'df_jobs.csv',
-                                 verbose=False)
+        # ut.write_df_to_csv_on_s3(self.df_jobs,
+        #                          self.bucket,
+        #                          f"{self.refined_path}{self.run_name}/" + 'df_jobs{self.run_suffix}.csv',
+        #                          verbose=False)
 
         print('Training done.')
 
@@ -253,25 +286,25 @@ class SagemakerHandler:
 
                 # Update, save & display df_jobs
                 self.update_jobs_status(job_type)
-                ut.write_df_to_csv_on_s3(self.df_jobs,
-                                         self.bucket,
-                                         f"{self.refined_path}{base_job_name}/" + 'df_jobs.csv',
-                                         verbose=False)
+                # ut.write_df_to_csv_on_s3(self.df_jobs,
+                #                          self.bucket,
+                #                          f"{self.refined_path}{self.run_name}/" + 'df_jobs{self.run_suffix}.csv',
+                #                          verbose=False)
 
             # Waiting for jobs status to propagate to Sagemaker API
             time.sleep(10)
             self.update_jobs_status(job_type)
-            ut.write_df_to_csv_on_s3(self.df_jobs,
-                                     self.bucket,
-                                     f"{self.refined_path}{base_job_name}/" + 'df_jobs.csv',
-                                     verbose=False)
+            # ut.write_df_to_csv_on_s3(self.df_jobs,
+            #                          self.bucket,
+            #                          f"{self.refined_path}{self.run_name}/" + 'df_jobs{self.run_suffix}.csv',
+            #                          verbose=False)
 
         # Waiting for jobs status to propagate to Sagemaker API
         time.sleep(10)
         self.update_jobs_status(job_type)
-        ut.write_df_to_csv_on_s3(self.df_jobs,
-                                 self.bucket,
-                                 f"{self.refined_path}{base_job_name}/" + 'df_jobs.csv',
-                                 verbose=False)
+        # ut.write_df_to_csv_on_s3(self.df_jobs,
+        #                          self.bucket,
+        #                          f"{self.refined_path}{self.run_name}/" + 'df_jobs{self.run_suffix}.csv',
+        #                          verbose=False)
 
         print('Transform job done.')
