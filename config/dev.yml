@@ -10,12 +10,12 @@ functional_parameters:
   - department_id
   - product_nature_id
   - univers_id
-  context_length: 52
+  context_length: 104
   dyn_cols: null
   epochs: 100
   freq: W
   likelihood: negative-binomial
-  min_ts_len: 104
+  min_ts_len: 156
   patch_covid: false
   prediction_length: 52
   target_cluster_keys:
