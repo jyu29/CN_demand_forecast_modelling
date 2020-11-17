@@ -123,7 +123,7 @@ class SagemakerHandler:
         data_handler.import_input_datasets()
         data_handler.generate_deepar_input_data(fs)
 
-        print(f"Cutoff {data_handler.cutoff} : {data_handler.df_train['model'].nunique()} models")
+        print(f"Cutoff {data_handler.cutoff} : {data_handler.df_train['model_id'].nunique()} models")
 
     def identify_jobs_to_start(self, max_running_instances, job_type):
         """Returns the jobs to start by analyzing the Sagemaker jobs monitoring dataframe

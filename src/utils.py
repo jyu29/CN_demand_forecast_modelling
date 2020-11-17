@@ -1,12 +1,15 @@
-import s3fs
 import datetime
-import yaml
-import pprint
-import io
-import boto3
 import gzip
+import io
+import pprint
+
 import numpy as np
 import pandas as pd
+import yaml
+
+import boto3
+import pyarrow.parquet as pq
+import s3fs
 
 
 def read_yml(file_path):
@@ -150,3 +153,20 @@ def write_df_to_csv_on_s3(df, bucket, filename, sep=',', header=True, index=Fals
 
     # Write buffer to S3 object
     boto3.resource('s3').Object(bucket, filename).put(Body=buffer.getvalue())
+
+
+def read_multipart_parquet_s3(bucket, dir_path, prefix_filename='part-'):
+    """
+    Read a multipart parquet file (splitted) hosted on a S3 bucket, load and return as pandas dataframe. Note that only
+    files with name starting with <prefix_filename> value are taken into account.
+    :param bucket: (string) S3 source bucket
+    :param dir_path: (string) full path to the folder that contains all parts within this S3 bucket
+    :param prefix_filename: (string) Optional. Default is 'part-' which is what Spark generates. Only files with name
+    starting with this value will be loaded
+    :return: (pandas DataFrame) data loaded
+    """
+    fs = s3fs.S3FileSystem()
+    s3_uri = to_uri(bucket, dir_path)
+    data = pq.ParquetDataset(s3_uri, filesystem=fs).read().to_pandas(date_as_object=False)
+
+    return data

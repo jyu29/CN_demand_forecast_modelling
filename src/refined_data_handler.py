@@ -40,7 +40,7 @@ class dynamic_feature_handler:
         # Check columns
         assert self.feat_name in self.df_feat.columns
         assert 'week_id' in self.df_feat.columns
-        if 'model' in self.df_feat.columns:
+        if 'model_id' in self.df_feat.columns:
             print(f'    {self.feat_name} is defined at model level')
             self._model_level = True
         else:
@@ -87,29 +87,29 @@ class dynamic_feature_handler:
             raise NameError(f"Future projection algorithm `{self.proj_method}` doesn't exist")
 
         if self._model_level:
-            self.df_future.sort_values(['model', 'week_id'], ascending=True, inplace=True)
+            self.df_future.sort_values(['model_id', 'week_id'], ascending=True, inplace=True)
         else:
             self.df_future.sort_values(['week_id'], ascending=True, inplace=True)
 
     def _hist_rec_fill(self, df):
 
         # Create a complete TS dataframe
-        all_model = df['model'].sort_values().unique()
+        all_model = df['model_id'].sort_values().unique()
         all_week = df['week_id'].sort_values().unique()
         w, m = pd.core.reshape.util.cartesian_product([all_week, all_model])
-        complete_ts = pd.DataFrame({'model': m, 'week_id': w})
+        complete_ts = pd.DataFrame({'model_id': m, 'week_id': w})
 
         # Checking that we have enough weeks in the past
         assert len(w) > self.min_ts_len, f"Dataframe for dynamic feature {self.feat_name} doesn't have enough weeks"
 
         # Merging with feature values
-        complete_ts = complete_ts.merge(df[['model', 'week_id', self.feat_name]], on=['model', 'week_id'], how='left')
+        complete_ts = complete_ts.merge(df[['model_id', 'week_id', self.feat_name]], on=['model_id', 'week_id'], how='left')
 
         # Sorting for the ffill & bfill
-        complete_ts.sort_values(['model', 'week_id'], inplace=True)
+        complete_ts.sort_values(['model_id', 'week_id'], inplace=True)
 
         # Ffill first for intermediate values, bfill then for missing values at the beginning
-        complete_ts = complete_ts.groupby(['model']).apply(lambda v: v.ffill().bfill())
+        complete_ts = complete_ts.groupby(['model_id']).apply(lambda v: v.ffill().bfill())
 
         return complete_ts
 
@@ -119,11 +119,11 @@ class dynamic_feature_handler:
         all_week = ut.date_to_week_id(all_date)
 
         if self._model_level:
-            all_model = df['model'].sort_values().unique()
+            all_model = df['model_id'].sort_values().unique()
             w, m = pd.core.reshape.util.cartesian_product([all_week, all_model])
-            df_future = pd.DataFrame({'model': m, 'week_id': w})
+            df_future = pd.DataFrame({'model_id': m, 'week_id': w})
             df_future[self.feat_name] = self.proj_value
-            df = df.append(df_future).sort_values(['model', 'week_id']).reset_index()
+            df = df.append(df_future).sort_values(['model_id', 'week_id']).reset_index()
         else:
             df_future = pd.DataFrame({'week_id': all_week, self.feat_name: self.proj_value})
             df = df.append(df_future).sort_values(['week_id'])
@@ -136,12 +136,12 @@ class dynamic_feature_handler:
         all_week = ut.date_to_week_id(all_date)
 
         if self._model_level:
-            all_model = df['model'].sort_values().unique()
+            all_model = df['model_id'].sort_values().unique()
             w, m = pd.core.reshape.util.cartesian_product([all_week, all_model])
-            df_last_values = df[['model', self.feat_name]].groupby('model').last()[self.feat_name]
-            df_future = pd.DataFrame({'model': m, 'week_id': w})
-            df_future = df_future.merge(df_last_values, on='model', how='inner')
-            df = df.append(df_future).sort_values(['model', 'week_id']).reset_index()
+            df_last_values = df[['model_id', self.feat_name]].groupby('model_id').last()[self.feat_name]
+            df_future = pd.DataFrame({'model_id': m, 'week_id': w})
+            df_future = df_future.merge(df_last_values, on='model_id', how='inner')
+            df = df.append(df_future).sort_values(['model_id', 'week_id']).reset_index()
         else:
             last_value = df.loc[df['week_id'] == df['week_id'].max(), self.feat_name].values[0]
             df_future = pd.DataFrame({'week_id': all_week, self.feat_name: last_value})
@@ -158,14 +158,14 @@ class dynamic_feature_handler:
         all_week = ut.date_to_week_id(all_date)
         
         if self._model_level:
-            df.sort_values(['model', 'week_id'], inplace=True)
-            for m, mini_df in df.groupby('model'):
+            df.sort_values(['model_id', 'week_id'], inplace=True)
+            for m, mini_df in df.groupby('model_id'):
                 value = mini_df[self.feat_name].to_list()[-self.proj_length:]
-                df_future = df_future.append(pd.DataFrame({'model': m,
+                df_future = df_future.append(pd.DataFrame({'model_id': m,
                                                            'week_id': all_week,
                                                            self.feat_name: value
                                                            }))
-            df = df.append(df_future).sort_values(['model', 'week_id']).reset_index()
+            df = df.append(df_future).sort_values(['model_id', 'week_id']).reset_index()
         else:
             df.sort_values(['week_id'], inplace=True)
             value = df[self.feat_name].to_list()[-52:-52+self.proj_length]
@@ -179,7 +179,7 @@ class dynamic_feature_handler:
         * the number of consecutive weeks
         * if applicable, for each model
         """
-        model_level = 'model' in df.columns
+        model_level = 'model_id' in df.columns
 
         # Building the cartesian product for weeks (and models, if applicable)
         start_date = ut.week_id_to_date(df['week_id'].min())
@@ -190,10 +190,10 @@ class dynamic_feature_handler:
         df = df[df['week_id'] <= max(week_id_range)]
 
         if model_level:
-            model_list = list(df['model'].unique())
+            model_list = list(df['model_id'].unique())
             w, m = pd.core.reshape.util.cartesian_product([week_id_range, model_list])
-            df_test_all = pd.DataFrame({'model': m, 'week_id': w})
-            df_test = df_test_all.merge(df[['model', 'week_id']], on=['model', 'week_id'], how='outer', indicator=True)
+            df_test_all = pd.DataFrame({'model_id': m, 'week_id': w})
+            df_test = df_test_all.merge(df[['model_id', 'week_id']], on=['model_id', 'week_id'], how='outer', indicator=True)
             assert df_test[df_test['_merge'] == 'both'].shape[0] == df_test_all.shape[0], \
                 'Dataframe has missing weeks for at least one model'
         else:
@@ -240,9 +240,9 @@ class refined_data_handler():
         self.prediction_length = params['prediction_length']
         self.hist_rec_method = params['hist_rec_method']
         self.dyn_cols = params['dyn_cols']
-        self.paths = {'actual_sales': f"{params['refined_global_path']}actual_sales/df_actual_sales.csv",
-                      'model_info': f"{params['refined_global_path']}model_info/df_model_info.csv",
-                      'mrp': f"{params['refined_global_path']}mrp_status/df_mrp.csv",
+        self.paths = {'model_week_sales': f"{params['refined_global_path']}model_week_sales",
+                      'model_week_tree': f"{params['refined_global_path']}model_week_tree",
+                      'model_week_mrp': f"{params['refined_global_path']}model_week_mrp",
                       'train_path': params['train_path'],
                       'predict_path': params['predict_path']
                       }
@@ -256,30 +256,32 @@ class refined_data_handler():
 
     def import_input_datasets(self):
 
+        print('Importing datasets...')
+
         # Read CSV
-        df_actual_sales = ut.read_csv_s3(self.bucket, self.paths['actual_sales'], parse_dates=['date'], sep='|')
-        df_model_info = ut.read_csv_s3(self.bucket, self.paths['model_info'], sep='|')
-        df_mrp = ut.read_csv_s3(self.bucket, self.paths['mrp'], sep='|')
+        df_model_week_sales = ut.read_multipart_parquet_s3(self.bucket, self.paths['model_week_sales'])
+        df_model_week_tree = ut.read_multipart_parquet_s3(self.bucket, self.paths['model_week_tree'])
+        df_model_week_mrp = ut.read_multipart_parquet_s3(self.bucket, self.paths['model_week_mrp'])
 
         # Filter on cutoff & format
-        df_actual_sales = df_actual_sales[df_actual_sales['week_id'] < self.cutoff]
-        df_model_info = df_model_info[df_model_info['week_id'] == self.cutoff]
-        df_mrp = df_mrp[df_mrp['week_id'] == self.cutoff]
+        df_model_week_sales = df_model_week_sales[df_model_week_sales['week_id'] < self.cutoff]
+        df_model_week_tree = df_model_week_tree[df_model_week_tree['week_id'] == self.cutoff]
+        df_model_week_mrp = df_model_week_mrp[df_model_week_mrp['week_id'] == self.cutoff]
 
-        df_actual_sales.rename(columns={'date': 'ds', 'qty': 'y'}, inplace=True)
+        df_model_week_sales.rename(columns={'date': 'ds', 'sales_quantity': 'y'}, inplace=True)
 
         # Save as attributes
-        self.df_actual_sales = df_actual_sales
-        self.df_model_info = df_model_info
-        self.df_mrp = df_mrp
+        self.df_model_week_sales = df_model_week_sales
+        self.df_model_week_tree = df_model_week_tree
+        self.df_model_week_mrp = df_model_week_mrp
         
         # Import validation
         self._input_data_imported = True
 
         print("Datasets imported : \n"
-              + f"    {self.paths['actual_sales']}\n"
-              + f"    {self.paths['model_info']}\n"
-              + f"    {self.paths['mrp']}\n")
+              + f"    {self.paths['model_week_sales']}\n"
+              + f"    {self.paths['model_week_tree']}\n"
+              + f"    {self.paths['model_week_mrp']}\n")
 
     def generate_deepar_input_data(self, fs):
         assert self._input_data_imported, "Cutoff data not imported, please use method self.import_input_datasets()"
@@ -368,17 +370,17 @@ class refined_data_handler():
         start_time = time.time()
 
         # List MRP valid models
-        df_mrp_valid_model = self.df_mrp.loc[self.df_mrp['mrp'].isin([2, 5]), ['model']]
+        df_mrp_valid_model = self.df_model_week_mrp.loc[self.df_model_week_mrp['mrp'].isin([2, 5]), ['model_id']]
 
         # Create df_train
-        df_train = pd.merge(self.df_actual_sales, df_mrp_valid_model)  # mrp valid filter
+        df_train = pd.merge(self.df_model_week_sales, df_mrp_valid_model)  # mrp valid filter
         df_train = self._pad_to_cutoff(df_train, self.cutoff)          # pad sales to cutoff
 
         # Rec histo
         df_train = self._history_reconstruction(df_train, self.hist_rec_method, self.min_ts_len)
 
         # Add and encode cat features
-        df_train = pd.merge(df_train, self.df_model_info[['model'] + self.cat_cols])
+        df_train = pd.merge(df_train, self.df_model_week_tree[['model_id'] + self.cat_cols])
 
         for c in self.cat_cols:
             le = LabelEncoder()
@@ -428,7 +430,7 @@ class refined_data_handler():
         start_time = time.time()
         
         feat = 'is_rec'
-        df_feat = self.df_train[['model', 'week_id', 'is_rec']]
+        df_feat = self.df_train[['model_id', 'week_id', 'is_rec']]
         
         dyn_feat_handler = dynamic_feature_handler(
                 cutoff=self.cutoff,
@@ -454,7 +456,7 @@ class refined_data_handler():
     def _history_reconstruction(self, df, hist_rec_method, min_ts_len):
 
         if hist_rec_method == 'cluster_avg':
-            df_rec = self._hist_rec_clust_avg(df, self.df_actual_sales, self.df_model_info, min_ts_len,
+            df_rec = self._hist_rec_clust_avg(df, self.df_model_week_sales, self.df_model_week_tree, min_ts_len,
                                               self.params['cluster_keys'], self.params['patch_covid'])
             return df_rec
 
@@ -466,33 +468,33 @@ class refined_data_handler():
             print(f"    History reconstruction {hist_rec_method} not implemented at the time.")
 
     def _hist_rec_clust_avg(
-            self, df, df_actual_sales, df_model_info, min_ts_len, cluster_keys=['family_label'],
+            self, df, df_model_week_sales, df_model_week_tree, min_ts_len, cluster_keys=['family_label'],
             patch_covid=True):
 
         # Create a complete TS dataframe
-        all_model = df['model'].sort_values().unique()
-        all_week = df_actual_sales \
-            .loc[df_actual_sales['week_id'] <= df['week_id'].max(), 'week_id'] \
+        all_model = df['model_id'].sort_values().unique()
+        all_week = df_model_week_sales \
+            .loc[df_model_week_sales['week_id'] <= df['week_id'].max(), 'week_id'] \
             .sort_values() \
             .unique()
 
         w, m = pd.core.reshape.util.cartesian_product([all_week, all_model])
 
-        complete_ts = pd.DataFrame({'model': m, 'week_id': w})
+        complete_ts = pd.DataFrame({'model_id': m, 'week_id': w})
 
         # Add dates
         complete_ts['ds'] = ut.week_id_to_date(complete_ts['week_id'])
 
-        # Add cluster_keys info from df_model_info
-        complete_ts = pd.merge(complete_ts, df_model_info[['model'] + cluster_keys], how='left')
+        # Add cluster_keys info from df_model_week_tree
+        complete_ts = pd.merge(complete_ts, df_model_week_tree[['model_id'] + cluster_keys], how='left')
         # /!\ in very rare cases, the models are too old or too recent and do not have descriptions in d_sku
         complete_ts.dropna(subset=cluster_keys, inplace=True)
 
         # Add current sales from df
         complete_ts = pd.merge(complete_ts, df, how='left')
 
-        # Calculate the average sales per cluster and week from df_actual_sales
-        all_sales = pd.merge(df_actual_sales, df_model_info[['model'] + cluster_keys], how='left')
+        # Calculate the average sales per cluster and week from df_model_week_sales
+        all_sales = pd.merge(df_model_week_sales, df_model_week_tree[['model_id'] + cluster_keys], how='left')
         all_sales.dropna(subset=cluster_keys, inplace=True)
         all_sales = all_sales.groupby(cluster_keys + ['week_id', 'ds']) \
             .agg(mean_cluster_y=('y', 'mean')) \
@@ -512,25 +514,25 @@ class refined_data_handler():
             # Except for models sold only during the covid period...
             exceptions = complete_ts \
                 .loc[~complete_ts['week_id'].isin(covid_week_id)] \
-                .groupby('model', as_index=False)['y'].sum()
-            exceptions = exceptions.loc[exceptions['y'] == 0, 'model'].unique()
+                .groupby('model_id', as_index=False)['y'].sum()
+            exceptions = exceptions.loc[exceptions['y'] == 0, 'model_id'].unique()
             
             # ...replace mean cluster sales by the last year values...
             complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id)) &
-                            (~complete_ts['model'].isin(exceptions)), ['mean_cluster_y']] = \
+                            (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_y']] = \
                 complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id - 100)) &
-                                (~complete_ts['model'].isin(exceptions)), ['mean_cluster_y']].values
+                                (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_y']].values
             
             # ...and nullify sales during Covid
             complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id)) & 
-                            (~complete_ts['model'].isin(exceptions)), ['y']] = np.nan
+                            (~complete_ts['model_id'].isin(exceptions)), ['y']] = np.nan
 
         # Compute the scale factor by row
         complete_ts['row_scale_factor'] = complete_ts['y'] / complete_ts['mean_cluster_y']
 
         # Compute the scale factor by model
         model_scale_factor = complete_ts \
-            .groupby('model') \
+            .groupby('model_id') \
             .agg(model_scale_factor=('row_scale_factor', 'mean')) \
             .reset_index()
 
@@ -546,7 +548,7 @@ class refined_data_handler():
         # Calculate real age & total length of each TS
         ts_start_end_date = complete_ts \
             .loc[complete_ts['y'].notnull()] \
-            .groupby(['model']) \
+            .groupby(['model_id']) \
             .agg(start_date=('ds', 'min'),
                  end_date=('ds', 'max')) \
             .reset_index()
@@ -565,7 +567,7 @@ class refined_data_handler():
         complete_ts['is_y_sup'] = complete_ts['y'] > complete_ts['fake_y']
 
         end_impl_period = complete_ts[complete_ts['is_y_sup'] == True] \
-            .groupby('model') \
+            .groupby('model_id') \
             .agg(end_impl_period=('age', 'min')) \
             .reset_index()
 
@@ -591,69 +593,69 @@ class refined_data_handler():
 
     def _merge_target_and_features(self, df, feat_dict=None):
 
-        df_json_start = df.groupby(['model']).apply(lambda x: min(
+        df_json_start = df.groupby(['model_id']).apply(lambda x: min(
             x['ds']).strftime('%Y-%m-%d %H:%M:%S')).reset_index(name='start')
-        df_json_target = df.groupby(['model'])['y'].apply(list).reset_index(name='target')
-        df_json_cat_cols = df[['model'] + self.cat_cols].drop_duplicates()
+        df_json_target = df.groupby(['model_id'])['y'].apply(list).reset_index(name='target')
+        df_json_cat_cols = df[['model_id'] + self.cat_cols].drop_duplicates()
         df_json_cat_cols['cat'] = df_json_cat_cols.apply(lambda x: [x[i] for i in self.cat_cols], axis=1).to_frame()
-        df_json_cat_cols = df_json_cat_cols[['model', 'cat']]
+        df_json_cat_cols = df_json_cat_cols[['model_id', 'cat']]
 
-        df_json = pd.merge(df_json_start, df_json_target, on='model', how='inner')
-        df_json = pd.merge(df_json, df_json_cat_cols, on='model', how='inner')
+        df_json = pd.merge(df_json_start, df_json_target, on='model_id', how='inner')
+        df_json = pd.merge(df_json, df_json_cat_cols, on='model_id', how='inner')
 
-        df_json = df_json[['model', 'start', 'cat', 'target']]
+        df_json = df_json[['model_id', 'start', 'cat', 'target']]
 
         if feat_dict:
             for feat in feat_dict.keys():
 
-                if 'model' in feat_dict[feat].columns:
+                if 'model_id' in feat_dict[feat].columns:
                     df_feat = feat_dict[feat]
                 else:
                     df_feat = feat_dict[feat]
                     # duplicates feat for each model
-                    df_model = df[['model']].drop_duplicates()
+                    df_model = df[['model_id']].drop_duplicates()
                     df_model.insert(0, 'key', 42)
                     df_feat.insert(0, 'key', 42)
                     df_feat = pd.merge(df_model, df_feat, on='key', how='inner')
 
                 # limit feat history based on model history
-                df_model_min_week = df.groupby('model').agg(min_week_id=('week_id', min)).reset_index()
-                df_feat = pd.merge(df_feat, df_model_min_week, on='model', how='inner')
+                df_model_min_week = df.groupby('model_id').agg(min_week_id=('week_id', min)).reset_index()
+                df_feat = pd.merge(df_feat, df_model_min_week, on='model_id', how='inner')
                 df_feat = df_feat[df_feat['week_id'] >= df_feat['min_week_id']]
 
                 # Merge to df json
                 df_json = pd.merge(df_json,
-                                   df_feat.groupby(['model'])[feat].apply(list).reset_index(name=feat),
-                                   on='model',
+                                   df_feat.groupby(['model_id'])[feat].apply(list).reset_index(name=feat),
+                                   on='model_id',
                                    how='inner')
 
             df_json['dynamic_feat'] = df_json.apply(lambda x: [x[i] for i in feat_dict.keys()], axis=1)
-            df_json = df_json[['model', 'start', 'cat', 'target', 'dynamic_feat']]
+            df_json = df_json[['model_id', 'start', 'cat', 'target', 'dynamic_feat']]
 
         # Setting model at str
-        df_json.loc[:, 'model'] = df_json.loc[:, 'model'].astype(str)
+        df_json.loc[:, 'model_id'] = df_json.loc[:, 'model_id'].astype(str)
 
-        nb_models = df['model'].nunique() - df_json['model'].nunique()
-        print(f"    Dataset file generated. Lost {nb_models} merging features.")
+        nb_models = df['model_id'].nunique() - df_json['model_id'].nunique()
+        print(f"    Dataset file generated. Lost {nb_models} models merging features.")
 
         return df_json
 
     def _pad_to_cutoff(self, df_ts, cutoff, col='y'):
 
         # Add the cutoff weekend to all models to put a limit for the bfill
-        models = df_ts['model'].unique()
+        models = df_ts['model_id'].unique()
         test_cutoff_date = ut.week_id_to_date(cutoff)
         md, cu = pd.core.reshape.util.cartesian_product([models, [cutoff]])
-        df_ts_tail = pd.DataFrame({"model": md, "week_id": cu})
+        df_ts_tail = pd.DataFrame({"model_id": md, "week_id": cu})
         df_ts_tail['ds'] = test_cutoff_date
         df_ts_tail[col] = 0
         df = df_ts.append(df_ts_tail)
 
         # Backfill for the cutoff week
-        df = df.set_index('ds').groupby('model').resample('1W').asfreq().fillna(0)
+        df = df.set_index('ds').groupby('model_id').resample('1W').asfreq().fillna(0)
 
         # Getting the df back to its original form
-        df.drop(['model'], axis=1, inplace=True)
+        df.drop(['model_id'], axis=1, inplace=True)
         df.reset_index(inplace=True)
         df['week_id'] = ut.date_to_week_id(df['ds'])
 
@@ -666,7 +668,7 @@ class refined_data_handler():
     def _shuffle_dataset(self, df):
 
         # Random shuffling before writing
-        groups = [ts for m, ts in df.groupby('model')]
+        groups = [ts for m, ts in df.groupby('model_id')]
         random.shuffle(groups)
 
         return pd.concat(groups).reset_index(drop=True)

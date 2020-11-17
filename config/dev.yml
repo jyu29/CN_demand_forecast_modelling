@@ -5,13 +5,11 @@ functional_parameters:
   run_timestamp_suffix : true
   algorithm: deepAR
   cat_cols:
-  - model_label
-  - family_label
-  - sub_department_label
-  - department_label
-  - product_nature_label
-  - univers_label
-  - brand_label
+  - family_id
+  - sub_department_id
+  - department_id
+  - product_nature_id
+  - univers_id
   context_length: 52
   dyn_cols: null
   epochs: 100
@@ -21,7 +19,7 @@ functional_parameters:
   patch_covid: false
   prediction_length: 52
   target_cluster_keys:
-  - family_label
+  - family_id
   target_hist_rec_method: cluster_avg
   validation_length: 52
   hyperparameters:
