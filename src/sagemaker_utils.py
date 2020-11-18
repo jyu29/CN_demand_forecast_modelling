@@ -48,7 +48,7 @@ class SagemakerHandler:
         self.run_input_path = params['paths']['refined_specific_path_full']
         self.cat_cols = params['functional_parameters']['cat_cols']
         self.min_ts_len = params['functional_parameters']['min_ts_len']
-        self.prediction_length = params['functional_parameters']['prediction_length']
+        self.prediction_length = params['functional_parameters']['hyperparameters']['prediction_length']
         self.refined_global_path = params['paths']['refined_global_path']
         self.refined_specific_path_full = params['paths']['refined_specific_path_full']
         self.target_hist_rec_method = params['functional_parameters']['target_hist_rec_method']
@@ -114,8 +114,8 @@ class SagemakerHandler:
                   'min_ts_len': self.min_ts_len,
                   'prediction_length': self.prediction_length,
                   'refined_global_path': self.refined_global_path,
-                  'hist_rec_method': self.target_hist_rec_method,
-                  'cluster_keys': self.target_cluster_keys,
+                  'target_hist_rec_method': self.target_hist_rec_method,
+                  'target_cluster_keys': self.target_cluster_keys,
                   'patch_covid': self.patch_covid,
                   'dyn_cols': self.dyn_cols
                   }
@@ -123,7 +123,7 @@ class SagemakerHandler:
         data_handler.import_input_datasets()
         data_handler.generate_deepar_input_data(fs)
 
-        print(f"Cutoff {data_handler.cutoff} : {data_handler.df_train['model'].nunique()} models")
+        print(f"Cutoff {data_handler.cutoff} : {data_handler.df_train['model_id'].nunique()} models")
 
     def identify_jobs_to_start(self, max_running_instances, job_type):
         """Returns the jobs to start by analyzing the Sagemaker jobs monitoring dataframe

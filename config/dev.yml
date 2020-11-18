@@ -5,31 +5,24 @@ functional_parameters:
   run_timestamp_suffix : true
   algorithm: deepAR
   cat_cols:
-  - model_label
-  - family_label
-  - sub_department_label
-  - department_label
-  - product_nature_label
-  - univers_label
-  - brand_label
-  context_length: 52
+  - family_id
+  - sub_department_id
+  - department_id
+  - product_nature_id
+  - univers_id
   dyn_cols: null
-  epochs: 100
-  freq: W
-  likelihood: negative-binomial
-  min_ts_len: 104
-  patch_covid: false
-  prediction_length: 52
-  target_cluster_keys:
-  - family_label
-  target_hist_rec_method: cluster_avg
+  min_ts_len: 156
+  patch_covid: true
   validation_length: 52
+  target_cluster_keys:
+  - family_id
+  target_hist_rec_method: cluster_avg
   hyperparameters:
     time_freq : W
     prediction_length: 52
-    context_length: 52
+    context_length: 104
     epochs : 100
-    likelihood : negative-binomial
+    likelihood : student-T
   #  early_stopping_patience: 100
   #  learning_rate: 1e-4
   #  mini_batch_size: 128
