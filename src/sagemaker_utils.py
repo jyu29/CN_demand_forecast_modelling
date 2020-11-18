@@ -115,7 +115,7 @@ class SagemakerHandler:
                   'prediction_length': self.prediction_length,
                   'refined_global_path': self.refined_global_path,
                   'target_hist_rec_method': self.target_hist_rec_method,
-                  'cluster_keys': self.target_cluster_keys,
+                  'target_cluster_keys': self.target_cluster_keys,
                   'patch_covid': self.patch_covid,
                   'dyn_cols': self.dyn_cols
                   }

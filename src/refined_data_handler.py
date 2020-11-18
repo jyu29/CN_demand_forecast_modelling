@@ -221,7 +221,7 @@ class refined_data_handler():
         assert 'predict_path' in params
 
         if params['target_hist_rec_method'] == 'cluster_avg':
-            assert 'cluster_keys' in params
+            assert 'target_cluster_keys' in params
             assert 'patch_covid' in params
 
         if params['dyn_cols'] is not None:
@@ -458,7 +458,7 @@ class refined_data_handler():
 
         if target_hist_rec_method == 'cluster_avg':
             df_rec = self._hist_rec_clust_avg(df, self.df_model_week_sales, self.df_model_week_tree, min_ts_len,
-                                              self.params['cluster_keys'], self.params['patch_covid'])
+                                              self.params['target_cluster_keys'], self.params['patch_covid'])
             return df_rec
 
         elif target_hist_rec_method is None:
@@ -469,7 +469,7 @@ class refined_data_handler():
             print(f"    History reconstruction {target_hist_rec_method} not implemented at the time.")
 
     def _hist_rec_clust_avg(
-            self, df, df_model_week_sales, df_model_week_tree, min_ts_len, cluster_keys=['family_label'],
+            self, df, df_model_week_sales, df_model_week_tree, min_ts_len, target_cluster_keys=['family_label'],
             patch_covid=True):
 
         # Create a complete TS dataframe
@@ -487,17 +487,17 @@ class refined_data_handler():
         complete_ts['ds'] = ut.week_id_to_date(complete_ts['week_id'])
 
         # Add cluster_keys info from df_model_week_tree
-        complete_ts = pd.merge(complete_ts, df_model_week_tree[['model_id'] + cluster_keys], how='left')
+        complete_ts = pd.merge(complete_ts, df_model_week_tree[['model_id'] + target_cluster_keys], how='left')
         # /!\ in very rare cases, the models are too old or too recent and do not have descriptions in d_sku
-        complete_ts.dropna(subset=cluster_keys, inplace=True)
+        complete_ts.dropna(subset=target_cluster_keys, inplace=True)
 
         # Add current sales from df
         complete_ts = pd.merge(complete_ts, df, how='left')
 
         # Calculate the average sales per cluster and week from df_model_week_sales
-        all_sales = pd.merge(df_model_week_sales, df_model_week_tree[['model_id'] + cluster_keys], how='left')
-        all_sales.dropna(subset=cluster_keys, inplace=True)
-        all_sales = all_sales.groupby(cluster_keys + ['week_id', 'ds']) \
+        all_sales = pd.merge(df_model_week_sales, df_model_week_tree[['model_id'] + target_cluster_keys], how='left')
+        all_sales.dropna(subset=target_cluster_keys, inplace=True)
+        all_sales = all_sales.groupby(target_cluster_keys + ['week_id', 'ds']) \
             .agg(mean_cluster_y=('y', 'mean')) \
             .reset_index()
 
