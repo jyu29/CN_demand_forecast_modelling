@@ -61,7 +61,7 @@ class dynamic_feature_handler:
                     f"History reconstruction algorithm `{self.hist_rec_method}` only exists at model-level for the moment")
         elif self.hist_rec_method is None:
             self.df_hist = self.df_feat
-            print("    No history reconstruction was applied")
+            print(f"    No history reconstruction for feature `{self.feat_name}` was applied")
         else:
             raise NameError(f"History reconstruction algorithm `{self.hist_rec_method}` doesn't exist")
 
@@ -215,12 +215,12 @@ class refined_data_handler():
         assert 'min_ts_len' in params
         assert 'prediction_length' in params
         assert 'refined_global_path' in params
-        assert 'hist_rec_method' in params
+        assert 'target_hist_rec_method' in params
         assert 'dyn_cols' in params
         assert 'train_path' in params
         assert 'predict_path' in params
 
-        if params['hist_rec_method'] == 'cluster_avg':
+        if params['target_hist_rec_method'] == 'cluster_avg':
             assert 'cluster_keys' in params
             assert 'patch_covid' in params
 
@@ -238,7 +238,7 @@ class refined_data_handler():
         self.cat_cols = params['cat_cols']
         self.min_ts_len = params['min_ts_len']
         self.prediction_length = params['prediction_length']
-        self.hist_rec_method = params['hist_rec_method']
+        self.target_hist_rec_method = params['target_hist_rec_method']
         self.dyn_cols = params['dyn_cols']
         self.paths = {'model_week_sales': f"{params['refined_global_path']}model_week_sales",
                       'model_week_tree': f"{params['refined_global_path']}model_week_tree",
@@ -296,7 +296,8 @@ class refined_data_handler():
             self._generate_dyn_feature_data()
         
         # Adding intra dyn col if rec method applied
-        if self.hist_rec_method:
+        if self.target_hist_rec_method:
+            print("Generating intra dynamic feature `is_rec` as history reconstruction was requested...") 
             self._add_intra_dyn_feature()
             
         print("Generating jsonline file for train dataset...")
@@ -345,7 +346,7 @@ class refined_data_handler():
 
         if self.dyn_cols:
             nb_intra_dyn_feat = 0
-            if self.hist_rec_method:
+            if self.target_hist_rec_method:
                 nb_intra_dyn_feat = 1
                 
             # Test if right number of dynamic features
@@ -377,7 +378,7 @@ class refined_data_handler():
         df_train = self._pad_to_cutoff(df_train, self.cutoff)          # pad sales to cutoff
 
         # Rec histo
-        df_train = self._history_reconstruction(df_train, self.hist_rec_method, self.min_ts_len)
+        df_train = self._history_reconstruction(df_train, self.target_hist_rec_method, self.min_ts_len)
 
         # Add and encode cat features
         df_train = pd.merge(df_train, self.df_model_week_tree[['model_id'] + self.cat_cols])
@@ -394,7 +395,7 @@ class refined_data_handler():
 
         delta_time = str(int(time.time() - start_time))
         print(
-            f"    Target data generated in {delta_time} seconds with history reconstruction method {self.hist_rec_method}")
+            f"    Target data generated in {delta_time} seconds with history reconstruction method {self.target_hist_rec_method}")
 
     def _generate_dyn_feature_data(self):
 
@@ -453,19 +454,19 @@ class refined_data_handler():
         delta_time = str(int(time.time() - start_time))
         print(f"    Generated intra dynamic feature {feat} in {delta_time} seconds")
             
-    def _history_reconstruction(self, df, hist_rec_method, min_ts_len):
+    def _history_reconstruction(self, df, target_hist_rec_method, min_ts_len):
 
-        if hist_rec_method == 'cluster_avg':
+        if target_hist_rec_method == 'cluster_avg':
             df_rec = self._hist_rec_clust_avg(df, self.df_model_week_sales, self.df_model_week_tree, min_ts_len,
                                               self.params['cluster_keys'], self.params['patch_covid'])
             return df_rec
 
-        elif hist_rec_method is None:
+        elif target_hist_rec_method is None:
             print(f"    No history reconstruction applied.")
             return df
 
         else:
-            print(f"    History reconstruction {hist_rec_method} not implemented at the time.")
+            print(f"    History reconstruction {target_hist_rec_method} not implemented at the time.")
 
     def _hist_rec_clust_avg(
             self, df, df_model_week_sales, df_model_week_tree, min_ts_len, cluster_keys=['family_label'],
