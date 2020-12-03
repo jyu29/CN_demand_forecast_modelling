@@ -13,6 +13,21 @@ functional_parameters:
   dyn_cols: null
   min_ts_len: 156
   patch_covid: true
+  patch_covid_weeks:
+  - 202011 # First lockdown
+  - 202012
+  - 202013
+  - 202014
+  - 202015
+  - 202016
+  - 202017
+  - 202018
+  - 202019
+  - 202020
+  - 202045 # Second lockdown
+  - 202046
+  - 202047
+  - 202048
   validation_length: 52
   target_cluster_keys:
   - family_id

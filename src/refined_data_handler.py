@@ -223,6 +223,7 @@ class refined_data_handler():
         if params['target_hist_rec_method'] == 'cluster_avg':
             assert 'target_cluster_keys' in params
             assert 'patch_covid' in params
+            assert 'patch_covid_weeks' in params
 
         if params['dyn_cols'] is not None:
             for c in params['dyn_cols']:
@@ -371,7 +372,7 @@ class refined_data_handler():
         start_time = time.time()
 
         # List MRP valid models
-        df_mrp_valid_model = self.df_model_week_mrp.loc[self.df_model_week_mrp['mrp'], ['model_id']]
+        df_mrp_valid_model = self.df_model_week_mrp.loc[self.df_model_week_mrp['is_mrp_active'], ['model_id']]
 
         # Create df_train
         df_train = pd.merge(self.df_model_week_sales, df_mrp_valid_model)  # mrp valid filter
@@ -457,8 +458,12 @@ class refined_data_handler():
     def _history_reconstruction(self, df, target_hist_rec_method, min_ts_len):
 
         if target_hist_rec_method == 'cluster_avg':
-            df_rec = self._hist_rec_clust_avg(df, self.df_model_week_sales, self.df_model_week_tree, min_ts_len,
-                                              self.params['target_cluster_keys'], self.params['patch_covid'])
+            df_rec = self._hist_rec_clust_avg(df, self.df_model_week_sales,
+                                              self.df_model_week_tree,
+                                              min_ts_len,
+                                              self.params['patch_covid_weeks'],
+                                              self.params['target_cluster_keys'],
+                                              self.params['patch_covid'])
             return df_rec
 
         elif target_hist_rec_method is None:
@@ -469,7 +474,7 @@ class refined_data_handler():
             print(f"    History reconstruction {target_hist_rec_method} not implemented at the time.")
 
     def _hist_rec_clust_avg(
-            self, df, df_model_week_sales, df_model_week_tree, min_ts_len, target_cluster_keys=['family_label'],
+            self, df, df_model_week_sales, df_model_week_tree, min_ts_len, patch_covid_weeks, target_cluster_keys=['family_label'],
             patch_covid=True):
 
         # Create a complete TS dataframe
@@ -506,11 +511,11 @@ class refined_data_handler():
 
         # Patch covid
         if patch_covid:
+            print(f"Covid-19 history reconstruction patch applied on weeks {patch_covid_weeks}")
             
             # Identify the Covid weeks present in complete_ts
             covid_week_id = np.intersect1d(complete_ts['week_id'].unique(),
-                                           np.array([202011, 202012, 202013, 202014, 202015, 
-                                                     202016, 202017, 202018, 202019, 202020]))
+                                           np.array(patch_covid_weeks))
             
             # Except for models sold only during the covid period...
             exceptions = complete_ts \

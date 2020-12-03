@@ -54,6 +54,7 @@ class SagemakerHandler:
         self.target_hist_rec_method = params['functional_parameters']['target_hist_rec_method']
         self.target_cluster_keys = params['functional_parameters']['target_cluster_keys']
         self.patch_covid = params['functional_parameters']['patch_covid']
+        self.patch_covid_weeks = params['functional_parameters']['patch_covid_weeks']
         self.dyn_cols = params['functional_parameters']['dyn_cols']
 
         # Timestamp definition
@@ -117,6 +118,7 @@ class SagemakerHandler:
                   'target_hist_rec_method': self.target_hist_rec_method,
                   'target_cluster_keys': self.target_cluster_keys,
                   'patch_covid': self.patch_covid,
+                  'patch_covid_weeks': self.patch_covid_weeks,
                   'dyn_cols': self.dyn_cols
                   }
         data_handler = dh.refined_data_handler(params)
