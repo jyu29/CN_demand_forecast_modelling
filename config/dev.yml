@@ -74,7 +74,7 @@ technical_parameters:
   train_instance_type: ml.p3.2xlarge
   train_max_run: 3600
   train_max_wait: 3600
-  train_use_spot_instances: true
+  train_use_spot_instances: false
   train_instance_count: 1
   transform_instance_type: ml.c5.18xlarge
   transform_instance_count: 1
