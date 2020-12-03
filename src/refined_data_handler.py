@@ -371,7 +371,7 @@ class refined_data_handler():
         start_time = time.time()
 
         # List MRP valid models
-        df_mrp_valid_model = self.df_model_week_mrp.loc[self.df_model_week_mrp['mrp'].isin([2, 5]), ['model_id']]
+        df_mrp_valid_model = self.df_model_week_mrp.loc[self.df_model_week_mrp['mrp'], ['model_id']]
 
         # Create df_train
         df_train = pd.merge(self.df_model_week_sales, df_mrp_valid_model)  # mrp valid filter
