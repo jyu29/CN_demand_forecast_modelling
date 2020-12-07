@@ -1,48 +1,57 @@
 """
-Python script to orcherstrate demand forecast modeling:
+Python script to orchestrate demand forecast modeling:
+- Engineers features & prepares data in DeepAR format
 - Creates Training Docker Image
-- Pops instance to  preprocess ( reformat ) model input data, train a fprophet model, then output predictions
-@author: oaitelkadi ( Ouiame Ait El Kadi )
+- Pops instance to  preprocess train a DeepAR model, then output predictions
+@author: benbouillet ( Benjamin Bouillet )
 """
 import argparse
-import boto3
-import os
-import subprocess
-import time
+import json
 
-import src.config as cf
-import sagemaker_handling.sagemaker as sgmk
+import src.sagemaker_utils as su
+import src.utils as ut
 
 
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--environment', choices=['dev','prod'], default="dev",
+    parser.add_argument('--environment', choices=['dev', 'prod', 'dev_old'], default="dev",
                         help="'dev' or 'prod', to set the right configurations")
-    parser.add_argument('--only_last', choices=['True','False'], default='True',
-                        help='Run only for last week?')
+    parser.add_argument('--list_cutoff', default=str([ut.get_current_week()]), help="List of cutoffs in format YYYYWW between brackets or 'today'")
     args = parser.parse_args()
-    
-    config_file = "conf/prod.yml" if args.environment=="prod" else "conf/dev.yml"
-    config = cf.ProgramConfiguration(config_file, "conf/functional.yml")
-    
-    # Create Docker image for training
-    print("Building Docker Image...")
-    subprocess.call(['sh', 'sagemaker_handling/build_image.sh', config.get_train_image_name(), args.environment, args.only_last])
-    
-    # Create a SageMaker training job through an API call
-    print("Creating Training Job...")
-    sg_resp = sgmk.fct_create_training_job(config)  # todo : david suggestion - add env variables to hyperparameters, checkout create_algorithm()
 
-    # Monitor the status of the launched training job
-    print("Monitoring training job status...")
-    client = boto3.client('sagemaker')
-    while True:
-        status = client.describe_training_job(TrainingJobName=sg_resp["TrainingJobArn"].split("/")[-1])['SecondaryStatus']
-        print(status)
-        if status in ['Starting', 'LaunchingMLInstances', 'PreparingTrainingStack', 'Downloading', 'DownloadingTrainingImage', 'Training', 'Uploading']:
-            time.sleep(config.get_monitor_sleep())
-        elif status == 'Completed':
-            break
-        else:
-            raise Exception('Training job has failed !')
+    # Defining variables
+    environment = args.environment
+    if args.list_cutoff == 'today':
+        list_cutoff = [ut.get_current_week()]
+    else:
+        list_cutoff = json.loads(args.list_cutoff)
+
+    for cutoff in list_cutoff:
+        assert type(cutoff) == int
+
+    # import parameters
+    params_full_path = f"config/{environment}.yml"
+    params = ut.read_yml(params_full_path)
+
+    # Getting variables for code readability below
+    run_name = params['functional_parameters']['run_name']
+    algo = params['functional_parameters']['algorithm']
+
+    # Building custom full paths
+    refined_specific_path = params['paths']['refined_specific_path']
+    params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}/"
+
+    print(f"Starting modeling for cutoff {list_cutoff} in {environment} environment with parameters:")
+    ut.pretty_print_dict(params)
+
+    # SAGEMAKER #
+    sm_handler = su.SagemakerHandler(run_name, list_cutoff, params)
+    # Generating df_jobs
+    sm_handler.generate_df_jobs()
+    # Feature generation
+    sm_handler.generate_input_data_all_cutoffs()
+    # Training Job
+    sm_handler.launch_training_jobs()
+    # Transform job
+    sm_handler.launch_transform_jobs()
