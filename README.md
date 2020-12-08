@@ -22,13 +22,14 @@ Model used - [**DeepAR**](https://docs.aws.amazon.com/sagemaker/latest/dg/deepar
 
 Reach out to us! Join the [**Slack channel**](https://join.slack.com/t/forecastunited/shared_invite/zt-jyntaf4k-j6cX_73RwBLr4DR9dN0PwQ).
 
-# Table of contents
+## Table of contents
 
-- [Usage](#usage)
-- [Development](#development)
-- [Contribute](#contribute)
+- [Usage](##usage)
+- [Development](##development)
+- [Architecture](##Architecture)
+- [Contribute](##contribute)
 
-# Usage
+## Usage
 
 * Clone the repository
 ```sh
@@ -53,7 +54,7 @@ python main.py --environment {env} --list_cutoff {list_cutoff}
 >   * or the string `today` (it will match the current week)
 
 
-# Development
+## Development
 
 * Clone the repository
 ```sh
@@ -69,8 +70,10 @@ git checkout -b myNewBranch master
 
 The whole project works from a `newFeatureBranch` > `release` > `master` logic with mandatory reviewers for pull requests to `release` and `master`.
 
+## Architecture
+Please refer to the [Architecture wiki page](https://github.com/dktunited/forecast-modeling-demand/wiki/Architecture).
 
-# Contribute
+## Contribute
 
 Please check the [**Contributing Guidelines**](https://github.com/dktunited/forecast-modeling-demand/blob/master/.github/markdown/CONTRIBUTING.md) before contributing.
 
