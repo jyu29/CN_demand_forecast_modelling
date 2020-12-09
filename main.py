@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--environment', choices=['dev', 'prod', 'dev_old'], default="dev",
                         help="'dev' or 'prod', to set the right configurations")
-    parser.add_argument('--list_cutoff', default=str([ut.get_current_week()]), help="List of cutoffs in format YYYYWW between brackets or 'today'")
+    parser.add_argument('--list_cutoff', default=str('today'), help="List of cutoffs in format YYYYWW between brackets or 'today'")
     args = parser.parse_args()
 
     # Defining variables
