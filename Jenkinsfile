@@ -1,7 +1,6 @@
 pipeline {
     agent any
     environment {
-        branch = 'develop'
         gitUrl = 'https://github.com/dktunited/forecast-modeling-demand/'
     }
     stages {
@@ -14,7 +13,7 @@ pipeline {
                 conda_env = 'forecast-modeling-demand'
             }
             steps {
-                git changelog: false, credentialsId: 'github_dktjenkins', poll: false, url: "${gitUrl}", branch: "${branch}"
+                git changelog: false, credentialsId: 'github_dktjenkins', poll: false, url: "${gitUrl}", branch: "${branch_name}"
                 sh('''
                 source ~/miniconda3/etc/profile.d/conda.sh
                 conda deactivate
