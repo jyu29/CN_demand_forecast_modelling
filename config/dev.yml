@@ -1,7 +1,6 @@
 buckets:
   refined-data: fcst-refined-demand-forecast-dev
 functional_parameters:
-  run_name: sunday-pipeline
   run_timestamp_suffix : true
   algorithm: deepAR
   cat_cols:
