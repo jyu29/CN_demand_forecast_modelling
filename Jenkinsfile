@@ -1,6 +1,6 @@
 node {
     script {
-        echo "Launching modeling for cutoff(s) $list_cutoff with run name ..."
+        echo "Launching modeling for cutoff(s) '$list_cutoff' with run name '${run_name}'..."
     }
 }
 
@@ -26,7 +26,7 @@ pipeline {
                 conda remove --name ${conda_env} --all
                 conda env create -f environment.yml
                 conda activate ${conda_env}
-                python -u main.py --environment ${run_env} --list_cutoff ${list_cutoff} --run_name ${run_name}
+                python -u main.py --environment ${run_env} --run_name ${run_name} --list_cutoff ${list_cutoff}
                 conda deactivate
                 #conda remove --name ${conda_env} --all
                 ''')
