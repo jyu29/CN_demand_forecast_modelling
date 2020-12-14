@@ -1,3 +1,9 @@
+node {
+    script {
+        echo "Launching modeling for cutoff(s) $list_cutoff with run name $run_name..."
+    }
+}
+
 pipeline {
     agent any
     environment {
