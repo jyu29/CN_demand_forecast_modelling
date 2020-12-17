@@ -66,7 +66,7 @@ technical_parameters:
   image_name_label: forecasting-deepar
   max_train_instances: 10
   max_transform_instances: 5
-  role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
+  role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-PROD
   tags:
     Key: project
     Value: demand-forecast
