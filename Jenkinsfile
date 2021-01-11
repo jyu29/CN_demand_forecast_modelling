@@ -23,8 +23,7 @@ pipeline {
                 sh('''
                 source ~/miniconda3/etc/profile.d/conda.sh
                 conda deactivate
-                conda remove --name ${conda_env} --all
-                conda env create -f environment.yml
+                conda env update -f environment.yml
                 conda activate ${conda_env}
                 python -u main.py --environment ${run_env} --run_name ${run_name} --list_cutoff ${list_cutoff}
                 conda deactivate
