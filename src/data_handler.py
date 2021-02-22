@@ -47,30 +47,30 @@ class data_handler:
         """
 
         # Data Import
-        if dh.df_model_week_sales is None:
-            dh.df_model_week_sales = dh._generate_model_week_sales()
+        if self.df_model_week_sales is None:
+            self.df_model_week_sales = self._generate_model_week_sales()
 
-        if dh.df_model_week_tree is None:
-            dh.df_model_week_tree = dh._generate_model_week_tree()
+        if self.df_model_week_tree is None:
+            self.df_model_week_tree = self._generate_model_week_tree()
 
-        if dh.df_model_week_mrp is None:
-            dh.df_model_week_mrp = dh._generate_model_week_mrp()
+        if self.df_model_week_mrp is None:
+            self.df_model_week_mrp = self._generate_model_week_mrp()
 
         # Dynamic Global features generation/import
-        min_week = dh.df_model_week_sales['week_id'].min()
-        dh.df_dyn_feat_global = generate_empty_dyn_feat_global(min_week=min_week, cutoff=dh.cutoff, future_projection=dh.prediction_length)
+        min_week = self.df_model_week_sales['week_id'].min()
+        self.df_dyn_feat_global = generate_empty_dyn_feat_global(min_week=min_week, cutoff=self.cutoff, future_projection=self.prediction_length)
         # Adding dynamic global features one by one
         ## Stores Openings
-        if dh.df_dyn_feat_global is None:
-            dh.df_store_openings = dh._generate_store_openings()
-        dh.df_dyn_feat_global = dh._add_dyn_feat_global(dh.df_dyn_feat_global,
-                                                            df_feat=dh.df_store_openings,
+        if self.df_model_week_mrp is None:
+            self.df_store_openings = self._generate_store_openings()
+        self.df_dyn_feat_global = self._add_dyn_feat_global(self.df_dyn_feat_global,
+                                                            df_feat=self.df_store_openings,
                                                             min_week=min_week,
-                                                            cutoff=dh.cutoff,
-                                                            future_weeks=dh.prediction_length)
+                                                            cutoff=self.cutoff,
+                                                            future_weeks=self.prediction_length)
 
         # Train/Predict split
-        dh.df_train, dh.df_predict = dh._generate_target_data()
+        self.df_train, self.df_predict = self._generate_target_data()
 
     def _generate_model_week_sales(self):
         df_model_week_sales = ut.read_multipart_parquet_s3(self.refined_global_bucket, self.paths['model_week_sales'])
