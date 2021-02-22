@@ -1,5 +1,6 @@
 buckets:
-  refined-data: fcst-refined-demand-forecast-dev
+  refined-data-global: fcst-refined-demand-forecast-dev
+  refined-data-specific: fcst-refined-demand-forecast-dev
 functional_parameters:
   run_timestamp_suffix : true
   algorithm: deepAR
