@@ -2,6 +2,7 @@ import datetime
 import gzip
 import io
 import pprint
+from urlparse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -115,12 +116,26 @@ def read_csv_s3(bucket, file_path, header='infer', sep=',', parse_dates=False, n
 
 def to_uri(bucket, key):
     """
-    List all files under a S3 bucket
+    Transforms bucket & key strings into S3 URI
     :param bucket: (string) name of the S3 bucket
     :param key: (string) S3 key
     :return: (string) URI format
     """
     return f's3://{bucket}/{key}'
+
+
+def from_uri(uri):
+    """
+    Transforms a S3 URI into bucket & key strings
+    :param uri: (string) URI format
+    :return bucket: (string) name of the S3 bucket
+    :return key: (string) S3 key
+    """
+    o = urlparse(uri, allow_fragments=False)
+    bucket = o.netloc
+    key = o.path
+
+    return bucket, key
 
 
 def write_df_to_csv_on_s3(df, bucket, filename, sep=',', header=True, index=False, compression=None, verbose=True):
