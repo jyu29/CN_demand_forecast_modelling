@@ -1,7 +1,15 @@
+import logging
+
 import pandas as pd
-import src.utils as ut
-from src.data_cleaning import pad_to_cutoff, history_reconstruction, check_weeks_df, generate_empty_dyn_feat_global
 from sklearn.preprocessing import LabelEncoder
+
+import src.utils as ut
+from src.data_cleaning import (check_weeks_df, generate_empty_dyn_feat_global,
+                               history_reconstruction, pad_to_cutoff)
+
+logger = logging.getLogger(__name__)
+logging.basicConfig()
+logger.setLevel(logging.INFO)
 
 
 class data_handler:
@@ -15,10 +23,12 @@ class data_handler:
     def __init__(self,
                  cutoff: int,
                  params: dict,
-                 df_model_week_sales: pd.DataFrame = None,
-                 df_model_week_tree: pd.DataFrame = None,
-                 df_model_week_mrp: pd.DataFrame = None,
-                 df_dyn_feat_global: pd.DataFrame = None
+                 static_data: dict,
+                 global_dynamic_data: dict = None
+                 # df_model_week_sales: pd.DataFrame = None,
+                 # df_model_week_tree: pd.DataFrame = None,
+                 # df_model_week_mrp: pd.DataFrame = None,
+                 # df_dyn_feat_global: pd.DataFrame = None
                  ):
 
         self.cutoff = cutoff
@@ -29,63 +39,118 @@ class data_handler:
         self.target_cluster_keys = params['functional_parameters']['target_cluster_keys']
         self.patch_covid = params['functional_parameters']['patch_covid'] 
 
-        self.df_model_week_sales = df_model_week_sales
-        self.df_model_week_tree = df_model_week_tree
-        self.df_model_week_mrp = df_model_week_mrp
+        # self.df_model_week_sales = df_model_week_sales
+        # self.df_model_week_tree = df_model_week_tree
+        # self.df_model_week_mrp = df_model_week_mrp
+
+        # Static data init
+        for dataset in static_data.keys():
+            assert isinstance(static_data[dataset], (str, pd.DataFrame)), "Value in dict `static_data` must be S3 URI or pd.DataFrame"
+        self.static_data = static_data
+
+        # Global dynamic data init
+        if global_dynamic_data:
+            for dataset in global_dynamic_data.keys():
+                assert isinstance(global_dynamic_data[dataset], (str, pd.DataFrame)), "Value in dict `static_data` must be S3 URI or pd.DataFrame"
+            self.global_dynamic_data = global_dynamic_data
 
         self.params = params
         self.refined_global_bucket = params['buckets']['refined_data_global']
-        self.paths = {'model_week_sales': f"{params['paths']['refined_global_path']}model_week_sales",
-                      'model_week_tree': f"{params['paths']['refined_global_path']}model_week_tree",
-                      'model_week_mrp': f"{params['paths']['refined_global_path']}model_week_mrp",
-                      'store_openings': f"{params['paths']['refined_global_path']}store_openings"
-                      }
+        # self.paths = {'model_week_sales': f"{params['paths']['refined_global_path']}model_week_sales",
+        #               'model_week_tree': f"{params['paths']['refined_global_path']}model_week_tree",
+        #               'model_week_mrp': f"{params['paths']['refined_global_path']}model_week_mrp",
+        #               'store_openings': f"{params['paths']['refined_global_path']}store_openings"
+        #               }
 
     def execute_data_refining_specific(self):
         """
         Data refining pipeline for specific data
         """
 
-        # Data Import
-        if self.df_model_week_sales is None:
-            self.df_model_week_sales = self._generate_model_week_sales()
+        # # Data Import
+        # if self.df_model_week_sales is None:
+        #     self.df_model_week_sales = self._generate_model_week_sales()
 
-        if self.df_model_week_tree is None:
-            self.df_model_week_tree = self._generate_model_week_tree()
+        # if self.df_model_week_tree is None:
+        #     self.df_model_week_tree = self._generate_model_week_tree()
 
-        if self.df_model_week_mrp is None:
-            self.df_model_week_mrp = self._generate_model_week_mrp()
+        # if self.df_model_week_mrp is None:
+        #     self.df_model_week_mrp = self._generate_model_week_mrp()
 
-        # Dynamic Global features generation/import
-        min_week = self.df_model_week_sales['week_id'].min()
-        self.df_dyn_feat_global = generate_empty_dyn_feat_global(min_week=min_week, cutoff=self.cutoff, future_projection=self.prediction_length)
-        # Adding dynamic global features one by one
-        ## Stores Openings
-        if self.df_model_week_mrp is None:
-            self.df_store_openings = self._generate_store_openings()
-        self.df_dyn_feat_global = self._add_dyn_feat_global(self.df_dyn_feat_global,
-                                                            df_feat=self.df_store_openings,
-                                                            min_week=min_week,
-                                                            cutoff=self.cutoff,
-                                                            future_weeks=self.prediction_length)
+        # Static data import
+        logger.debug("Starting static data import")
+        self.import_static_data()
+        logger.debug("Static data imported done.")
+
+        # Global dynamic data import
+        logger.debug("Starting global dynamic data import")
+        self.import_global_dynamic_data()
+        logger.debug("Global dynamic data imported done.")
+
+        # Specific dynamic data import
+        logger.debug("Starting specific dynamic data import")
+        self.import_specific_dynamic_data()
+        logger.debug("Global specific data imported done.")
 
         # Train/Predict split
         self.df_train, self.df_predict = self._generate_target_data()
 
-    def _generate_model_week_sales(self):
-        df_model_week_sales = ut.read_multipart_parquet_s3(self.refined_global_bucket, self.paths['model_week_sales'])
+    def import_static_data(self):
+        for dataset in self.static_data.keys():
+            if all([dataset == 'model_week_sales', isinstance(self.static_data[dataset], str)]):
+                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                self.static_data[dataset] = self._generate_model_week_sales(self.static_data[dataset])
+                logger.debug(f"Dataset {dataset} imported from S3.")
+            elif all([dataset == 'model_week_tree', isinstance(self.static_data[dataset], str)]):
+                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                self.static_data[dataset] = self._generate_model_week_tree(self.static_data[dataset])
+                logger.debug(f"Dataset {dataset} imported from S3.")
+            elif all([dataset == 'model_week_mrp', isinstance(self.static_data[dataset], str)]):
+                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                self.static_data[dataset] = self._generate_model_week_mrp(self.static_data[dataset])
+                logger.debug(f"Dataset {dataset} imported from S3.")
+
+    def import_global_dynamic_data(self):
+        if self.global_dynamic_data:
+            # Dynamic Global features generation/import
+            min_week = self.static_data['model_week_sales']['week_id'].min()
+            self.df_dyn_feat_global = generate_empty_dyn_feat_global(min_week=min_week, cutoff=self.cutoff, future_projection=self.prediction_length)
+
+            # Adding dynamic global features one by one
+            for dataset in self.global_dynamic_data.keys():
+                if isinstance(self.static_data[dataset], str):
+                    logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                    bucket, path = ut.from_uri(self.static_data[dataset])
+                    df = ut.read_multipart_parquet_s3(bucket, path)
+                    self.df_dyn_feat_global = self._add_dyn_feat_global(self.df_dyn_feat_global,
+                                                                        df_feat=df,
+                                                                        min_week=min_week,
+                                                                        cutoff=self.cutoff,
+                                                                        future_weeks=self.prediction_length)
+                    logger.debug(f"Dataset {dataset} imported from S3.")
+
+    def import_specific_dynamic_data(self):
+        pass
+
+    def _generate_model_week_sales(self, s3_uri):
+        bucket, path = ut.from_uri(s3_uri)
+        df_model_week_sales = ut.read_multipart_parquet_s3(bucket, path)
         df_model_week_sales = df_model_week_sales[df_model_week_sales['week_id'] < self.cutoff]
         df_model_week_sales.rename(columns={'date': 'ds', 'sales_quantity': 'y'}, inplace=True)
 
         return df_model_week_sales
 
-    def _generate_model_week_tree(self):
+    def _generate_model_week_tree(self, s3_uri):
+        bucket, path = ut.from_uri(s3_uri)
+        df_model_week_tree = ut.read_multipart_parquet_s3(bucket, path)
         df_model_week_tree = ut.read_multipart_parquet_s3(self.refined_global_bucket, self.paths['model_week_tree'])
         df_model_week_tree = df_model_week_tree[df_model_week_tree['week_id'] == self.cutoff]
 
         return df_model_week_tree
 
-    def _generate_model_week_mrp(self):
+    def _generate_model_week_mrp(self, s3_uri):
+        bucket, path = ut.from_uri(s3_uri)
+        df_model_week_mrp = ut.read_multipart_parquet_s3(bucket, path)
         df_model_week_mrp = ut.read_multipart_parquet_s3(self.refined_global_bucket, self.paths['model_week_mrp'])
         df_model_week_mrp = df_model_week_mrp[df_model_week_mrp['week_id'] == self.cutoff]
 
