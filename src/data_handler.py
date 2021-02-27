@@ -97,18 +97,31 @@ class data_handler:
 
     def import_static_data(self):
         for dataset in self.static_data.keys():
-            if all([dataset == 'model_week_sales', isinstance(self.static_data[dataset], str)]):
-                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                self.static_data[dataset] = self._generate_model_week_sales(self.static_data[dataset])
-                logger.debug(f"Dataset {dataset} imported from S3.")
-            elif all([dataset == 'model_week_tree', isinstance(self.static_data[dataset], str)]):
-                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                self.static_data[dataset] = self._generate_model_week_tree(self.static_data[dataset])
-                logger.debug(f"Dataset {dataset} imported from S3.")
-            elif all([dataset == 'model_week_mrp', isinstance(self.static_data[dataset], str)]):
-                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                self.static_data[dataset] = self._generate_model_week_mrp(self.static_data[dataset])
-                logger.debug(f"Dataset {dataset} imported from S3.")
+            # Model Week Sales import
+            if dataset == 'model_week_sales':
+                if isinstance(self.static_data[dataset], str):
+                    logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                    s3_uri = self.static_data[dataset]
+                    bucket, path = ut.from_uri(s3_uri)
+                    df = ut.read_multipart_parquet_s3(bucket, path)
+                    logger.debug(f"Dataset {dataset} imported from S3.")
+                else:
+                    df = self.static_data[dataset].copy()
+                df = df[df['week_id'] < self.cutoff]
+                df.rename(columns={'date': 'ds', 'sales_quantity': 'y'}, inplace=True)
+                self.static_data[dataset] = df
+            # Model Week Tree import
+            elif any([dataset == 'model_week_tree', dataset == 'model_week_mrp']):
+                if isinstance(self.static_data[dataset], str):
+                    logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                    s3_uri = self.static_data[dataset]
+                    bucket, path = ut.from_uri(s3_uri)
+                    df = ut.read_multipart_parquet_s3(bucket, path)
+                    logger.debug(f"Dataset {dataset} imported from S3.")
+                else:
+                    df = self.static_data[dataset].copy()
+                df = df[df['week_id'] == self.cutoff]
+                self.static_data[dataset] = df
 
     def import_global_dynamic_data(self):
         if self.global_dynamic_data:
@@ -118,7 +131,7 @@ class data_handler:
 
             # Adding dynamic global features one by one
             for dataset in self.global_dynamic_data.keys():
-                if isinstance(self.static_data[dataset], str):
+                if isinstance(self.global_dynamic_data[dataset], str):
                     logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
                     bucket, path = ut.from_uri(self.static_data[dataset])
                     df = ut.read_multipart_parquet_s3(bucket, path)
@@ -132,36 +145,13 @@ class data_handler:
     def import_specific_dynamic_data(self):
         pass
 
-    def _generate_model_week_sales(self, s3_uri):
-        bucket, path = ut.from_uri(s3_uri)
-        df_model_week_sales = ut.read_multipart_parquet_s3(bucket, path)
-        df_model_week_sales = df_model_week_sales[df_model_week_sales['week_id'] < self.cutoff]
-        df_model_week_sales.rename(columns={'date': 'ds', 'sales_quantity': 'y'}, inplace=True)
-
-        return df_model_week_sales
-
-    def _generate_model_week_tree(self, s3_uri):
-        bucket, path = ut.from_uri(s3_uri)
-        df_model_week_tree = ut.read_multipart_parquet_s3(bucket, path)
-        df_model_week_tree = ut.read_multipart_parquet_s3(self.refined_global_bucket, self.paths['model_week_tree'])
-        df_model_week_tree = df_model_week_tree[df_model_week_tree['week_id'] == self.cutoff]
-
-        return df_model_week_tree
-
-    def _generate_model_week_mrp(self, s3_uri):
-        bucket, path = ut.from_uri(s3_uri)
-        df_model_week_mrp = ut.read_multipart_parquet_s3(bucket, path)
-        df_model_week_mrp = ut.read_multipart_parquet_s3(self.refined_global_bucket, self.paths['model_week_mrp'])
-        df_model_week_mrp = df_model_week_mrp[df_model_week_mrp['week_id'] == self.cutoff]
-
-        return df_model_week_mrp
-
     def _generate_target_data(self):
         # List MRP valid models
-        df_mrp_valid_model = self.df_model_week_mrp.loc[self.df_model_week_mrp['is_mrp_active'], ['model_id']]
+        df_mrp_valid_model = self.static_data['model_week_mrp']
+        df_mrp_valid_model = df_mrp_valid_model.loc[df_mrp_valid_model['is_mrp_active'], ['model_id']]
 
         # Create df_train
-        df_train = pd.merge(self.df_model_week_sales, df_mrp_valid_model)  # mrp valid filter
+        df_train = pd.merge(self.static_data['model_week_sales'], df_mrp_valid_model)  # mrp valid filter
         df_train = pad_to_cutoff(df_train, self.cutoff)          # pad sales to cutoff
 
         # Rec histo
