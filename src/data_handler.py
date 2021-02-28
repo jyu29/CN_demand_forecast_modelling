@@ -107,6 +107,7 @@ class data_handler:
                     logger.debug(f"Dataset {dataset} imported from S3.")
                 else:
                     df = self.static_data[dataset].copy()
+                df['ds'] = pd.to_datetime(df['ds'])
                 df = df[df['week_id'] < self.cutoff]
                 df.rename(columns={'date': 'ds', 'sales_quantity': 'y'}, inplace=True)
                 self.static_data[dataset] = df
@@ -135,12 +136,14 @@ class data_handler:
                     logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
                     bucket, path = ut.from_uri(self.static_data[dataset])
                     df = ut.read_multipart_parquet_s3(bucket, path)
-                    self.df_dyn_feat_global = self._add_dyn_feat_global(self.df_dyn_feat_global,
-                                                                        df_feat=df,
-                                                                        min_week=min_week,
-                                                                        cutoff=self.cutoff,
-                                                                        future_weeks=self.prediction_length)
                     logger.debug(f"Dataset {dataset} imported from S3.")
+                else:
+                    df = self.global_dynamic_data[dataset]
+                self.df_dyn_feat_global = self._add_dyn_feat_global(self.df_dyn_feat_global,
+                                                                    df_feat=df,
+                                                                    min_week=min_week,
+                                                                    cutoff=self.cutoff,
+                                                                    future_weeks=self.prediction_length)
 
     def import_specific_dynamic_data(self):
         pass
@@ -156,15 +159,15 @@ class data_handler:
 
         # Rec histo
         df_train = history_reconstruction(df_train,
-                                          self.df_model_week_sales,
-                                          self.df_model_week_tree,
+                                          self.static_data['model_week_sales'],
+                                          self.static_data['model_week_tree'],
                                           self.min_ts_len,
                                           self.patch_covid_weeks,
                                           self.target_cluster_keys,
                                           self.patch_covid)
 
         # Add and encode cat features
-        df_train = pd.merge(df_train, self.df_model_week_tree[['model_id'] + self.cat_cols])
+        df_train = pd.merge(df_train, self.static_data['model_week_tree'][['model_id'] + self.cat_cols])
 
         for c in self.cat_cols:
             le = LabelEncoder()
