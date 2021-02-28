@@ -2,7 +2,7 @@ import datetime
 import gzip
 import io
 import pprint
-from urlparse import urlparse
+from uritools import urisplit
 
 import numpy as np
 import pandas as pd
@@ -131,8 +131,8 @@ def from_uri(uri):
     :return bucket: (string) name of the S3 bucket
     :return key: (string) S3 key
     """
-    o = urlparse(uri, allow_fragments=False)
-    bucket = o.netloc
+    o = urisplit(uri)
+    bucket = o.scheme
     key = o.path
 
     return bucket, key
