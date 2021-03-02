@@ -5,7 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 
 import src.utils as ut
 from src.data_cleaning import (check_weeks_df, generate_empty_dyn_feat_global,
-                               history_reconstruction, pad_to_cutoff)
+                               cold_start_rec, pad_to_cutoff)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -37,7 +37,7 @@ class data_handler:
         self.min_ts_len = params['functional_parameters']['min_ts_len']
         self.patch_covid_weeks = params['functional_parameters']['patch_covid_weeks']
         self.target_cluster_keys = params['functional_parameters']['target_cluster_keys']
-        self.patch_covid = params['functional_parameters']['patch_covid'] 
+        self.patch_covid = params['functional_parameters']['patch_covid']
 
         # self.df_model_week_sales = df_model_week_sales
         # self.df_model_week_tree = df_model_week_tree
@@ -67,16 +67,13 @@ class data_handler:
         Data refining pipeline for specific data
         """
 
-        # # Data Import
-        # if self.df_model_week_sales is None:
-        #     self.df_model_week_sales = self._generate_model_week_sales()
+        # Static all data
+        self.import_all_data()
 
-        # if self.df_model_week_tree is None:
-        #     self.df_model_week_tree = self._generate_model_week_tree()
+        # Train/Predict split
+        self.df_train, self.df_predict = self._generate_target_data()
 
-        # if self.df_model_week_mrp is None:
-        #     self.df_model_week_mrp = self._generate_model_week_mrp()
-
+    def import_all_data(self):
         # Static data import
         logger.debug("Starting static data import")
         self.import_static_data()
@@ -92,9 +89,6 @@ class data_handler:
         self.import_specific_dynamic_data()
         logger.debug("Global specific data imported done.")
 
-        # Train/Predict split
-        self.df_train, self.df_predict = self._generate_target_data()
-
     def import_static_data(self):
         for dataset in self.static_data.keys():
             # Model Week Sales import
@@ -107,9 +101,9 @@ class data_handler:
                     logger.debug(f"Dataset {dataset} imported from S3.")
                 else:
                     df = self.static_data[dataset].copy()
-                df['ds'] = pd.to_datetime(df['ds'])
+                df['date'] = pd.to_datetime(df['date'])
                 df = df[df['week_id'] < self.cutoff]
-                df.rename(columns={'date': 'ds', 'sales_quantity': 'y'}, inplace=True)
+                df.rename(columns={'sales_quantity': 'y'}, inplace=True)
                 self.static_data[dataset] = df
             # Model Week Tree import
             elif any([dataset == 'model_week_tree', dataset == 'model_week_mrp']):
@@ -153,27 +147,33 @@ class data_handler:
         df_mrp_valid_model = self.static_data['model_week_mrp']
         df_mrp_valid_model = df_mrp_valid_model.loc[df_mrp_valid_model['is_mrp_active'], ['model_id']]
 
-        # Create df_train
-        df_train = pd.merge(self.static_data['model_week_sales'], df_mrp_valid_model)  # mrp valid filter
-        df_train = pad_to_cutoff(df_train, self.cutoff)          # pad sales to cutoff
+        # Create df_predict
+        df_predict = pd.merge(self.static_data['model_week_sales'], df_mrp_valid_model)  # mrp valid filter
+        df_predict = pad_to_cutoff(df_predict, self.cutoff)          # pad sales to cutoff
 
         # Rec histo
-        df_train = history_reconstruction(df_train,
-                                          self.static_data['model_week_sales'],
-                                          self.static_data['model_week_tree'],
-                                          self.min_ts_len,
-                                          self.patch_covid_weeks,
-                                          self.target_cluster_keys,
-                                          self.patch_covid)
+        df_predict = cold_start_rec(df_predict,
+                                    self.static_data['model_week_sales'],
+                                    self.static_data['model_week_tree'],
+                                    self.min_ts_len,
+                                    self.patch_covid_weeks,
+                                    self.target_cluster_keys,
+                                    self.patch_covid)
+
+        # Add future weeks to df_predict
+        df_predict = self._add_future_weeks(df_predict)
 
         # Add and encode cat features
-        df_train = pd.merge(df_train, self.static_data['model_week_tree'][['model_id'] + self.cat_cols])
+        df_predict = pd.merge(df_predict, self.static_data['model_week_tree'][['model_id'] + self.cat_cols])
 
         for c in self.cat_cols:
             le = LabelEncoder()
-            df_train[c] = le.fit_transform(df_train[c])
+            df_predict[c] = le.fit_transform(df_predict[c])
 
-        return df_train, df_train
+        # Create df_train from df_predict
+        df_train = df_predict[df_predict['week_id'] < self.cutoff]
+
+        return df_train, df_predict
 
     def _add_dyn_feat_global(self, df_dyn_feat_global, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):
         check_weeks_df(df_feat, min_week, cutoff, future_weeks, week_column=week_column)
@@ -182,9 +182,18 @@ class data_handler:
 
         return df_with_new_feat
 
-    def _generate_store_openings(self, path=None):
-        if path is None:
-            path = self.paths['store_openings']
-        df_store_openings = ut.read_multipart_parquet_s3(self.refined_global_bucket, path)
+    def _add_future_weeks(self, df):
+        cutoff = self.cutoff
+        prediction_length = self.prediction_length
+        model_ids = df['model_id'].unique()
 
-        return df_store_openings
+        future_date_range = pd.date_range(start=ut.week_id_to_date(cutoff), periods=prediction_length, freq='W')
+        future_date_range_weeks = [ut.date_to_week_id(w) for w in future_date_range]
+
+        w, m = pd.core.reshape.util.cartesian_product([future_date_range_weeks, model_ids])
+
+        future_model_week = pd.DataFrame({'model_id': m, 'week_id': w})
+
+        df = df.append(future_model_week)
+
+        return df

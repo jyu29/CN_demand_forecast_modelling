@@ -13,17 +13,17 @@ def pad_to_cutoff(df_ts, cutoff, col='y'):
     test_cutoff_date = week_id_to_date(cutoff)
     md, cu = pd.core.reshape.util.cartesian_product([models, [cutoff]])
     df_ts_tail = pd.DataFrame({"model_id": md, "week_id": cu})
-    df_ts_tail['ds'] = test_cutoff_date
+    df_ts_tail['date'] = test_cutoff_date
     df_ts_tail[col] = 0
     df = df_ts.append(df_ts_tail)
 
     # Backfill for the cutoff week
-    df = df.set_index('ds').groupby('model_id').resample('1W').asfreq().fillna(0)
+    df = df.set_index('date').groupby('model_id').resample('1W').asfreq().fillna(0)
 
     # Getting the df back to its original form
     df.drop(['model_id'], axis=1, inplace=True)
     df.reset_index(inplace=True)
-    df['week_id'] = date_to_week_id(df['ds'])
+    df['week_id'] = date_to_week_id(df['date'])
 
     # Getting rid of the cutoff week
     df = df[df['week_id'] < cutoff]
@@ -32,14 +32,14 @@ def pad_to_cutoff(df_ts, cutoff, col='y'):
     return df
 
 
-def history_reconstruction(df,
-                           df_model_week_sales,
-                           df_model_week_tree,
-                           min_ts_len,
-                           patch_covid_weeks,
-                           target_cluster_keys=['family_label'],
-                           patch_covid=True
-                           ):
+def cold_start_rec(df,
+                   df_model_week_sales,
+                   df_model_week_tree,
+                   min_ts_len,
+                   patch_covid_weeks,
+                   target_cluster_keys=['family_label'],
+                   patch_covid=True
+                   ):
 
     # Create a complete TS dataframe
     all_model = df['model_id'].sort_values().unique()
@@ -53,7 +53,7 @@ def history_reconstruction(df,
     complete_ts = pd.DataFrame({'model_id': m, 'week_id': w})
 
     # Add dates
-    complete_ts['ds'] = week_id_to_date(complete_ts['week_id'])
+    complete_ts['date'] = week_id_to_date(complete_ts['week_id'])
 
     # Add cluster_keys info from df_model_week_tree
     complete_ts = pd.merge(complete_ts, df_model_week_tree[['model_id'] + target_cluster_keys], how='left')
@@ -66,7 +66,7 @@ def history_reconstruction(df,
     # Calculate the average sales per cluster and week from df_model_week_sales
     all_sales = pd.merge(df_model_week_sales, df_model_week_tree[['model_id'] + target_cluster_keys], how='left')
     all_sales.dropna(subset=target_cluster_keys, inplace=True)
-    all_sales = all_sales.groupby(target_cluster_keys + ['week_id', 'ds']) \
+    all_sales = all_sales.groupby(target_cluster_keys + ['week_id', 'date']) \
         .agg(mean_cluster_y=('y', 'mean')) \
         .reset_index()
 
@@ -119,18 +119,18 @@ def history_reconstruction(df,
     ts_start_end_date = complete_ts \
         .loc[complete_ts['y'].notnull()] \
         .groupby(['model_id']) \
-        .agg(start_date=('ds', 'min'),
-             end_date=('ds', 'max')) \
+        .agg(start_date=('date', 'min'),
+             end_date=('date', 'max')) \
         .reset_index()
 
     complete_ts = pd.merge(complete_ts, ts_start_end_date, how='left')
 
-    complete_ts['age'] = ((pd.to_datetime(complete_ts['ds']) -
+    complete_ts['age'] = ((pd.to_datetime(complete_ts['date']) -
                            pd.to_datetime(complete_ts['start_date'])) /
                           np.timedelta64(1, 'W')).astype(int) + 1
 
     complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) -
-                              pd.to_datetime(complete_ts['ds'])) /
+                              pd.to_datetime(complete_ts['date'])) /
                              np.timedelta64(1, 'W')).astype(int) + 1
 
     # Estimate the implementation period: while fake y > y
