@@ -70,8 +70,9 @@ class data_handler:
         # Static all data
         self.import_all_data()
 
-        # Train/Predict split
-        self.df_train, self.df_predict = self._generate_target_data()
+        # Refining specific
+        self.df_target, self.df_static_data, self.df_dynamic_data = self.refining_specific()
+
 
     def import_all_data(self):
         # Static data import
@@ -89,96 +90,117 @@ class data_handler:
         self.import_specific_dynamic_data()
         logger.debug("Global specific data imported done.")
 
+    def refining_specific(self):
+        # Sales refining
+        df_sales = self.static_data['model_week_sales']
+        df_sales['date'] = pd.to_datetime(df_sales['date'])
+        df_sales = df_sales[df_sales['week_id'] < self.cutoff]
+        df_sales.rename(columns={'sales_quantity': 'y'}, inplace=True)
+        self.static_data['model_week_sales'] = df_sales
+
+        # MRP refining
+        df_mrp = self.static_data['model_week_mrp']
+        df_mrp = df_mrp[df_mrp['week_id'] == self.cutoff]
+        self.static_data['model_week_mrp'] = df_mrp
+
+        # Tree refining
+        df_tree = self.static_data['model_week_tree']
+        df_tree = df_tree[df_tree['week_id'] == self.cutoff]
+        self.static_data['model_week_tree'] = df_tree
+
+        # Limiting Sales data to MRP active models
+        df_sales = pd.merge(df_sales, df_mrp.loc[df_mrp['is_mrp_active'], ['model_id']])
+
+        # Pad to cutoff Sales data
+        df_sales = pad_to_cutoff(df_sales, self.cutoff)
+
+        # Cold start reconstruction
+        df_sales = cold_start_rec(df_sales,
+                                  self.static_data['model_week_sales'],
+                                  df_tree,
+                                  self.min_ts_len,
+                                  self.patch_covid_weeks,
+                                  self.target_cluster_keys,
+                                  self.patch_covid)
+
+        # Creating df_target
+        df_target = df_sales[['model_id', 'week_id', 'y']]
+
+        # Creating df_static_data
+        df_static_data = df_tree[self.cat_cols]
+
+        # Creating df_dynamic_data
+        min_week = df_sales['week_id'].min()
+        df_dynamic_data = generate_empty_dyn_feat_global(df_target,
+                                                         min_week=min_week,
+                                                         cutoff=self.cutoff,
+                                                         future_projection=self.prediction_length
+                                                         )
+
+        # Adding is_rec dynamic feat
+        df_is_rec = df_sales[['model_id', 'date', 'week_id', 'is_rec']]
+        models = df_is_rec['model_id'].unique()
+        dates = pd.date_range(start=ut.week_id_to_date(self.cutoff), periods=self.prediction_length, freq='W')
+        m, d = pd.core.reshape.util.cartesian_product([models, dates])
+        df_is_rec_future = pd.DataFrame({"model_id": m, "date": d})
+        df_is_rec_future['week_id'] = ut.date_to_week_id(df_is_rec_future['date'])
+        df_is_rec_future['is_rec'] = 0
+        df_is_rec = df_is_rec.append(df_is_rec_future)
+        df_is_rec = df_is_rec[['model_id', 'week_id', 'is_rec']]
+
+        df_dynamic_data = self._add_dyn_feat(df_dynamic_data,
+                                             df_feat=df_is_rec,
+                                             min_week=min_week,
+                                             cutoff=self.cutoff,
+                                             future_weeks=self.prediction_length)
+
+        # Adding provided dynamic features
+        if self.global_dynamic_data:
+            for dataset in self.global_dynamic_data.keys():
+                df_dynamic_data = self._add_dyn_feat(df_dynamic_data,
+                                                     df_feat=self.global_dynamic_data[dataset],
+                                                     min_week=min_week,
+                                                     cutoff=self.cutoff,
+                                                     future_weeks=self.prediction_length)
+                
+        return df_target, df_static_data, df_dynamic_data
+
     def import_static_data(self):
         for dataset in self.static_data.keys():
-            # Model Week Sales import
-            if dataset == 'model_week_sales':
-                if isinstance(self.static_data[dataset], str):
-                    logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                    s3_uri = self.static_data[dataset]
-                    bucket, path = ut.from_uri(s3_uri)
-                    df = ut.read_multipart_parquet_s3(bucket, path)
-                    logger.debug(f"Dataset {dataset} imported from S3.")
-                else:
-                    df = self.static_data[dataset].copy()
-                df['date'] = pd.to_datetime(df['date'])
-                df = df[df['week_id'] < self.cutoff]
-                df.rename(columns={'sales_quantity': 'y'}, inplace=True)
-                self.static_data[dataset] = df
-            # Model Week Tree import
-            elif any([dataset == 'model_week_tree', dataset == 'model_week_mrp']):
-                if isinstance(self.static_data[dataset], str):
-                    logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                    s3_uri = self.static_data[dataset]
-                    bucket, path = ut.from_uri(s3_uri)
-                    df = ut.read_multipart_parquet_s3(bucket, path)
-                    logger.debug(f"Dataset {dataset} imported from S3.")
-                else:
-                    df = self.static_data[dataset].copy()
-                df = df[df['week_id'] == self.cutoff]
-                self.static_data[dataset] = df
+            if isinstance(self.static_data[dataset], str):
+                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                s3_uri = self.static_data[dataset]
+                bucket, path = ut.from_uri(s3_uri)
+                self.static_data[dataset] = ut.read_multipart_parquet_s3(bucket, path)
+                logger.debug(f"Dataset {dataset} imported from S3.")
 
     def import_global_dynamic_data(self):
-        if self.global_dynamic_data:
-            # Dynamic Global features generation/import
-            min_week = self.static_data['model_week_sales']['week_id'].min()
-            self.df_dyn_feat_global = generate_empty_dyn_feat_global(min_week=min_week, cutoff=self.cutoff, future_projection=self.prediction_length)
-
-            # Adding dynamic global features one by one
-            for dataset in self.global_dynamic_data.keys():
-                if isinstance(self.global_dynamic_data[dataset], str):
-                    logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                    bucket, path = ut.from_uri(self.static_data[dataset])
-                    df = ut.read_multipart_parquet_s3(bucket, path)
-                    logger.debug(f"Dataset {dataset} imported from S3.")
-                else:
-                    df = self.global_dynamic_data[dataset]
-                self.df_dyn_feat_global = self._add_dyn_feat_global(self.df_dyn_feat_global,
-                                                                    df_feat=df,
-                                                                    min_week=min_week,
-                                                                    cutoff=self.cutoff,
-                                                                    future_weeks=self.prediction_length)
+        for dataset in self.global_dynamic_data.keys():
+            if isinstance(self.global_dynamic_data[dataset], str):
+                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                bucket, path = ut.from_uri(self.static_data[dataset])
+                self.global_dynamic_data[dataset] = ut.read_multipart_parquet_s3(bucket, path)
+                logger.debug(f"Dataset {dataset} imported from S3.")
 
     def import_specific_dynamic_data(self):
         pass
 
-    def _generate_target_data(self):
-        # List MRP valid models
-        df_mrp_valid_model = self.static_data['model_week_mrp']
-        df_mrp_valid_model = df_mrp_valid_model.loc[df_mrp_valid_model['is_mrp_active'], ['model_id']]
-
-        # Create df_predict
-        df_predict = pd.merge(self.static_data['model_week_sales'], df_mrp_valid_model)  # mrp valid filter
-        df_predict = pad_to_cutoff(df_predict, self.cutoff)          # pad sales to cutoff
-
-        # Rec histo
-        df_predict = cold_start_rec(df_predict,
-                                    self.static_data['model_week_sales'],
-                                    self.static_data['model_week_tree'],
-                                    self.min_ts_len,
-                                    self.patch_covid_weeks,
-                                    self.target_cluster_keys,
-                                    self.patch_covid)
-
-        # Add future weeks to df_predict
-        df_predict = self._add_future_weeks(df_predict)
-
-        # Add and encode cat features
-        df_predict = pd.merge(df_predict, self.static_data['model_week_tree'][['model_id'] + self.cat_cols])
-
-        for c in self.cat_cols:
-            le = LabelEncoder()
-            df_predict[c] = le.fit_transform(df_predict[c])
-
-        # Create df_train from df_predict
-        df_train = df_predict[df_predict['week_id'] < self.cutoff]
-
-        return df_train, df_predict
-
-    def _add_dyn_feat_global(self, df_dyn_feat_global, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):
+    def _add_dyn_feat(self, df_dynamic_data, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):  #, models=None):
+        # Checks
         check_weeks_df(df_feat, min_week, cutoff, future_weeks, week_column=week_column)
 
-        df_with_new_feat = pd.merge(df_dyn_feat_global, df_feat, left_index=True, right_on=week_column)
+        if 'model_id' not in df_feat.columns:
+            # assert models is not None, "If `df_feat` is a global dynamic feature, you must provide `models` with a pd.DataFrame of expected models with 'model_id' column"
+            models = pd.DataFrame({'model_id': df_dynamic_data['model_id'].unique()})
+            df_feat = df_feat.merge(models, how='cross')
+
+        # Checking if `model_id` and `week_id` lists match in both df_dynamic_data and df_feat
+        assert len(set(df_dynamic_data['model_id'].unique()) - set(df_feat['model_id'].unique())) == 0,\
+            "Mismatch in model_id list between the dynamic feature and the sales dataset"
+        assert len(set(df_dynamic_data['week_id'].unique()) - set(df_feat['week_id'].unique())) == 0,\
+            "Mismatch in week_id list between the dynamic feature and the sales dataset"
+
+        df_with_new_feat = pd.merge(df_dynamic_data, df_feat, on=['week_id', 'model_id'])
 
         return df_with_new_feat
 

@@ -192,9 +192,13 @@ def generate_expected_week_range(min_week, cutoff, future_weeks):
     return expected_week_range
 
 
-def generate_empty_dyn_feat_global(min_week, cutoff, future_projection):
+def generate_empty_dyn_feat_global(df_sales, min_week, cutoff, future_projection):
     expected_week_range = generate_expected_week_range(min_week, cutoff, future_projection)
+    expected_models = df_sales['model_id'].unique()
 
-    df_empty_dyn_feat_global = pd.DataFrame({'week_id': expected_week_range}).set_index('week_id')
+    m, w = pd.core.reshape.util.cartesian_product([expected_models, expected_week_range])
+
+    df_empty_dyn_feat_global = pd.DataFrame({'week_id': w,
+                                             'model_id': m})
 
     return df_empty_dyn_feat_global
