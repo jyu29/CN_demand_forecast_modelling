@@ -73,6 +73,8 @@ class data_handler:
         # Refining specific
         self.df_target, self.df_static_data, self.df_dynamic_data = self.refining_specific()
 
+        # DeepAR Formatting
+        self.df_train, self.df_predict = self.deepar_formatting()
 
     def import_all_data(self):
         # Static data import
@@ -164,6 +166,24 @@ class data_handler:
                                                      future_weeks=self.prediction_length)
                 
         return df_target, df_static_data, df_dynamic_data
+
+    def deepar_formatting(self, df_target, df_static_data, df_dynamic_data):
+        min_week = df_target['week_id'].min()
+        dyn_cols = list(set(df_dynamic_data.columns) - set(['week_id', 'model_id']))
+
+        # Adding static data
+        df_predict = df_target.merge(df_static_data[['model_id'] + self.cat_cols], on=['model_id'], how='left')
+        for c in self.cat_cols:
+            le = LabelEncoder()
+            df_predict[c] = le.fit_transform(df_predict[c])
+
+        # Adding dynamic data
+        df_predict = df_predict.merge(df_dynamic_data, on=['week_id', 'model_id'], how='left')
+
+        # Generating df_train from df_predict
+        df_train = df_predict[df_predict['week_id'] < self.cutoff]
+
+
 
     def import_static_data(self):
         for dataset in self.static_data.keys():
