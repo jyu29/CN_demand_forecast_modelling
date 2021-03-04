@@ -74,7 +74,11 @@ class data_handler:
         self.df_target, self.df_static_data, self.df_dynamic_data = self.refining_specific()
 
         # DeepAR Formatting
-        self.df_train, self.df_predict = self.deepar_formatting()
+        self.train_jsonline, self.predict_jsonline = self.deepar_formatting(self.df_target, self.df_static_data, self.df_dynamic_data)
+
+        # Saving jsonline files on S3
+        ut.write_str_to_file_on_s3(self.train_jsonline, 'fcst-workspace', 'BBOUIL23/test/train.json')
+        ut.write_str_to_file_on_s3(self.predict_jsonline, 'fcst-workspace', 'BBOUIL23/test/predict.json')
 
     def import_all_data(self):
         # Static data import
@@ -169,7 +173,7 @@ class data_handler:
                                                      min_week=min_week,
                                                      cutoff=self.cutoff,
                                                      future_weeks=self.prediction_length)
-                
+
         return df_target, df_static_data, df_dynamic_data
 
     def deepar_formatting(self, df_target, df_static_data, df_dynamic_data):
@@ -183,8 +187,8 @@ class data_handler:
         # Adding prediction weeks necessary for dynamic features in df_predict
         df_predict = self._add_future_weeks(df_target).merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
         df_predict.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
-        # Building data `start_date` & `target`
-        df_predict = df_predict.groupby(by=['model_id'], sort=False).agg(start_date=('week_id', min),
+        # Building data `start` & `target`
+        df_predict = df_predict.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                                                                          target=('y', lambda x: list(x.dropna())))
         # Adding categorical features
         df_predict = df_predict.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
@@ -196,26 +200,39 @@ class data_handler:
         df_dynamic_data_predict['dynamic_feat'] = df_dynamic_data_predict.values.tolist()
         # Adding dynamic features
         df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']], left_index=True, right_index=True, how='left')
+        df_predict.reset_index(inplace=True)
 
         # Building df_train
         # Limiting dataset to avoid any future data
         df_train = df_target[df_target['week_id'] < self.cutoff]
-        # Building data `start_date` & `target`
+        df_dynamic_data_train = df_dynamic_data[df_dynamic_data['week_id'] < self.cutoff]
+        # Building data `start` & `target`
         df_train.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
-        df_train = df_train.groupby(by=['model_id'], sort=False).agg(start_date=('week_id', min),
+        df_train = df_train.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                                                                      target=('y', lambda x: list(x.dropna())))
         # Adding categorical features
         df_train = df_train.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
         # Concatenating dynamic features in list format
-        df_dynamic_data_train = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
+        df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
             .agg(is_rec=('is_rec', list),
                  perc_store_open=('perc_store_open', list))
         df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
         # Adding dynamic features
         df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']], left_index=True, right_index=True, how='left')
+        # Shuffling df_train
+        df_train = df_train.sample(frac=1)
+        df_train.reset_index(inplace=True)
 
-        return df_train, df_predict
+        # Converting to jsonline
+        train_jsonline = df_train.to_json(orient='records', lines=True)
+        predict_jsonline = df_predict.to_json(orient='records', lines=True)
+
+        # Checking jsonline datasets
+        self.check_json_line(train_jsonline)
+        self.check_json_line(predict_jsonline, future_proj_len=52)
+
+        return train_jsonline, predict_jsonline
 
     def import_static_data(self):
         for dataset in self.static_data.keys():
@@ -271,3 +288,42 @@ class data_handler:
         df = df.append(future_model_week)
 
         return df
+
+    def check_json_line(self, jsonline, future_proj_len=0):
+        df = pd.read_json(jsonline, orient='records', lines=True)
+
+        # Test if target >= min_ts_len
+        df['target_len'] = df.apply(lambda x: len(x['target']), axis=1)
+        test = df['target_len'] >= self.min_ts_len
+        assert all(test.values), 'Some models have a `target` less than `min_ts_len`'
+
+        # Test if target length is right
+        df['target_len_test'] = df.apply(lambda x: ut.date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')) == self.cutoff, axis=1)
+        assert all(df['target_len_test'].values), "Some models have a 'target' length which doesn't match with the 'start' date"
+
+        if 'cat' in df.columns:
+            # Test if right number of categorical features
+            df['cat_feat_nb'] = df.apply(lambda x: len(x['cat']), axis=1)
+            test = df['cat_feat_nb'] == len(self.cat_cols)
+            assert all(test.values), "Some models don't have the right number of categorical features"
+
+        if 'dynamic_feat' in df.columns:
+            nb_dyn_feat = len(self.global_dynamic_data)
+            # Adding one dynamic feature as `is_rec` is defined during refining
+            nb_dyn_feat += 1
+
+            # Test if right number of dynamic features
+            df['dyn_feat_nb'] = df.apply(lambda x: len(x['dynamic_feat']), axis=1)
+            test = df[['dyn_feat_nb']] == nb_dyn_feat
+            assert all(test.values), "Some models don't have the right number of dynamic features"
+
+            # Test if right length of dynamic features
+            test_dict = {}
+            for i in range(nb_dyn_feat):
+                df[f'dyn_feat_{i}_len'] = df.apply(lambda x: len(x['dynamic_feat'][i]), axis=1)
+                df[f'dyn_feat_{i}_len_test'] = df[f'dyn_feat_{i}_len'] == df['target_len'] + future_proj_len
+                test_dict[i] = f'dyn_feat_{i}_len_test'
+
+            for i in test_dict.keys():
+                assert df[df[test_dict[i]]].shape[0] == df.shape[0], \
+                    f"Some models don't have the right dynamic feature length for feature {i}"
