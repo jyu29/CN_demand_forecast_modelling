@@ -57,6 +57,7 @@ class data_handler:
         self.params = params
         self.refined_global_bucket = params['buckets']['refined_data_global']
         self.refined_specific_bucket = params['buckets']['refined_data_specific']
+        self.path = {}
         self.path['train_path'] = params['functional_parameters']['train_path']
         self.path['predict_path'] = params['functional_parameters']['predict_path']
 
