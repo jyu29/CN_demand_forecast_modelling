@@ -185,3 +185,18 @@ def read_multipart_parquet_s3(bucket, dir_path, prefix_filename='part-'):
     data = pq.ParquetDataset(s3_uri, filesystem=fs).read().to_pandas(date_as_object=False)
 
     return data
+
+
+def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
+    """
+    Write a string as a file on a S3 bucket.
+    :param string: (str) 
+    :param bucket: (string) S3 source bucket
+    :param dir_path: (string) full path to the folder that contains all parts within this S3 bucket
+    starting with this value will be loaded
+    :return: (pandas DataFrame) data loaded
+    """
+    resp = boto3.resource('s3').Object(bucket, dir_path).put(Body=string)
+
+    if verbose:
+        return resp
