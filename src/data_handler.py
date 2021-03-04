@@ -56,11 +56,9 @@ class data_handler:
 
         self.params = params
         self.refined_global_bucket = params['buckets']['refined_data_global']
-        # self.paths = {'model_week_sales': f"{params['paths']['refined_global_path']}model_week_sales",
-        #               'model_week_tree': f"{params['paths']['refined_global_path']}model_week_tree",
-        #               'model_week_mrp': f"{params['paths']['refined_global_path']}model_week_mrp",
-        #               'store_openings': f"{params['paths']['refined_global_path']}store_openings"
-        #               }
+        self.refined_specific_bucket = params['buckets']['refined_data_specific']
+        self.path['train_path'] = params['functional_parameters']['train_path']
+        self.path['predict_path'] = params['functional_parameters']['predict_path']
 
     def execute_data_refining_specific(self):
         """
@@ -77,8 +75,8 @@ class data_handler:
         self.train_jsonline, self.predict_jsonline = self.deepar_formatting(self.df_target, self.df_static_data, self.df_dynamic_data)
 
         # Saving jsonline files on S3
-        ut.write_str_to_file_on_s3(self.train_jsonline, 'fcst-workspace', 'BBOUIL23/test/train.json')
-        ut.write_str_to_file_on_s3(self.predict_jsonline, 'fcst-workspace', 'BBOUIL23/test/predict.json')
+        ut.write_str_to_file_on_s3(self.train_jsonline, self.bucket['refined_data_specific'], self.path['train_path'])
+        ut.write_str_to_file_on_s3(self.predict_jsonline, self.bucket['refined_data_specific'], self.path['train_path'])
 
     def import_all_data(self):
         # Static data import
