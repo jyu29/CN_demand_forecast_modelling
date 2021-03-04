@@ -92,6 +92,11 @@ class data_handler:
         self.import_specific_dynamic_data()
         logger.debug("Global specific data imported done.")
 
+        # Specific dynamic data import
+        logger.debug("Starting specific dynamic data import")
+        self.import_specific_dynamic_data()
+        logger.debug("Global specific data imported done.")
+
     def refining_specific(self):
         # Sales refining
         df_sales = self.static_data['model_week_sales']
@@ -169,64 +174,48 @@ class data_handler:
 
     def deepar_formatting(self, df_target, df_static_data, df_dynamic_data):
         # Label Encode Categorical features
-        for c in dh.cat_cols:
+        for c in self.cat_cols:
             le = LabelEncoder()
             df_static_data[c] = le.fit_transform(df_static_data[c])
-        df_static_data['cat'] = df_static_data[dh.cat_cols].values.tolist()
+        df_static_data['cat'] = df_static_data[self.cat_cols].values.tolist()
 
         # Building df_predict
-        df_predict = dh._add_future_weeks(df_target).merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
-
+        # Adding prediction weeks necessary for dynamic features in df_predict
+        df_predict = self._add_future_weeks(df_target).merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
         df_predict.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
+        # Building data `start_date` & `target`
         df_predict = df_predict.groupby(by=['model_id'], sort=False).agg(start_date=('week_id', min),
-                                                                         target=('y', lambda x: list(x.dropna()))
-                                                                         )
-
+                                                                         target=('y', lambda x: list(x.dropna())))
+        # Adding categorical features
         df_predict = df_predict.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
-
+        # Concatenating dynamic features in list format
         df_dynamic_data_predict = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
             .agg(is_rec=('is_rec', list),
                  perc_store_open=('perc_store_open', list))
-
         df_dynamic_data_predict['dynamic_feat'] = df_dynamic_data_predict.values.tolist()
-
+        # Adding dynamic features
         df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']], left_index=True, right_index=True, how='left')
 
         # Building df_train
-        df_train = df_target[df_target['week_id'] < dh.cutoff]
-
+        # Limiting dataset to avoid any future data
+        df_train = df_target[df_target['week_id'] < self.cutoff]
+        # Building data `start_date` & `target`
         df_train.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
         df_train = df_train.groupby(by=['model_id'], sort=False).agg(start_date=('week_id', min),
-                                                                     target=('y', lambda x: list(x.dropna()))
-                                                                     )
-
+                                                                     target=('y', lambda x: list(x.dropna())))
+        # Adding categorical features
         df_train = df_train.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
-
+        # Concatenating dynamic features in list format
         df_dynamic_data_train = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
             .agg(is_rec=('is_rec', list),
                  perc_store_open=('perc_store_open', list))
-
         df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
-
+        # Adding dynamic features
         df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']], left_index=True, right_index=True, how='left')
 
-
-
-
-
-
-        # Generating df_train from df_predict
-        df_train = df_predict[df_predict['week_id'] < self.cutoff]
-
-        # Date start per model
-        df_json_start = df_target.groupby(['model_id']).agg({'date':min})
-        df_json_start['date'] = df_json_start['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
-
-        # Target per model
-        df_json_target = df.groupby(['model_id'])['y'].apply(list).reset_index(name='target')
-
+        return df_train, df_predict
 
     def import_static_data(self):
         for dataset in self.static_data.keys():
