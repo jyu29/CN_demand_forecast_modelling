@@ -95,7 +95,7 @@ class data_handler:
     def refining_specific(self):
         # Sales refining
         df_sales = self.static_data['model_week_sales']
-        df_sales['date'] = pd.to_datetime(df_sales['date'])
+        df_sales.loc[:, 'date'] = pd.to_datetime(df_sales.loc[:, 'date'])
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
         df_sales.rename(columns={'sales_quantity': 'y'}, inplace=True)
         self.static_data['model_week_sales'] = df_sales
@@ -129,7 +129,7 @@ class data_handler:
         df_target = df_sales[['model_id', 'week_id', 'y']]
 
         # Creating df_static_data
-        df_static_data = df_tree[self.cat_cols]
+        df_static_data = df_tree[['model_id'] + self.cat_cols]
 
         # Creating df_dynamic_data
         min_week = df_sales['week_id'].min()
@@ -168,21 +168,64 @@ class data_handler:
         return df_target, df_static_data, df_dynamic_data
 
     def deepar_formatting(self, df_target, df_static_data, df_dynamic_data):
-        min_week = df_target['week_id'].min()
-        dyn_cols = list(set(df_dynamic_data.columns) - set(['week_id', 'model_id']))
-
-        # Adding static data
-        df_predict = df_target.merge(df_static_data[['model_id'] + self.cat_cols], on=['model_id'], how='left')
-        for c in self.cat_cols:
+        # Label Encode Categorical features
+        for c in dh.cat_cols:
             le = LabelEncoder()
-            df_predict[c] = le.fit_transform(df_predict[c])
+            df_static_data[c] = le.fit_transform(df_static_data[c])
+        df_static_data['cat'] = df_static_data[dh.cat_cols].values.tolist()
 
-        # Adding dynamic data
-        df_predict = df_predict.merge(df_dynamic_data, on=['week_id', 'model_id'], how='left')
+        # Building df_predict
+        df_predict = dh._add_future_weeks(df_target).merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
+
+        df_predict.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
+        df_predict = df_predict.groupby(by=['model_id'], sort=False).agg(start_date=('week_id', min),
+                                                                         target=('y', lambda x: list(x.dropna()))
+                                                                         )
+
+        df_predict = df_predict.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+
+        df_dynamic_data_predict = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
+            .groupby(by=['model_id'], sort=False)\
+            .agg(is_rec=('is_rec', list),
+                 perc_store_open=('perc_store_open', list))
+
+        df_dynamic_data_predict['dynamic_feat'] = df_dynamic_data_predict.values.tolist()
+
+        df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']], left_index=True, right_index=True, how='left')
+
+        # Building df_train
+        df_train = df_target[df_target['week_id'] < dh.cutoff]
+
+        df_train.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
+        df_train = df_train.groupby(by=['model_id'], sort=False).agg(start_date=('week_id', min),
+                                                                     target=('y', lambda x: list(x.dropna()))
+                                                                     )
+
+        df_train = df_train.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+
+        df_dynamic_data_train = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
+            .groupby(by=['model_id'], sort=False)\
+            .agg(is_rec=('is_rec', list),
+                 perc_store_open=('perc_store_open', list))
+
+        df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
+
+        df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']], left_index=True, right_index=True, how='left')
+
+
+
+
+
 
         # Generating df_train from df_predict
         df_train = df_predict[df_predict['week_id'] < self.cutoff]
 
+        # Date start per model
+        df_json_start = df_target.groupby(['model_id']).agg({'date':min})
+        df_json_start['date'] = df_json_start['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Target per model
+        df_json_target = df.groupby(['model_id'])['y'].apply(list).reset_index(name='target')
 
 
     def import_static_data(self):
@@ -205,7 +248,7 @@ class data_handler:
     def import_specific_dynamic_data(self):
         pass
 
-    def _add_dyn_feat(self, df_dynamic_data, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):  #, models=None):
+    def _add_dyn_feat(self, df_dynamic_data, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):
         # Checks
         check_weeks_df(df_feat, min_week, cutoff, future_weeks, week_column=week_column)
 
