@@ -22,25 +22,48 @@ class data_handler:
 
     def __init__(self,
                  cutoff: int,
-                 params: dict,
                  static_data: dict,
+                 min_ts_len: int,
+                 prediction_length: int,
+                 cat_cols: list,
+                 patch_covid: bool,
+                 patch_covid_weeks: list,
+                 target_cluster_keys: list,
+                 refined_global_bucket: str,
+                 refined_specific_bucket: str,
+                 train_path,
+                 predict_path,
                  global_dynamic_data: dict = None
-                 # df_model_week_sales: pd.DataFrame = None,
-                 # df_model_week_tree: pd.DataFrame = None,
-                 # df_model_week_mrp: pd.DataFrame = None,
-                 # df_dyn_feat_global: pd.DataFrame = None
                  ):
+        """Instanciation of data handler.
 
+        The Data Handler takes care of Data Refining for specific aspects of DeepAR algorithm,
+        formats the data to the expected format, and save the results in AWS S3.
+
+        Args:
+            cutoff (int): Cutoff week in format YYYYWW (ISO 8601)
+            static_data (dict): Dictionnary of pd.DataFrame or S3 URI for static data
+            min_ts_len (int): Minimum weeks expected in each input time series
+            prediction_length (int): Number of forecasted weeks in the future
+            cat_cols (list): List of `str` to select static columns expected in model_week_tree
+            patch_covid (bool): Wether to apply the covid correction or not
+            patch_covid_weeks (list): list of weeks (ISO 8601 format YYYYWW) on which to apply the covid correction
+            target_cluster_keys (list): for the cold start reconstruction, columns to use in model_week_tree for the group average
+            refined_global_bucket (str): S3 bucket on which the refined global data should be downloaded
+            refined_specific_bucket (str): S3 bucket on which the refined specific data should be uploaded
+            train_path (str): S3 path (without bucket, including file name & extension) for the train JSON output file
+            predict_path (str): S3 path (without bucket, including file name & extension) for the predict JSON output file
+            global_dynamic_data (dict)(optional): Dictionnary of pd.DataFrame or S3 URI for dynamic data
+        """
         self.cutoff = cutoff
-        self.cat_cols = params['functional_parameters']['cat_cols']
+        self.cat_cols = cat_cols
 
-        self.min_ts_len = params['functional_parameters']['min_ts_len']
-        self.prediction_length = params['functional_parameters']['prediction_length']
-        self.patch_covid = params['functional_parameters']['patch_covid']
+        self.min_ts_len = min_ts_len
+        self.prediction_length = prediction_length
+        self.patch_covid = patch_covid
+        self.patch_covid_weeks = patch_covid_weeks
 
-        self.patch_covid_weeks = params['functional_parameters']['patch_covid_weeks']
-
-        self.target_cluster_keys = params['functional_parameters']['target_cluster_keys']
+        self.target_cluster_keys = target_cluster_keys
 
         # Static data init
         for dataset in static_data.keys():
@@ -53,9 +76,8 @@ class data_handler:
                 assert isinstance(global_dynamic_data[dataset], (str, pd.DataFrame)), "Value in dict `static_data` must be S3 URI or pd.DataFrame"
             self.global_dynamic_data = global_dynamic_data
 
-        self.params = params
-        self.refined_global_bucket = params['buckets']['refined_data_global']
-        self.refined_specific_bucket = params['buckets']['refined_data_specific']
+        self.refined_global_bucket = refined_global_bucket
+        self.refined_specific_bucket = refined_specific_bucket
         self.path = {}
         self.path['train_path'] = params['functional_parameters']['train_path']
         self.path['predict_path'] = params['functional_parameters']['predict_path']
