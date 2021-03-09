@@ -2,7 +2,6 @@ buckets:
   refined_data_global: fcst-refined-demand-forecast-dev
   refined_data_specific: fcst-refined-demand-forecast-dev
 functional_parameters:
-  run_name: test_run
   algorithm: deepAR
   cat_cols:
   - family_id

@@ -202,7 +202,8 @@ def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
         return resp
 
 
-def import_config(environment: str
+def import_config(environment: str,
+                  run_name: str
                   ) -> dict:
     """Handler to import configuration YML file
 
@@ -217,7 +218,7 @@ def import_config(environment: str
 
     # On-the-fly configuration modifications
     algo = params['functional_parameters']['algorithm']
-    run_name = params['functional_parameters']['run_name']
+    params['functional_parameters']['run_name'] = run_name
     refined_specific_path = params['paths']['refined_specific_path']
     params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}/"
 
