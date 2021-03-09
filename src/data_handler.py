@@ -33,15 +33,14 @@ class data_handler:
 
         self.cutoff = cutoff
         self.cat_cols = params['functional_parameters']['cat_cols']
-        self.prediction_length = params['functional_parameters']['hyperparameters']['prediction_length']
+
         self.min_ts_len = params['functional_parameters']['min_ts_len']
-        self.patch_covid_weeks = params['functional_parameters']['patch_covid_weeks']
-        self.target_cluster_keys = params['functional_parameters']['target_cluster_keys']
+        self.prediction_length = params['functional_parameters']['prediction_length']
         self.patch_covid = params['functional_parameters']['patch_covid']
 
-        # self.df_model_week_sales = df_model_week_sales
-        # self.df_model_week_tree = df_model_week_tree
-        # self.df_model_week_mrp = df_model_week_mrp
+        self.patch_covid_weeks = params['functional_parameters']['patch_covid_weeks']
+
+        self.target_cluster_keys = params['functional_parameters']['target_cluster_keys']
 
         # Static data init
         for dataset in static_data.keys():
