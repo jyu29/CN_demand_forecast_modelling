@@ -31,8 +31,7 @@ class data_handler:
                  target_cluster_keys: list,
                  refined_global_bucket: str,
                  refined_specific_bucket: str,
-                 train_path,
-                 predict_path,
+                 output_paths: dict,
                  global_dynamic_data: dict = None
                  ):
         """Instanciation of data handler.
@@ -42,7 +41,7 @@ class data_handler:
 
         Args:
             cutoff (int): Cutoff week in format YYYYWW (ISO 8601)
-            static_data (dict): Dictionnary of pd.DataFrame or S3 URI for static data
+            static_data (dict): Dictionnary of pd.DataFrame or S3 URIs for static data
             min_ts_len (int): Minimum weeks expected in each input time series
             prediction_length (int): Number of forecasted weeks in the future
             cat_cols (list): List of `str` to select static columns expected in model_week_tree
@@ -51,9 +50,8 @@ class data_handler:
             target_cluster_keys (list): for the cold start reconstruction, columns to use in model_week_tree for the group average
             refined_global_bucket (str): S3 bucket on which the refined global data should be downloaded
             refined_specific_bucket (str): S3 bucket on which the refined specific data should be uploaded
-            train_path (str): S3 path (without bucket, including file name & extension) for the train JSON output file
-            predict_path (str): S3 path (without bucket, including file name & extension) for the predict JSON output file
-            global_dynamic_data (dict)(optional): Dictionnary of pd.DataFrame or S3 URI for dynamic data
+            output_paths (dict): Dictionnary of S3 URIs for dynamic data (without bucket, including file name & extension) for the train  & predict JSON output files
+            global_dynamic_data (dict)(optional): Dictionnary of pd.DataFrame or S3 URIs for dynamic data
         """
         self.cutoff = cutoff
         self.cat_cols = cat_cols
@@ -76,11 +74,12 @@ class data_handler:
                 assert isinstance(global_dynamic_data[dataset], (str, pd.DataFrame)), "Value in dict `static_data` must be S3 URI or pd.DataFrame"
             self.global_dynamic_data = global_dynamic_data
 
-        self.refined_global_bucket = refined_global_bucket
-        self.refined_specific_bucket = refined_specific_bucket
-        self.path = {}
-        self.path['train_path'] = params['functional_parameters']['train_path']
-        self.path['predict_path'] = params['functional_parameters']['predict_path']
+        # Output json line datasets init
+        assert 'train_path' in output_paths, "Output paths must include `train_path`"
+        assert 'predict_path' in output_paths, "Output paths must include `predict_path`"
+        for output in output_paths:
+            assert isinstance(output_paths[output], (str)), "Output paths for jsonline files must be `str`"
+        self.output_paths = output_paths
 
     def execute_data_refining_specific(self):
         """
@@ -97,8 +96,10 @@ class data_handler:
         self.train_jsonline, self.predict_jsonline = self.deepar_formatting(self.df_target, self.df_static_data, self.df_dynamic_data)
 
         # Saving jsonline files on S3
-        ut.write_str_to_file_on_s3(self.train_jsonline, self.bucket['refined_data_specific'], self.path['train_path'])
-        ut.write_str_to_file_on_s3(self.predict_jsonline, self.bucket['refined_data_specific'], self.path['train_path'])
+        train_bucket, train_path = ut.from_uri(self.output_paths['train_path'])
+        predict_bucket, predict_path = ut.from_uri(self.output_paths['predict_path'])
+        ut.write_str_to_file_on_s3(self.train_jsonline, train_bucket, train_path)
+        ut.write_str_to_file_on_s3(self.predict_jsonline, predict_bucket, predict_path)
 
     def import_all_data(self):
         # Static data import

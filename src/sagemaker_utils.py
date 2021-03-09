@@ -13,6 +13,51 @@ import src.utils as ut
 from sagemaker.amazon.amazon_estimator import get_image_uri
 
 
+def generate_df_jobs(list_cutoff: list,
+                     run_name: str,
+                     algorithm: str,
+                     refined_data_specific_path: str
+                     ):
+    """Generates an empty pd.DataFrame `df_jobs`
+
+    Given arguments for cutoffs, run_name & paths, returns a pd.DataFrame `df_jobs` on which sagemaker utils can iterate
+    to handle regarding training & inference.
+
+    Args:
+        list_cutoff: A list of integers in format YYYYWW (ISO 8601)
+        run_name: A string describing the training & inference run name (for readability)
+        algorithm: The used algorithm name (for path purpose)
+        refined_data_refined_path: A string pointing to a S3 path (URI format) for input data with trailing slash
+
+    Returns:
+        A pandas DataFrame containing all information for each cutoff to handle training & inference
+    """
+
+    df_jobs = pd.DataFrame()
+    run_suffix = _get_timestamp()
+    # Global
+    df_jobs['cutoff'] = list_cutoff
+    df_jobs['base_job_name'] = [f'{run_name}-{c}' for c in df_jobs['cutoff']]
+
+    # Training
+    df_jobs['train_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/input/train_{c}{run_suffix}.json' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+    df_jobs['training_job_name'] = np.nan
+    df_jobs['training_status'] = 'NotStarted'
+
+    # Inference
+    df_jobs['predict_path'] = [f'{refined_data_specific_path}{n}/input/predict_{c}{run_suffix}.json' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+    df_jobs['transform_job_name'] = np.nan
+    df_jobs['transform_status'] = 'NotStarted'
+
+    return df_jobs
+
+
+def _get_timestamp():
+    timestamp_suffix = "-" + datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S-%f')[:-3]
+
+    return timestamp_suffix
+
+
 class SagemakerHandler:
     """
     Sagemaker API handler. Allows for training and transform jobs.

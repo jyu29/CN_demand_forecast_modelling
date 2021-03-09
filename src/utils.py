@@ -132,8 +132,8 @@ def from_uri(uri):
     :return key: (string) S3 key
     """
     o = urisplit(uri)
-    bucket = o.scheme
-    key = o.path
+    bucket = o.authority
+    key = o.path[1:]
 
     return bucket, key
 
@@ -200,3 +200,25 @@ def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
 
     if verbose:
         return resp
+
+
+def import_config(environment: str
+                  ) -> dict:
+    """Handler to import configuration YML file
+
+    Args:
+        env: str
+
+    Returns:
+        A dictionary with all parameters for training & inference
+    """
+    params_full_path = f"config/{environment}.yml"
+    params = read_yml(params_full_path)
+
+    # On-the-fly configuration modifications
+    algo = params['functional_parameters']['algorithm']
+    run_name = params['functional_parameters']['run_name']
+    refined_specific_path = params['paths']['refined_specific_path']
+    params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}/"
+
+    return params

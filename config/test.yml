@@ -2,7 +2,7 @@ buckets:
   refined_data_global: fcst-refined-demand-forecast-dev
   refined_data_specific: fcst-refined-demand-forecast-dev
 functional_parameters:
-  run_timestamp_suffix : true
+  run_name: test_run
   algorithm: deepAR
   cat_cols:
   - family_id
@@ -10,7 +10,6 @@ functional_parameters:
   - department_id
   - product_nature_id
   - univers_id
-  dyn_cols: null
   min_ts_len: 156
   patch_covid: true
   patch_covid_weeks:
