@@ -202,24 +202,84 @@ def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
         return resp
 
 
-def import_config(environment: str,
-                  run_name: str
-                  ) -> dict:
-    """Handler to import configuration YML file
+def import_raw_config(environment: str) -> dict:
+    """Handler to import full configuration from YML file
 
     Args:
-        env: str
+        environment (str):
 
     Returns:
-        A dictionary with all parameters for training & inference
+        A dictionary with all parameters
     """
     params_full_path = f"config/{environment}.yml"
     params = read_yml(params_full_path)
 
-    # On-the-fly configuration modifications
-    algo = params['functional_parameters']['algorithm']
-    params['functional_parameters']['run_name'] = run_name
-    refined_specific_path = params['paths']['refined_specific_path']
-    params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}/"
-
     return params
+
+def import_refining_config(environment: str,
+                           cutoff: int,
+                           run_name: str,
+                           train_path: str,
+                           predict_path: str
+                           ) -> dict:
+    """Handler to import specific refining configuration from YML file
+
+    Args:
+        environment (str):
+        cutoff (int):
+        run_name (str):
+        df_jobs (pd.DataFrame):
+
+    Returns:
+        A dictionary with all parameters for specific refining process
+    """
+    params_full_path = f"config/{environment}.yml"
+    params = read_yml(params_full_path)
+
+    refining_params = {'cutoff': cutoff,
+                       'min_ts_len': params['functional_parameters']['min_ts_len'],
+                       'prediction_length': params['functional_parameters']['hyperparameters']['prediction_length'],
+                       'cat_cols': params['functional_parameters']['cat_cols'],
+                       'patch_covid': params['functional_parameters']['patch_covid'],
+                       'patch_covid_weeks': params['functional_parameters']['patch_covid_weeks'],
+                       'target_cluster_keys': params['functional_parameters']['target_cluster_keys'],
+                       'refined_global_bucket': params['buckets']['refined_data_global'],
+                       'refined_specific_bucket': params['buckets']['refined_data_specific'],
+                       'output_paths': {'train_path': train_path,
+                                        'predict_path': predict_path
+                                        }
+                       }
+    return refining_params
+
+
+def import_sagemaker_params(environment: str,
+                            ) -> dict:
+    """Handler to import sagemaker configuration from YML file
+
+    Args:
+        environment (str):
+        cutoff (int):
+        run_name (str):
+
+    Returns:
+        A dictionary with all parameters for sagemaker training & inference
+    """
+    params_full_path = f"config/{environment}.yml"
+    params = read_yml(params_full_path)
+
+    sagemaker_params = {'bucket': params['buckets']['refined_data_specific'],
+                        'refined_path': params['paths']['refined_specific_path'],
+                        'train_instance_type': params['technical_parameters']['train_instance_type'],
+                        'train_instance_count': params['technical_parameters']['train_instance_count'],
+                        'train_max_instances': params['technical_parameters']['train_max_instances'],
+                        'train_use_spot_instances': params['technical_parameters']['train_use_spot_instances'],
+                        'transform_instance_type': params['technical_parameters']['transform_instance_type'],
+                        'transform_instance_count': params['technical_parameters']['transform_instance_count'],
+                        'transform_max_instances': params['technical_parameters']['transform_max_instances'],
+                        'role': params['technical_parameters']['role'],
+                        'image_name_label': params['technical_parameters']['image_name_label'],
+                        'tags': [params['technical_parameters']['tags']],
+                        'hyperparameters': params['functional_parameters']['hyperparameters']
+                        }
+
+    return sagemaker_params

@@ -198,7 +198,8 @@ class data_handler:
         return df_target, df_static_data, df_dynamic_data
 
     def deepar_formatting(self, df_target, df_static_data, df_dynamic_data):
-        # Label Encode Categorical features
+        # Label Encode Categorical features (also limiting df_static_data to avoid missing cat label error)
+        df_static_data = df_static_data.merge(df_target[['model_id']].drop_duplicates(), on=['model_id'])
         for c in self.cat_cols:
             le = LabelEncoder()
             df_static_data[c] = le.fit_transform(df_static_data[c])
@@ -213,11 +214,12 @@ class data_handler:
                                                                          target=('y', lambda x: list(x.dropna())))
         # Adding categorical features
         df_predict = df_predict.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+        # Identifying dynamic features
+        dynamic_features = list(set(df_dynamic_data.columns) - set(['week_id', 'model_id']))
         # Concatenating dynamic features in list format
         df_dynamic_data_predict = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
-            .agg(is_rec=('is_rec', list),
-                 perc_store_open=('perc_store_open', list))
+            .agg({feat: list for feat in dynamic_features})
         df_dynamic_data_predict['dynamic_feat'] = df_dynamic_data_predict.values.tolist()
         # Adding dynamic features
         df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']], left_index=True, right_index=True, how='left')
@@ -236,8 +238,7 @@ class data_handler:
         # Concatenating dynamic features in list format
         df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
-            .agg(is_rec=('is_rec', list),
-                 perc_store_open=('perc_store_open', list))
+            .agg({feat: list for feat in dynamic_features})
         df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
         # Adding dynamic features
         df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']], left_index=True, right_index=True, how='left')

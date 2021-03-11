@@ -10,7 +10,7 @@ functional_parameters:
   - product_nature_id
   - univers_id
   min_ts_len: 156
-  patch_covid: true
+  patch_covid: false
   patch_covid_weeks:
   - 202011 # First lockdown
   - 202012
@@ -35,7 +35,7 @@ functional_parameters:
     prediction_length: 52
     context_length: 104
     epochs : 100
-    likelihood : student-T
+    likelihood : deterministic-L1
   #  early_stopping_patience: 100
   #  learning_rate: 1e-4
   #  mini_batch_size: 128
@@ -63,8 +63,8 @@ paths:
   #run_output_path: pov/data/refined/test/output/
 technical_parameters:
   image_name_label: forecasting-deepar
-  max_train_instances: 10
-  max_transform_instances: 5
+  train_max_instances: 10
+  transform_max_instances: 5
   role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
   tags:
     Key: project
