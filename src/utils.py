@@ -77,10 +77,16 @@ def week_id_to_date(week_id):
     :param week_id: (int or pd.Series) the week id or pandas column of week ids
     :return: (pd.Timestamp or pd.Series) the date or pandas column of dates
     """
-    assert isinstance(week_id, (int, np.integer, pd.Series))
+    assert isinstance(week_id, (int, np.integer, pd.Series, list))
+    pattern = "^20[0-9]{2}(0[1-9]|[1-4][0-9]|5[0-3])$"
     if isinstance(week_id, (int, np.integer)):
+        assert re.match(pattern, str(week_id)), f"`week_id` {week_id} doesn't follow conform YYYYWW format"
         return pd.to_datetime(str(week_id) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
     else:
+        if isinstance(week_id, (list)):
+            week_id = pd.Series(week_id)
+        for w in week_id:
+            assert re.match(pattern, str(w)), f"Week_id {w} doesn't follow conform YYYYWW format"
         return pd.to_datetime(week_id.astype(str) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
 
 
