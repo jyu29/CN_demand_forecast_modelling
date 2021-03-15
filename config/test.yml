@@ -1,7 +1,7 @@
 buckets:
   refined_data_global: fcst-refined-demand-forecast-dev
   refined_data_specific: fcst-refined-demand-forecast-dev
-functional_parameters:
+refining_specific_parameters:
   algorithm: deepAR
   rec_cold_start_length: 156
   patch_covid: false
@@ -55,7 +55,7 @@ paths:
   refined_specific_path: specific/
   #run_model_path: pov/data/refined/test/model/
   #run_output_path: pov/data/refined/test/output/
-technical_parameters:
+sagemaker_parameters:
   image_name_label: forecasting-deepar
   train_max_instances: 10
   transform_max_instances: 5
