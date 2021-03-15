@@ -4,8 +4,8 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 import src.utils as ut
-from src.data_cleaning import (check_weeks_df, generate_empty_dyn_feat_global,
-                               cold_start_rec, pad_to_cutoff)
+from src.cleaning_functions import (check_weeks_df, generate_empty_dyn_feat_global,
+                                    cold_start_rec, pad_to_cutoff)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
