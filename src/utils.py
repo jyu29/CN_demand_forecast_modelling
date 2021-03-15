@@ -2,15 +2,15 @@ import datetime
 import gzip
 import io
 import pprint
-from uritools import urisplit
-
-import numpy as np
-import pandas as pd
-import yaml
+import re
 
 import boto3
+import numpy as np
+import pandas as pd
 import pyarrow.parquet as pq
 import s3fs
+import yaml
+from uritools import urisplit
 
 
 def read_yml(file_path):
