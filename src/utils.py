@@ -243,7 +243,7 @@ def import_refining_config(environment: str,
     params = read_yml(params_full_path)
 
     refining_params = {'cutoff': cutoff,
-                       'min_ts_len': params['functional_parameters']['min_ts_len'],
+                       'rec_cold_start_length': params['functional_parameters']['rec_cold_start_length'],
                        'prediction_length': params['functional_parameters']['hyperparameters']['prediction_length'],
                        'patch_covid': params['functional_parameters']['patch_covid'],
                        'patch_covid_weeks': params['functional_parameters']['patch_covid_weeks'],

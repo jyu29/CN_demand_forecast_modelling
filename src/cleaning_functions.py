@@ -6,7 +6,7 @@ import pandas as pd
 from src.utils import date_to_week_id, week_id_to_date
 
 
-def pad_to_cutoff(df_ts, cutoff, col='y'):
+def pad_to_cutoff(df_ts, cutoff, col='sales_quantity'):
 
     # Add the cutoff weekend to all models to put a limit for the bfill
     models = df_ts['model_id'].unique()
@@ -35,9 +35,9 @@ def pad_to_cutoff(df_ts, cutoff, col='y'):
 def cold_start_rec(df,
                    df_model_week_sales,
                    df_model_week_tree,
-                   min_ts_len,
+                   rec_cold_start_length,
                    patch_covid_weeks,
-                   target_cluster_keys=['family_label'],
+                   rec_cold_start_group=['family_label'],
                    patch_covid=True
                    ):
 
@@ -56,18 +56,18 @@ def cold_start_rec(df,
     complete_ts['date'] = week_id_to_date(complete_ts['week_id'])
 
     # Add cluster_keys info from df_model_week_tree
-    complete_ts = pd.merge(complete_ts, df_model_week_tree[['model_id'] + target_cluster_keys], how='left')
+    complete_ts = pd.merge(complete_ts, df_model_week_tree[['model_id'] + rec_cold_start_group], how='left')
     # /!\ in very rare cases, the models are too old or too recent and do not have descriptions in d_sku
-    complete_ts.dropna(subset=target_cluster_keys, inplace=True)
+    complete_ts.dropna(subset=rec_cold_start_group, inplace=True)
 
     # Add current sales from df
     complete_ts = pd.merge(complete_ts, df, how='left')
 
     # Calculate the average sales per cluster and week from df_model_week_sales
-    all_sales = pd.merge(df_model_week_sales, df_model_week_tree[['model_id'] + target_cluster_keys], how='left')
-    all_sales.dropna(subset=target_cluster_keys, inplace=True)
-    all_sales = all_sales.groupby(target_cluster_keys + ['week_id', 'date']) \
-        .agg(mean_cluster_y=('y', 'mean')) \
+    all_sales = pd.merge(df_model_week_sales, df_model_week_tree[['model_id'] + rec_cold_start_group], how='left')
+    all_sales.dropna(subset=rec_cold_start_group, inplace=True)
+    all_sales = all_sales.groupby(rec_cold_start_group + ['week_id', 'date']) \
+        .agg(mean_cluster_sales_quantity=('sales_quantity', 'mean')) \
         .reset_index()
 
     # Ad it to complete_ts
@@ -84,21 +84,21 @@ def cold_start_rec(df,
         # Except for models sold only during the covid period...
         exceptions = complete_ts \
             .loc[~complete_ts['week_id'].isin(covid_week_id)] \
-            .groupby('model_id', as_index=False)['y'].sum()
-        exceptions = exceptions.loc[exceptions['y'] == 0, 'model_id'].unique()
+            .groupby('model_id', as_index=False)['sales_quantity'].sum()
+        exceptions = exceptions.loc[exceptions['sales_quantity'] == 0, 'model_id'].unique()
         
         # ...replace mean cluster sales by the last year values...
         complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id)) &
-                        (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_y']] = \
+                        (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_sales_quantity']] = \
             complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id - 100)) &
-                            (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_y']].values
+                            (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_sales_quantity']].values
         
         # ...and nullify sales during Covid
         complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id)) & 
-                        (~complete_ts['model_id'].isin(exceptions)), ['y']] = np.nan
+                        (~complete_ts['model_id'].isin(exceptions)), ['sales_quantity']] = np.nan
 
     # Compute the scale factor by row
-    complete_ts['row_scale_factor'] = complete_ts['y'] / complete_ts['mean_cluster_y']
+    complete_ts['row_scale_factor'] = complete_ts['sales_quantity'] / complete_ts['mean_cluster_sales_quantity']
 
     # Compute the scale factor by model
     model_scale_factor = complete_ts \
@@ -111,13 +111,13 @@ def cold_start_rec(df,
     # have each model a scale factor?
     assert complete_ts[complete_ts.model_scale_factor.isnull()].shape[0] == 0
 
-    # Compute a fake Y by row (if unknow fill by 0)
-    complete_ts['fake_y'] = complete_ts['mean_cluster_y'] * complete_ts['model_scale_factor']
-    complete_ts['fake_y'] = complete_ts['fake_y'].fillna(0).astype(int)
+    # Compute a fake sales quantity by row (if unknow fill by 0)
+    complete_ts['fake_sales_quantity'] = complete_ts['mean_cluster_sales_quantity'] * complete_ts['model_scale_factor']
+    complete_ts['fake_sales_quantity'] = complete_ts['fake_sales_quantity'].fillna(0).astype(int)
 
     # Calculate real age & total length of each TS
     ts_start_end_date = complete_ts \
-        .loc[complete_ts['y'].notnull()] \
+        .loc[complete_ts['sales_quantity'].notnull()] \
         .groupby(['model_id']) \
         .agg(start_date=('date', 'min'),
              end_date=('date', 'max')) \
@@ -133,31 +133,31 @@ def cold_start_rec(df,
                               pd.to_datetime(complete_ts['date'])) /
                              np.timedelta64(1, 'W')).astype(int) + 1
 
-    # Estimate the implementation period: while fake y > y
-    complete_ts['is_y_sup'] = complete_ts['y'] > complete_ts['fake_y']
+    # Estimate the implementation period: while fake sales quantity > sales quantity
+    complete_ts['is_sales_quantity_sup'] = complete_ts['sales_quantity'] > complete_ts['fake_sales_quantity']
 
-    end_impl_period = complete_ts[complete_ts['is_y_sup']] \
+    end_impl_period = complete_ts[complete_ts['is_sales_quantity_sup']] \
         .groupby('model_id') \
         .agg(end_impl_period=('age', 'min')) \
         .reset_index()
 
     complete_ts = pd.merge(complete_ts, end_impl_period, how='left')
 
-    # Update y from 'min_ts_len' weeks ago to the end of the implementation period
-    cond = ((complete_ts['length'] <= min_ts_len) & (complete_ts['age'] <= 0)) | \
-           ((complete_ts['length'] <= min_ts_len) & (complete_ts['age'] > 0) &
+    # Update sales quantity from 'rec_cold_start_length' weeks ago to the end of the implementation period
+    cond = ((complete_ts['length'] <= rec_cold_start_length) & (complete_ts['age'] <= 0)) | \
+           ((complete_ts['length'] <= rec_cold_start_length) & (complete_ts['age'] > 0) &
             (complete_ts['age'] < complete_ts['end_impl_period']))
-    complete_ts['y'] = np.where(cond, complete_ts['fake_y'], complete_ts['y'])
+    complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
     complete_ts['is_rec'] = np.where(cond, 1, 0)
 
     if patch_covid:
         cond = complete_ts['week_id'].isin(covid_week_id)
-        complete_ts['y'] = np.where(cond, complete_ts['fake_y'], complete_ts['y'])
+        complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
         complete_ts['is_rec'] = np.where(cond, 1, complete_ts['is_rec'])
 
     # Format
-    complete_ts = complete_ts[list(df) + ['is_rec']].dropna(subset=['y']).reset_index(drop=True)
-    complete_ts['y'] = complete_ts['y'].astype(int)
+    complete_ts = complete_ts[list(df) + ['is_rec']].dropna(subset=['sales_quantity']).reset_index(drop=True)
+    complete_ts['sales_quantity'] = complete_ts['sales_quantity'].astype(int)
 
     return complete_ts
 

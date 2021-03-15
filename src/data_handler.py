@@ -23,7 +23,7 @@ class data_handler:
     def __init__(self,
                  cutoff: int,
                  base_data: dict,
-                 min_ts_len: int,
+                 rec_cold_start_length: int,
                  prediction_length: int,
                  patch_covid: bool,
                  patch_covid_weeks: list,
@@ -43,7 +43,7 @@ class data_handler:
         Args:
             cutoff (int): Cutoff week in format YYYYWW (ISO 8601)
             static_data (dict): Dictionnary of pd.DataFrame or S3 URIs for static data
-            min_ts_len (int): Minimum weeks expected in each input time series
+            rec_cold_start_length (int): Minimum weeks expected in each input time series
             prediction_length (int): Number of forecasted weeks in the future
             cat_cols (list): List of `str` to select static columns expected in model_week_tree
             patch_covid (bool): Wether to apply the covid correction or not
@@ -56,7 +56,7 @@ class data_handler:
         """
         self.cutoff = cutoff
 
-        self.min_ts_len = min_ts_len
+        self.rec_cold_start_length = rec_cold_start_length
         self.prediction_length = prediction_length
         self.patch_covid = patch_covid
         self.patch_covid_weeks = patch_covid_weeks
@@ -144,7 +144,6 @@ class data_handler:
         df_sales = self.base_data['model_week_sales']
         df_sales.loc[:, 'date'] = pd.to_datetime(df_sales.loc[:, 'date'])
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
-        df_sales.rename(columns={'sales_quantity': 'y'}, inplace=True)
         self.base_data['model_week_sales'] = df_sales
 
         # MRP refining
@@ -167,13 +166,13 @@ class data_handler:
         df_sales = cold_start_rec(df_sales,
                                   self.base_data['model_week_sales'],
                                   self.base_data['model_week_tree'],
-                                  self.min_ts_len,
+                                  self.rec_cold_start_length,
                                   self.patch_covid_weeks,
                                   self.rec_cold_start_group,
                                   self.patch_covid)
 
         # Creating df_target
-        df_target = df_sales[['model_id', 'week_id', 'y']]
+        df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
 
         # Creating df_static_data
         df_static_data = df_tree[['model_id'] + list(self.static_features.keys())]
@@ -228,7 +227,7 @@ class data_handler:
         df_predict.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
         # Building data `start` & `target`
         df_predict = df_predict.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
-                                                                         target=('y', lambda x: list(x.dropna())))
+                                                                         target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
         df_predict = df_predict.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
 
@@ -250,7 +249,7 @@ class data_handler:
         # Building data `start` & `target`
         df_train.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
         df_train = df_train.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
-                                                                     target=('y', lambda x: list(x.dropna())))
+                                                                     target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
         df_train = df_train.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
         # Concatenating dynamic features in list format
@@ -345,10 +344,10 @@ class data_handler:
     def check_json_line(self, jsonline, future_proj_len=0):
         df = pd.read_json(jsonline, orient='records', lines=True)
 
-        # Test if target >= min_ts_len
+        # Test if target >= rec_cold_start_length
         df['target_len'] = df.apply(lambda x: len(x['target']), axis=1)
-        test = df['target_len'] >= self.min_ts_len
-        assert all(test.values), 'Some models have a `target` less than `min_ts_len`'
+        test = df['target_len'] >= self.rec_cold_start_length
+        assert all(test.values), 'Some models have a `target` less than `rec_cold_start_length`'
 
         # Test if target length is right
         df['target_len_test'] = df.apply(lambda x: ut.date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')) == self.cutoff, axis=1)

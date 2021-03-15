@@ -3,7 +3,7 @@ buckets:
   refined_data_specific: fcst-refined-demand-forecast-dev
 functional_parameters:
   algorithm: deepAR
-  min_ts_len: 156
+  rec_cold_start_length: 156
   patch_covid: false
   patch_covid_weeks:
   - 202011 # First lockdown
