@@ -38,7 +38,7 @@ functional_parameters:
     likelihood : deterministic-L1
   #  early_stopping_patience: 100
   #  learning_rate: 1e-4
-  #  mini_batch_size: 128
+    mini_batch_size: 512
   #  num_layers: 3
   #  num_cells: 40
   #  dropout_rate: 0.1
