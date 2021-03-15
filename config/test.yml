@@ -3,12 +3,6 @@ buckets:
   refined_data_specific: fcst-refined-demand-forecast-dev
 functional_parameters:
   algorithm: deepAR
-  cat_cols:
-  - family_id
-  - sub_department_id
-  - department_id
-  - product_nature_id
-  - univers_id
   min_ts_len: 156
   patch_covid: false
   patch_covid_weeks:

@@ -9,7 +9,7 @@ from src.cleaning_functions import (check_weeks_df, generate_empty_dyn_feat_glob
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class data_handler:
@@ -22,17 +22,18 @@ class data_handler:
 
     def __init__(self,
                  cutoff: int,
-                 static_data: dict,
+                 base_data: dict,
                  min_ts_len: int,
                  prediction_length: int,
-                 cat_cols: list,
                  patch_covid: bool,
                  patch_covid_weeks: list,
                  target_cluster_keys: list,
                  refined_global_bucket: str,
                  refined_specific_bucket: str,
                  output_paths: dict,
-                 global_dynamic_data: dict = None
+                 static_features: dict = None,
+                 global_dynamic_features: dict = None,
+                 specific_dynamic_features: dict = None
                  ):
         """Instanciation of data handler.
 
@@ -54,7 +55,6 @@ class data_handler:
             global_dynamic_data (dict)(optional): Dictionnary of pd.DataFrame or S3 URIs for dynamic data
         """
         self.cutoff = cutoff
-        self.cat_cols = cat_cols
 
         self.min_ts_len = min_ts_len
         self.prediction_length = prediction_length
@@ -63,16 +63,28 @@ class data_handler:
 
         self.target_cluster_keys = target_cluster_keys
 
-        # Static data init
-        for dataset in static_data.keys():
-            assert isinstance(static_data[dataset], (str, pd.DataFrame)), "Value in dict `static_data` must be S3 URI or pd.DataFrame"
-        self.static_data = static_data
+        # Base data init
+        for dataset in base_data.keys():
+            assert isinstance(base_data[dataset], (str, pd.DataFrame)), "Value in dict `base_data` must be S3 URI or pd.DataFrame"
+        self.base_data = base_data
+
+        # Static features init
+        if static_features:
+            for dataset in static_features.keys():
+                assert isinstance(static_features[dataset], (str, pd.DataFrame)), "Value in dict `static_features` must be S3 URI or pd.DataFrame"
+        self.static_features = static_features
 
         # Global dynamic data init
-        if global_dynamic_data:
-            for dataset in global_dynamic_data.keys():
-                assert isinstance(global_dynamic_data[dataset], (str, pd.DataFrame)), "Value in dict `static_data` must be S3 URI or pd.DataFrame"
-            self.global_dynamic_data = global_dynamic_data
+        if global_dynamic_features:
+            for dataset in global_dynamic_features.keys():
+                assert isinstance(global_dynamic_features[dataset], (str, pd.DataFrame)), "Value in dict `global_dynamic_features` must be S3 URI or pd.DataFrame"
+        self.global_dynamic_features = global_dynamic_features
+
+        # Specific dynamic data init
+        if specific_dynamic_features:
+            for dataset in specific_dynamic_features.keys():
+                assert isinstance(specific_dynamic_features[dataset], (str, pd.DataFrame)), "Value in dict `specific_dynamic_features` must be S3 URI or pd.DataFrame"
+        self.specific_dynamic_features = specific_dynamic_features
 
         # Output json line datasets init
         assert 'train_path' in output_paths, "Output paths must include `train_path`"
@@ -102,43 +114,48 @@ class data_handler:
         ut.write_str_to_file_on_s3(self.predict_jsonline, predict_bucket, predict_path)
 
     def import_all_data(self):
-        # Static data import
-        logger.debug("Starting static data import")
-        self.import_static_data()
-        logger.debug("Static data imported done.")
+        # Base data import
+        self.import_base_data()
+        logger.debug("Attribute `base_data` created.")
 
-        # Global dynamic data import
-        logger.debug("Starting global dynamic data import")
-        self.import_global_dynamic_data()
-        logger.debug("Global dynamic data imported done.")
+        # Static features import
+        if self.static_features:
+            self.import_static_features()
+            logger.debug("Attribute `static_features` created")
+        else:
+            logger.debug("No static features specified.")
 
-        # Specific dynamic data import
-        logger.debug("Starting specific dynamic data import")
-        self.import_specific_dynamic_data()
-        logger.debug("Global specific data imported done.")
+        # Global dynamic features import
+        if self.global_dynamic_features:
+            self.import_global_dynamic_features()
+            logger.debug("Attribute `global_dynamic_features` created")
+        else:
+            logger.debug("No global dynamic features specified.")
 
-        # Specific dynamic data import
-        logger.debug("Starting specific dynamic data import")
-        self.import_specific_dynamic_data()
-        logger.debug("Global specific data imported done.")
+        # Specific dynamic features import
+        if self.specific_dynamic_features:
+            self.import_specific_dynamic_features()
+            logger.debug("Attribute `specific_dynamic_features` created")
+        else:
+            logger.debug("No specific dynamic features specified.")
 
     def refining_specific(self):
         # Sales refining
-        df_sales = self.static_data['model_week_sales']
+        df_sales = self.base_data['model_week_sales']
         df_sales.loc[:, 'date'] = pd.to_datetime(df_sales.loc[:, 'date'])
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
         df_sales.rename(columns={'sales_quantity': 'y'}, inplace=True)
-        self.static_data['model_week_sales'] = df_sales
+        self.base_data['model_week_sales'] = df_sales
 
         # MRP refining
-        df_mrp = self.static_data['model_week_mrp']
+        df_mrp = self.base_data['model_week_mrp']
         df_mrp = df_mrp[df_mrp['week_id'] == self.cutoff]
-        self.static_data['model_week_mrp'] = df_mrp
+        self.base_data['model_week_mrp'] = df_mrp
 
         # Tree refining
-        df_tree = self.static_data['model_week_tree']
+        df_tree = self.base_data['model_week_tree']
         df_tree = df_tree[df_tree['week_id'] == self.cutoff]
-        self.static_data['model_week_tree'] = df_tree
+        self.base_data['model_week_tree'] = df_tree
 
         # Limiting Sales data to MRP active models
         df_sales = pd.merge(df_sales, df_mrp.loc[df_mrp['is_mrp_active'], ['model_id']])
@@ -148,8 +165,8 @@ class data_handler:
 
         # Cold start reconstruction
         df_sales = cold_start_rec(df_sales,
-                                  self.static_data['model_week_sales'],
-                                  df_tree,
+                                  self.base_data['model_week_sales'],
+                                  self.base_data['model_week_tree'],
                                   self.min_ts_len,
                                   self.patch_covid_weeks,
                                   self.target_cluster_keys,
@@ -159,7 +176,7 @@ class data_handler:
         df_target = df_sales[['model_id', 'week_id', 'y']]
 
         # Creating df_static_data
-        df_static_data = df_tree[['model_id'] + self.cat_cols]
+        df_static_data = df_tree[['model_id'] + list(self.static_features.keys())]
 
         # Creating df_dynamic_data
         min_week = df_sales['week_id'].min()
@@ -187,23 +204,23 @@ class data_handler:
                                              future_weeks=self.prediction_length)
 
         # Adding provided dynamic features
-        if self.global_dynamic_data:
-            for dataset in self.global_dynamic_data.keys():
+        if self.global_dynamic_features:
+            for dataset in self.global_dynamic_features.keys():
                 df_dynamic_data = self._add_dyn_feat(df_dynamic_data,
-                                                     df_feat=self.global_dynamic_data[dataset],
+                                                     df_feat=self.global_dynamic_features[dataset],
                                                      min_week=min_week,
                                                      cutoff=self.cutoff,
                                                      future_weeks=self.prediction_length)
 
         return df_target, df_static_data, df_dynamic_data
 
-    def deepar_formatting(self, df_target, df_static_data, df_dynamic_data):
+    def deepar_formatting(self, df_target, df_static_features, df_dynamic_data):
         # Label Encode Categorical features (also limiting df_static_data to avoid missing cat label error)
-        df_static_data = df_static_data.merge(df_target[['model_id']].drop_duplicates(), on=['model_id'])
-        for c in self.cat_cols:
+        df_static_features = df_static_features.merge(df_target[['model_id']].drop_duplicates(), on=['model_id'])
+        for c in self.static_features.keys():
             le = LabelEncoder()
-            df_static_data[c] = le.fit_transform(df_static_data[c])
-        df_static_data['cat'] = df_static_data[self.cat_cols].values.tolist()
+            df_static_features[c] = le.fit_transform(df_static_features[c])
+        df_static_features['cat'] = df_static_features[self.static_features.keys()].values.tolist()
 
         # Building df_predict
         # Adding prediction weeks necessary for dynamic features in df_predict
@@ -213,9 +230,10 @@ class data_handler:
         df_predict = df_predict.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                                                                          target=('y', lambda x: list(x.dropna())))
         # Adding categorical features
-        df_predict = df_predict.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
-        # Identifying dynamic features
-        dynamic_features = list(set(df_dynamic_data.columns) - set(['week_id', 'model_id']))
+        df_predict = df_predict.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+
+        # Identifying final list of dynamic features
+        dynamic_features = list(set(self.df_dynamic_data.columns) - set(['model_id', 'week_id']))
         # Concatenating dynamic features in list format
         df_dynamic_data_predict = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
@@ -234,7 +252,7 @@ class data_handler:
         df_train = df_train.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                                                                      target=('y', lambda x: list(x.dropna())))
         # Adding categorical features
-        df_train = df_train.merge(df_static_data[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+        df_train = df_train.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
         # Concatenating dynamic features in list format
         df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
@@ -256,24 +274,37 @@ class data_handler:
 
         return train_jsonline, predict_jsonline
 
-    def import_static_data(self):
-        for dataset in self.static_data.keys():
-            if isinstance(self.static_data[dataset], str):
+    def import_base_data(self):
+        for dataset in self.base_data.keys():
+            if isinstance(self.base_data[dataset], str):
                 logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                s3_uri = self.static_data[dataset]
+                s3_uri = self.base_data[dataset]
                 bucket, path = ut.from_uri(s3_uri)
-                self.static_data[dataset] = ut.read_multipart_parquet_s3(bucket, path)
-                logger.debug(f"Dataset {dataset} imported from S3.")
+                self.base_data[dataset] = ut.read_multipart_parquet_s3(bucket, path)
+                logger.debug(f"Base data {dataset} imported from S3.")
 
-    def import_global_dynamic_data(self):
-        for dataset in self.global_dynamic_data.keys():
-            if isinstance(self.global_dynamic_data[dataset], str):
+    def import_static_features(self):
+        for dataset in self.static_features.keys():
+            if isinstance(self.static_features[dataset], str):
                 logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
-                bucket, path = ut.from_uri(self.static_data[dataset])
-                self.global_dynamic_data[dataset] = ut.read_multipart_parquet_s3(bucket, path)
-                logger.debug(f"Dataset {dataset} imported from S3.")
+                s3_uri = self.static_features[dataset]
+                bucket, path = ut.from_uri(s3_uri)
+                self.static_features[dataset] = ut.read_multipart_parquet_s3(bucket, path)
+                logger.debug(f"Static feature {dataset} imported from S3.")
+            assert len(set(self.static_features[dataset].columns) - set(['model_id'])) == 1, \
+                f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
-    def import_specific_dynamic_data(self):
+    def import_global_dynamic_features(self):
+        for dataset in self.global_dynamic_features.keys():
+            if isinstance(self.global_dynamic_features[dataset], str):
+                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                bucket, path = ut.from_uri(self.global_dynamic_features[dataset])
+                self.global_dynamic_features[dataset] = ut.read_multipart_parquet_s3(bucket, path)
+                logger.debug(f"Global dynamic feature {dataset} imported from S3.")
+            assert len(set(self.global_dynamic_features[dataset].columns) - set(['week_id'])) == 1, \
+                f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
+
+    def import_specific_dynamic_features(self):
         pass
 
     def _add_dyn_feat(self, df_dynamic_data, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):
@@ -326,13 +357,11 @@ class data_handler:
         if 'cat' in df.columns:
             # Test if right number of categorical features
             df['cat_feat_nb'] = df.apply(lambda x: len(x['cat']), axis=1)
-            test = df['cat_feat_nb'] == len(self.cat_cols)
+            test = df['cat_feat_nb'] == len(set(self.df_static_data.columns) - set(['model_id']))
             assert all(test.values), "Some models don't have the right number of categorical features"
 
         if 'dynamic_feat' in df.columns:
-            nb_dyn_feat = len(self.global_dynamic_data)
-            # Adding one dynamic feature as `is_rec` is defined during refining
-            nb_dyn_feat += 1
+            nb_dyn_feat = len(set(self.df_dynamic_data.columns) - set(['model_id', 'week_id']))
 
             # Test if right number of dynamic features
             df['dyn_feat_nb'] = df.apply(lambda x: len(x['dynamic_feat']), axis=1)

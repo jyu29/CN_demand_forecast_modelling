@@ -173,12 +173,12 @@ def check_weeks_df(df, min_week, cutoff, future_weeks=0, week_column='week_id'):
         future_weeks (int): Expected number of weeks in the future
         week_column (str): Name of the column on which to make the checks
     """
-
+    feature_name = ', '.join((set(df.columns) - set(['model_id', 'week_id'])))
     expected_week_range = generate_expected_week_range(min_week, cutoff, future_weeks)
     actual_week_range = df[week_column].unique()
 
     for w in expected_week_range:
-        assert w in actual_week_range, f"Week {w} is not in feature dataframe."
+        assert w in actual_week_range, f"Week {w} is not in {feature_name} dataframe."
 
 
 def generate_expected_week_range(min_week, cutoff, future_weeks):
