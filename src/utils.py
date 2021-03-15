@@ -222,6 +222,7 @@ def import_raw_config(environment: str) -> dict:
 
     return params
 
+
 def import_refining_config(environment: str,
                            cutoff: int,
                            run_name: str,
