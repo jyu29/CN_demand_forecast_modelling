@@ -5,9 +5,7 @@ import numpy as np
 import pandas as pd
 
 import boto3
-import s3fs
 import sagemaker
-import src.refined_data_handler as dh
 import src.utils as ut
 
 from sagemaker.amazon.amazon_estimator import get_image_uri
