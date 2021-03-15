@@ -202,3 +202,18 @@ def generate_empty_dyn_feat_global(df_sales, min_week, cutoff, future_projection
                                              'model_id': m})
 
     return df_empty_dyn_feat_global
+
+
+def is_rec_feature_processing(df_sales, cutoff, prediction_length):
+    # Adding is_rec dynamic feat
+    df_is_rec = df_sales[['model_id', 'date', 'week_id', 'is_rec']]
+    models = df_is_rec['model_id'].unique()
+    dates = pd.date_range(start=week_id_to_date(cutoff), periods=prediction_length, freq='W')
+    m, d = pd.core.reshape.util.cartesian_product([models, dates])
+    df_is_rec_future = pd.DataFrame({"model_id": m, "date": d})
+    df_is_rec_future['week_id'] = date_to_week_id(df_is_rec_future['date'])
+    df_is_rec_future['is_rec'] = 0
+    df_is_rec = df_is_rec.append(df_is_rec_future)
+    df_is_rec = df_is_rec[['model_id', 'week_id', 'is_rec']]
+
+    return df_is_rec

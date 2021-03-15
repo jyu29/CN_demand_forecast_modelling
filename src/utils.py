@@ -244,7 +244,7 @@ def import_refining_config(environment: str,
 
     refining_params = {'cutoff': cutoff,
                        'rec_cold_start_length': params['refining_specific_parameters']['rec_cold_start_length'],
-                       'prediction_length': params['sagemaker_parameters']['hyperparameters']['prediction_length'],
+                       'prediction_length': params['modeling_parameters']['hyperparameters']['prediction_length'],
                        'patch_covid': params['refining_specific_parameters']['patch_covid'],
                        'patch_covid_weeks': params['refining_specific_parameters']['patch_covid_weeks'],
                        'rec_cold_start_group': params['refining_specific_parameters']['rec_cold_start_group'],
@@ -274,17 +274,17 @@ def import_sagemaker_params(environment: str,
 
     sagemaker_params = {'bucket': params['buckets']['refined_data_specific'],
                         'refined_path': params['paths']['refined_specific_path'],
-                        'train_instance_type': params['sagemaker_parameters']['train_instance_type'],
-                        'train_instance_count': params['sagemaker_parameters']['train_instance_count'],
-                        'train_max_instances': params['sagemaker_parameters']['train_max_instances'],
-                        'train_use_spot_instances': params['sagemaker_parameters']['train_use_spot_instances'],
-                        'transform_instance_type': params['sagemaker_parameters']['transform_instance_type'],
-                        'transform_instance_count': params['sagemaker_parameters']['transform_instance_count'],
-                        'transform_max_instances': params['sagemaker_parameters']['transform_max_instances'],
-                        'role': params['sagemaker_parameters']['role'],
-                        'image_name_label': params['sagemaker_parameters']['image_name_label'],
-                        'tags': [params['sagemaker_parameters']['tags']],
-                        'hyperparameters': params['sagemaker_parameters']['hyperparameters']
+                        'train_instance_type': params['modeling_parameters']['train_instance_type'],
+                        'train_instance_count': params['modeling_parameters']['train_instance_count'],
+                        'train_max_instances': params['modeling_parameters']['train_max_instances'],
+                        'train_use_spot_instances': params['modeling_parameters']['train_use_spot_instances'],
+                        'transform_instance_type': params['modeling_parameters']['transform_instance_type'],
+                        'transform_instance_count': params['modeling_parameters']['transform_instance_count'],
+                        'transform_max_instances': params['modeling_parameters']['transform_max_instances'],
+                        'role': params['modeling_parameters']['role'],
+                        'image_name_label': params['modeling_parameters']['image_name_label'],
+                        'tags': [params['modeling_parameters']['tags']],
+                        'hyperparameters': params['modeling_parameters']['hyperparameters']
                         }
 
     return sagemaker_params

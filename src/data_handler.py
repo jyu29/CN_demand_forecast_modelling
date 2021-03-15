@@ -4,8 +4,8 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 import src.utils as ut
-from src.cleaning_functions import (check_weeks_df, generate_empty_dyn_feat_global,
-                                    cold_start_rec, pad_to_cutoff)
+from src.refining_specific_functions import (check_weeks_df, generate_empty_dyn_feat_global,
+                                             cold_start_rec, pad_to_cutoff, is_rec_feature_processing)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -184,17 +184,8 @@ class data_handler:
                                                          future_projection=self.prediction_length
                                                          )
 
-        # Adding is_rec dynamic feat
-        df_is_rec = df_sales[['model_id', 'date', 'week_id', 'is_rec']]
-        models = df_is_rec['model_id'].unique()
-        dates = pd.date_range(start=ut.week_id_to_date(self.cutoff), periods=self.prediction_length, freq='W')
-        m, d = pd.core.reshape.util.cartesian_product([models, dates])
-        df_is_rec_future = pd.DataFrame({"model_id": m, "date": d})
-        df_is_rec_future['week_id'] = ut.date_to_week_id(df_is_rec_future['date'])
-        df_is_rec_future['is_rec'] = 0
-        df_is_rec = df_is_rec.append(df_is_rec_future)
-        df_is_rec = df_is_rec[['model_id', 'week_id', 'is_rec']]
-
+        # Building is_rec specific dynamic feature and adding it to the dynamic features
+        df_is_rec = is_rec_feature_processing(df_sales, self.cutoff, self.prediction_length)
         df_dynamic_data = self._add_dyn_feat(df_dynamic_data,
                                              df_feat=df_is_rec,
                                              min_week=min_week,
