@@ -27,7 +27,7 @@ class data_handler:
                  prediction_length: int,
                  patch_covid: bool,
                  patch_covid_weeks: list,
-                 target_cluster_keys: list,
+                 rec_cold_start_group: list,
                  refined_global_bucket: str,
                  refined_specific_bucket: str,
                  output_paths: dict,
@@ -48,7 +48,7 @@ class data_handler:
             cat_cols (list): List of `str` to select static columns expected in model_week_tree
             patch_covid (bool): Wether to apply the covid correction or not
             patch_covid_weeks (list): list of weeks (ISO 8601 format YYYYWW) on which to apply the covid correction
-            target_cluster_keys (list): for the cold start reconstruction, columns to use in model_week_tree for the group average
+            rec_cold_start_group (list): for the cold start reconstruction, columns to use in model_week_tree for the group average
             refined_global_bucket (str): S3 bucket on which the refined global data should be downloaded
             refined_specific_bucket (str): S3 bucket on which the refined specific data should be uploaded
             output_paths (dict): Dictionnary of S3 URIs for dynamic data (without bucket, including file name & extension) for the train  & predict JSON output files
@@ -61,7 +61,7 @@ class data_handler:
         self.patch_covid = patch_covid
         self.patch_covid_weeks = patch_covid_weeks
 
-        self.target_cluster_keys = target_cluster_keys
+        self.rec_cold_start_group = rec_cold_start_group
 
         # Base data init
         for dataset in base_data.keys():
@@ -169,7 +169,7 @@ class data_handler:
                                   self.base_data['model_week_tree'],
                                   self.min_ts_len,
                                   self.patch_covid_weeks,
-                                  self.target_cluster_keys,
+                                  self.rec_cold_start_group,
                                   self.patch_covid)
 
         # Creating df_target

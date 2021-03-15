@@ -21,7 +21,7 @@ functional_parameters:
   - 202047
   - 202048
   validation_length: 52
-  target_cluster_keys:
+  rec_cold_start_group:
   - family_id
   target_hist_rec_method: cluster_avg
   hyperparameters:
