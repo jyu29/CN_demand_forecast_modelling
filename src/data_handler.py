@@ -142,7 +142,6 @@ class data_handler:
     def refining_specific(self):
         # Sales refining
         df_sales = self.base_data['model_week_sales']
-        df_sales.loc[:, 'date'] = pd.to_datetime(df_sales.loc[:, 'date'])
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
         self.base_data['model_week_sales'] = df_sales
 
@@ -281,6 +280,8 @@ class data_handler:
                 bucket, path = ut.from_uri(s3_uri)
                 self.base_data[dataset] = ut.read_multipart_parquet_s3(bucket, path)
                 logger.debug(f"Base data {dataset} imported from S3.")
+            if dataset == 'model_week_sales':
+                self.base_data[dataset].loc[:, 'date'] = pd.to_datetime(self.base_data[dataset].loc[:, 'date'])
 
     def import_static_features(self):
         for dataset in self.static_features.keys():
