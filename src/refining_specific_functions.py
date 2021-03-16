@@ -217,3 +217,33 @@ def is_rec_feature_processing(df_sales, cutoff, prediction_length):
     df_is_rec = df_is_rec[['model_id', 'week_id', 'is_rec']]
 
     return df_is_rec
+
+
+def features_forward_fill(df, cutoff, projection_length):
+    """Fills a feature dataframe in the future
+
+    Takes a pd.DataFrame `df`, cuts it at `cutoff` (to avoid future leakage) and forward fills (ffill)
+    the last feature value up to week cutoff + projection_length
+
+    Args:
+        df (pd.DataFrame): Feature dataframe (must include column 'week_id' and only one feature column)
+        cutoff (int): Cutoff week in ISO 8601 Format (YYYYWW)
+        projection_length (int): Number of weeks in the future on which to predict
+
+    Returns:
+        pd.DataFrame with the same structure as `df`, filled with missing week_ids & feature, with last
+        value provided filled in the future
+    """
+    cutoff_date = week_id_to_date(cutoff)
+    last_week_date = cutoff_date + pd.Timedelta(value=projection_length - 1, unit='W')
+    last_week = date_to_week_id(last_week_date)
+    
+    df = df[df['week_id'] < cutoff]
+    df = df.append({'week_id': last_week}, ignore_index=True).astype({'week_id': int})
+    df['week_id'] = week_id_to_date(df['week_id'])
+    df = df.set_index('week_id').asfreq('W')
+    df = df.fillna(method='ffill')
+    df.reset_index(inplace=True)
+    df['week_id'] = date_to_week_id(df['week_id'])
+
+    return df

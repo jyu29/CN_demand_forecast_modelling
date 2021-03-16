@@ -5,7 +5,8 @@ from sklearn.preprocessing import LabelEncoder
 
 import src.utils as ut
 from src.refining_specific_functions import (check_weeks_df, generate_empty_dyn_feat_global,
-                                             cold_start_rec, pad_to_cutoff, is_rec_feature_processing)
+                                             cold_start_rec, pad_to_cutoff, is_rec_feature_processing,
+                                             features_forward_fill)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -72,19 +73,23 @@ class data_handler:
         if static_features:
             for dataset in static_features.keys():
                 assert isinstance(static_features[dataset], (str, pd.DataFrame)), "Value in dict `static_features` must be S3 URI or pd.DataFrame"
-        self.static_features = static_features
+            self.static_features = static_features
 
         # Global dynamic data init
         if global_dynamic_features:
             for dataset in global_dynamic_features.keys():
-                assert isinstance(global_dynamic_features[dataset], (str, pd.DataFrame)), "Value in dict `global_dynamic_features` must be S3 URI or pd.DataFrame"
-        self.global_dynamic_features = global_dynamic_features
+                assert isinstance(global_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
+                    "Value in dict `global_dynamic_features` must be S3 URI or pd.DataFrame"
+            self.global_dynamic_features = {key: global_dynamic_features[key]['dataset'] for key in global_dynamic_features}
+            self.global_dynamic_features_projection = {key: global_dynamic_features[key]['projection'] for key in global_dynamic_features}
 
         # Specific dynamic data init
         if specific_dynamic_features:
             for dataset in specific_dynamic_features.keys():
-                assert isinstance(specific_dynamic_features[dataset], (str, pd.DataFrame)), "Value in dict `specific_dynamic_features` must be S3 URI or pd.DataFrame"
-        self.specific_dynamic_features = specific_dynamic_features
+                assert isinstance(specific_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
+                    "Value in dict `specific_dynamic_features` must be S3 URI or pd.DataFrame"
+            self.specific_dynamic_features = {key: specific_dynamic_features[key]['dataset'] for key in specific_dynamic_features}
+            self.specific_dynamic_features_projection = {key: specific_dynamic_features[key]['projection'] for key in specific_dynamic_features}
 
         # Output json line datasets init
         assert 'train_path' in output_paths, "Output paths must include `train_path`"
@@ -119,27 +124,31 @@ class data_handler:
         logger.debug("Attribute `base_data` created.")
 
         # Static features import
-        if self.static_features:
+        if hasattr(self, 'static_features'):
             self.import_static_features()
             logger.debug("Attribute `static_features` created")
         else:
             logger.debug("No static features specified.")
 
         # Global dynamic features import
-        if self.global_dynamic_features:
+        if hasattr(self, 'global_dynamic_features'):
             self.import_global_dynamic_features()
             logger.debug("Attribute `global_dynamic_features` created")
         else:
             logger.debug("No global dynamic features specified.")
 
         # Specific dynamic features import
-        if self.specific_dynamic_features:
+        if hasattr(self, 'specific_dynamic_features'):
             self.import_specific_dynamic_features()
             logger.debug("Attribute `specific_dynamic_features` created")
         else:
             logger.debug("No specific dynamic features specified.")
 
     def refining_specific(self):
+        # Init
+        df_static_features = None
+        df_dynamic_features = None
+
         # Sales refining
         df_sales = self.base_data['model_week_sales']
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
@@ -173,35 +182,40 @@ class data_handler:
         # Creating df_target
         df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
 
-        # Creating df_static_data
-        df_static_data = df_tree[['model_id'] + list(self.static_features.keys())]
+        # Creating df_static_features
+        if hasattr(self, 'static_features'):
+            df_static_features = df_target[['model_id']].drop_duplicates().copy()
+            for dataset in self.static_features.keys():
+                df_static_features = self._add_static_feat(df_static_features,
+                                                           df_feat=self.static_features[dataset])
+            # df_static_features = df_tree[['model_id'] + list(self.static_features.keys())]
 
-        # Creating df_dynamic_data
+        # Creating df_dynamic_features
         min_week = df_sales['week_id'].min()
-        df_dynamic_data = generate_empty_dyn_feat_global(df_target,
-                                                         min_week=min_week,
-                                                         cutoff=self.cutoff,
-                                                         future_projection=self.prediction_length
-                                                         )
+        df_dynamic_features = generate_empty_dyn_feat_global(df_target,
+                                                             min_week=min_week,
+                                                             cutoff=self.cutoff,
+                                                             future_projection=self.prediction_length
+                                                             )
 
         # Building is_rec specific dynamic feature and adding it to the dynamic features
         df_is_rec = is_rec_feature_processing(df_sales, self.cutoff, self.prediction_length)
-        df_dynamic_data = self._add_dyn_feat(df_dynamic_data,
-                                             df_feat=df_is_rec,
-                                             min_week=min_week,
-                                             cutoff=self.cutoff,
-                                             future_weeks=self.prediction_length)
+        df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
+                                                 df_feat=df_is_rec,
+                                                 min_week=min_week,
+                                                 cutoff=self.cutoff,
+                                                 future_weeks=self.prediction_length)
 
         # Adding provided dynamic features
-        if self.global_dynamic_features:
+        if hasattr(self, 'global_dynamic_features'):
             for dataset in self.global_dynamic_features.keys():
-                df_dynamic_data = self._add_dyn_feat(df_dynamic_data,
-                                                     df_feat=self.global_dynamic_features[dataset],
-                                                     min_week=min_week,
-                                                     cutoff=self.cutoff,
-                                                     future_weeks=self.prediction_length)
+                df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
+                                                         df_feat=self.global_dynamic_features[dataset],
+                                                         min_week=min_week,
+                                                         cutoff=self.cutoff,
+                                                         future_weeks=self.prediction_length)
 
-        return df_target, df_static_data, df_dynamic_data
+        return df_target, df_static_features, df_dynamic_features
 
     def deepar_formatting(self, df_target, df_static_features, df_dynamic_data):
         # Label Encode Categorical features (also limiting df_static_data to avoid missing cat label error)
@@ -292,11 +306,27 @@ class data_handler:
                 bucket, path = ut.from_uri(self.global_dynamic_features[dataset])
                 self.global_dynamic_features[dataset] = ut.read_multipart_parquet_s3(bucket, path)
                 logger.debug(f"Global dynamic feature {dataset} imported from S3.")
+            if self.global_dynamic_features_projection[dataset] == 'ffill':
+                self.global_dynamic_features[dataset] = features_forward_fill(df=self.global_dynamic_features[dataset],
+                                                                              cutoff=self.cutoff,
+                                                                              projection_length=self.prediction_length)
             assert len(set(self.global_dynamic_features[dataset].columns) - set(['week_id'])) == 1, \
                 f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
     def import_specific_dynamic_features(self):
         pass
+
+    def _add_static_feat(self, df_static_features, df_feat):
+        feature_name = ', '.join((set(df_feat.columns) - set(['model_id', 'week_id'])))
+        assert 'model_id' in df_feat.columns, f"Columns `model_id` is missing from static dataset {feature_name}"
+
+        # Checking if `model_id` and `week_id` lists match in both df_dynamic_data and df_feat
+        assert len(set(df_static_features['model_id'].unique()) - set(df_feat['model_id'].unique())) == 0,\
+            "Mismatch in model_id list between the dynamic feature and the sales dataset"
+
+        df_with_new_feat = pd.merge(df_static_features, df_feat, on=['model_id'])
+
+        return df_with_new_feat
 
     def _add_dyn_feat(self, df_dynamic_data, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):
         # Checks

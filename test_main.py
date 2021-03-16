@@ -3,7 +3,7 @@ import src.utils as ut
 from src.data_handler import data_handler
 from src.sagemaker_utils import generate_df_jobs, SagemakerHandler
 
-list_cutoff = [202001]
+list_cutoff = [202105]
 run_name = 'testrun'
 environment = 'test'
 
@@ -43,8 +43,10 @@ if __name__ == "__main__":
                            'univers_id': df_static_tree[['model_id', 'univers_id']],
                            }
         
-        global_dynamic_features = {'store_openings': df_store_openings,
-                                   'holidays': df_holidays
+        global_dynamic_features = {'store_openings': {'dataset': df_store_openings,
+                                                      'projection': 'ffill'},
+                                   'holidays': {'dataset': df_holidays,
+                                                'projection': 'as_provided'}
                                    }
 
         specific_dynamic_features = None
