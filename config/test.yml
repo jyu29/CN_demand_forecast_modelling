@@ -2,23 +2,8 @@ buckets:
   refined_data_global: fcst-refined-demand-forecast-dev
   refined_data_specific: fcst-refined-demand-forecast-dev
 refining_specific_parameters:
+  rec_cold_start: true
   rec_cold_start_length: 156
-  patch_covid: false
-  patch_covid_weeks:
-  - 202011 # First lockdown
-  - 202012
-  - 202013
-  - 202014
-  - 202015
-  - 202016
-  - 202017
-  - 202018
-  - 202019
-  - 202020
-  - 202045 # Second lockdown
-  - 202046
-  - 202047
-  - 202048
   rec_cold_start_group:
   - family_id
 paths:

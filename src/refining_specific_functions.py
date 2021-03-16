@@ -36,9 +36,7 @@ def cold_start_rec(df,
                    df_model_week_sales,
                    df_model_week_tree,
                    rec_cold_start_length,
-                   patch_covid_weeks,
-                   rec_cold_start_group=['family_label'],
-                   patch_covid=True
+                   rec_cold_start_group=['family_label']
                    ):
 
     # Create a complete TS dataframe
@@ -72,30 +70,6 @@ def cold_start_rec(df,
 
     # Ad it to complete_ts
     complete_ts = pd.merge(complete_ts, all_sales, how='left')
-
-    # Patch covid
-    if patch_covid:
-        print(f"Covid-19 history reconstruction patch applied on weeks {patch_covid_weeks}")
-        
-        # Identify the Covid weeks present in complete_ts
-        covid_week_id = np.intersect1d(complete_ts['week_id'].unique(),
-                                       np.array(patch_covid_weeks))
-        
-        # Except for models sold only during the covid period...
-        exceptions = complete_ts \
-            .loc[~complete_ts['week_id'].isin(covid_week_id)] \
-            .groupby('model_id', as_index=False)['sales_quantity'].sum()
-        exceptions = exceptions.loc[exceptions['sales_quantity'] == 0, 'model_id'].unique()
-        
-        # ...replace mean cluster sales by the last year values...
-        complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id)) &
-                        (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_sales_quantity']] = \
-            complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id - 100)) &
-                            (~complete_ts['model_id'].isin(exceptions)), ['mean_cluster_sales_quantity']].values
-        
-        # ...and nullify sales during Covid
-        complete_ts.loc[(complete_ts['week_id'].isin(covid_week_id)) & 
-                        (~complete_ts['model_id'].isin(exceptions)), ['sales_quantity']] = np.nan
 
     # Compute the scale factor by row
     complete_ts['row_scale_factor'] = complete_ts['sales_quantity'] / complete_ts['mean_cluster_sales_quantity']
@@ -149,11 +123,6 @@ def cold_start_rec(df,
             (complete_ts['age'] < complete_ts['end_impl_period']))
     complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
     complete_ts['is_rec'] = np.where(cond, 1, 0)
-
-    if patch_covid:
-        cond = complete_ts['week_id'].isin(covid_week_id)
-        complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
-        complete_ts['is_rec'] = np.where(cond, 1, complete_ts['is_rec'])
 
     # Format
     complete_ts = complete_ts[list(df) + ['is_rec']].dropna(subset=['sales_quantity']).reset_index(drop=True)

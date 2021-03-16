@@ -24,10 +24,9 @@ class data_handler:
     def __init__(self,
                  cutoff: int,
                  base_data: dict,
+                 rec_cold_start: bool,
                  rec_cold_start_length: int,
                  prediction_length: int,
-                 patch_covid: bool,
-                 patch_covid_weeks: list,
                  rec_cold_start_group: list,
                  refined_global_bucket: str,
                  refined_specific_bucket: str,
@@ -47,8 +46,6 @@ class data_handler:
             rec_cold_start_length (int): Minimum weeks expected in each input time series
             prediction_length (int): Number of forecasted weeks in the future
             cat_cols (list): List of `str` to select static columns expected in model_week_tree
-            patch_covid (bool): Wether to apply the covid correction or not
-            patch_covid_weeks (list): list of weeks (ISO 8601 format YYYYWW) on which to apply the covid correction
             rec_cold_start_group (list): for the cold start reconstruction, columns to use in model_week_tree for the group average
             refined_global_bucket (str): S3 bucket on which the refined global data should be downloaded
             refined_specific_bucket (str): S3 bucket on which the refined specific data should be uploaded
@@ -57,12 +54,11 @@ class data_handler:
         """
         self.cutoff = cutoff
 
+        self.rec_cold_start = rec_cold_start
         self.rec_cold_start_length = rec_cold_start_length
-        self.prediction_length = prediction_length
-        self.patch_covid = patch_covid
-        self.patch_covid_weeks = patch_covid_weeks
-
         self.rec_cold_start_group = rec_cold_start_group
+
+        self.prediction_length = prediction_length
 
         # Base data init
         for dataset in base_data.keys():
@@ -171,13 +167,12 @@ class data_handler:
         df_sales = pad_to_cutoff(df_sales, self.cutoff)
 
         # Cold start reconstruction
-        df_sales = cold_start_rec(df_sales,
-                                  self.base_data['model_week_sales'],
-                                  self.base_data['model_week_tree'],
-                                  self.rec_cold_start_length,
-                                  self.patch_covid_weeks,
-                                  self.rec_cold_start_group,
-                                  self.patch_covid)
+        if self.rec_cold_start:
+            df_sales = cold_start_rec(df_sales,
+                                      self.base_data['model_week_sales'],
+                                      self.base_data['model_week_tree'],
+                                      self.rec_cold_start_length,
+                                      self.rec_cold_start_group)
 
         # Creating df_target
         df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
@@ -188,23 +183,24 @@ class data_handler:
             for dataset in self.static_features.keys():
                 df_static_features = self._add_static_feat(df_static_features,
                                                            df_feat=self.static_features[dataset])
-            # df_static_features = df_tree[['model_id'] + list(self.static_features.keys())]
 
         # Creating df_dynamic_features
-        min_week = df_sales['week_id'].min()
-        df_dynamic_features = generate_empty_dyn_feat_global(df_target,
-                                                             min_week=min_week,
-                                                             cutoff=self.cutoff,
-                                                             future_projection=self.prediction_length
-                                                             )
+        if any([self.rec_cold_start, hasattr(self, 'global_dynamic_features'), hasattr(self, 'specific_dynamic_features')]):
+            min_week = df_sales['week_id'].min()
+            df_dynamic_features = generate_empty_dyn_feat_global(df_target,
+                                                                 min_week=min_week,
+                                                                 cutoff=self.cutoff,
+                                                                 future_projection=self.prediction_length
+                                                                 )
 
         # Building is_rec specific dynamic feature and adding it to the dynamic features
-        df_is_rec = is_rec_feature_processing(df_sales, self.cutoff, self.prediction_length)
-        df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
-                                                 df_feat=df_is_rec,
-                                                 min_week=min_week,
-                                                 cutoff=self.cutoff,
-                                                 future_weeks=self.prediction_length)
+        if self.rec_cold_start:
+            df_is_rec = is_rec_feature_processing(df_sales, self.cutoff, self.prediction_length)
+            df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
+                                                     df_feat=df_is_rec,
+                                                     min_week=min_week,
+                                                     cutoff=self.cutoff,
+                                                     future_weeks=self.prediction_length)
 
         # Adding provided dynamic features
         if hasattr(self, 'global_dynamic_features'):

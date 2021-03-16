@@ -244,11 +244,10 @@ def import_refining_config(environment: str,
     params = read_yml(params_full_path)
 
     refining_params = {'cutoff': cutoff,
+                       'rec_cold_start': params['refining_specific_parameters']['rec_cold_start'],
                        'rec_cold_start_length': params['refining_specific_parameters']['rec_cold_start_length'],
-                       'prediction_length': params['modeling_parameters']['hyperparameters']['prediction_length'],
-                       'patch_covid': params['refining_specific_parameters']['patch_covid'],
-                       'patch_covid_weeks': params['refining_specific_parameters']['patch_covid_weeks'],
                        'rec_cold_start_group': params['refining_specific_parameters']['rec_cold_start_group'],
+                       'prediction_length': params['modeling_parameters']['hyperparameters']['prediction_length'],
                        'refined_global_bucket': params['buckets']['refined_data_global'],
                        'refined_specific_bucket': params['buckets']['refined_data_specific'],
                        'output_paths': {'train_path': train_path,
