@@ -273,9 +273,7 @@ def import_sagemaker_params(environment: str,
     params_full_path = f"config/{environment}.yml"
     params = read_yml(params_full_path)
 
-    sagemaker_params = {'bucket': params['buckets']['refined_data_specific'],
-                        'refined_path': params['paths']['refined_specific_path'],
-                        'train_instance_type': params['modeling_parameters']['train_instance_type'],
+    sagemaker_params = {'train_instance_type': params['modeling_parameters']['train_instance_type'],
                         'train_instance_count': params['modeling_parameters']['train_instance_count'],
                         'train_max_instances': params['modeling_parameters']['train_max_instances'],
                         'train_use_spot_instances': params['modeling_parameters']['train_use_spot_instances'],
