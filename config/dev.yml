@@ -1,46 +1,24 @@
 buckets:
-  refined-data-global: fcst-refined-demand-forecast-dev
-  refined-data-specific: fcst-refined-demand-forecast-dev
-functional_parameters:
-  run_timestamp_suffix : true
-  algorithm: deepAR
-  cat_cols:
+  refined_data_global: fcst-refined-demand-forecast-dev
+  refined_data_specific: fcst-refined-demand-forecast-dev
+paths:
+  refined_global_path: global/
+  refined_specific_path: specific/
+refining_specific_parameters:
+  rec_cold_start: true
+  rec_cold_start_length: 156
+  rec_cold_start_group:
   - family_id
-  - sub_department_id
-  - department_id
-  - product_nature_id
-  - univers_id
-  dyn_cols: null
-  min_ts_len: 156
-  patch_covid: true
-  patch_covid_weeks:
-  - 202011 # First lockdown
-  - 202012
-  - 202013
-  - 202014
-  - 202015
-  - 202016
-  - 202017
-  - 202018
-  - 202019
-  - 202020
-  - 202045 # Second lockdown
-  - 202046
-  - 202047
-  - 202048
-  validation_length: 52
-  target_cluster_keys:
-  - family_id
-  target_hist_rec_method: cluster_avg
+modeling_parameters:
   hyperparameters:
     time_freq : W
     prediction_length: 52
     context_length: 104
     epochs : 100
-    likelihood : student-T
+    likelihood : deterministic-L1
+    mini_batch_size: 512
   #  early_stopping_patience: 100
   #  learning_rate: 1e-4
-  #  mini_batch_size: 128
   #  num_layers: 3
   #  num_cells: 40
   #  dropout_rate: 0.1
@@ -58,15 +36,10 @@ functional_parameters:
   #  - 0.7
   #  - 0.8
   #  - 0.9
-paths:
-  refined_global_path: global/
-  refined_specific_path: specific/
-  #run_model_path: pov/data/refined/test/model/
-  #run_output_path: pov/data/refined/test/output/
-technical_parameters:
+  algorithm: deepAR
   image_name_label: forecasting-deepar
-  max_train_instances: 10
-  max_transform_instances: 5
+  train_max_instances: 10
+  transform_max_instances: 5
   role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
   tags:
     Key: project
