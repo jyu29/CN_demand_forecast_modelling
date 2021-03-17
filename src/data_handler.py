@@ -202,11 +202,20 @@ class data_handler:
                                                      cutoff=self.cutoff,
                                                      future_weeks=self.prediction_length)
 
-        # Adding provided dynamic features
+        # Adding provided global dynamic features
         if hasattr(self, 'global_dynamic_features'):
             for dataset in self.global_dynamic_features.keys():
                 df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
                                                          df_feat=self.global_dynamic_features[dataset],
+                                                         min_week=min_week,
+                                                         cutoff=self.cutoff,
+                                                         future_weeks=self.prediction_length)
+
+        # Adding provided specific dynamic features
+        if hasattr(self, 'specific_dynamic_features'):
+            for dataset in self.specific_dynamic_features.keys():
+                df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
+                                                         df_feat=self.specific_dynamic_features[dataset],
                                                          min_week=min_week,
                                                          cutoff=self.cutoff,
                                                          future_weeks=self.prediction_length)
@@ -310,7 +319,18 @@ class data_handler:
                 f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
     def import_specific_dynamic_features(self):
-        pass
+        for dataset in self.specific_dynamic_features.keys():
+            if isinstance(self.specific_dynamic_features[dataset], str):
+                logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
+                bucket, path = ut.from_uri(self.specific_dynamic_features[dataset])
+                self.specific_dynamic_features[dataset] = ut.read_multipart_parquet_s3(bucket, path)
+                logger.debug(f"Global dynamic feature {dataset} imported from S3.")
+            if self.specific_dynamic_features_projection[dataset] == 'ffill':
+                self.specific_dynamic_features[dataset] = features_forward_fill(df=self.specific_dynamic_features[dataset],
+                                                                                cutoff=self.cutoff,
+                                                                                projection_length=self.prediction_length)
+            assert len(set(self.specific_dynamic_features[dataset].columns) - set(['week_id', 'model_id'])) == 1, \
+                f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
     def _add_static_feat(self, df_static_features, df_feat):
         feature_name = ', '.join((set(df_feat.columns) - set(['model_id', 'week_id'])))

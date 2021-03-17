@@ -13,6 +13,7 @@ df_model_week_tree = pd.read_parquet('~/Downloads/modeling_data/model_week_tree/
 df_model_week_mrp = pd.read_parquet('~/Downloads/modeling_data/model_week_mrp/')
 df_store_openings = pd.read_csv('~/Downloads/modeling_data/store_openings/store_openings.csv', sep=";")
 df_holidays = pd.read_csv('~/Downloads/modeling_data/holidays/holidays.csv', sep=";")
+df_test_feat = pd.read_csv('~/Downloads/modeling_data/test_dynamic_specific_feat/test_feat.csv', sep=";")
 
 # Generate empty df_jobs
 refined_data_specific_path = ut.to_uri(ut.import_raw_config(environment)['buckets']['refined_data_specific'],
@@ -49,7 +50,8 @@ if __name__ == "__main__":
                                                 'projection': 'as_provided'}
                                    }
 
-        specific_dynamic_features = None
+        specific_dynamic_features = {'test_feat': {'dataset': df_test_feat,
+                                                   'projection': 'as_provided'}}
         
         train_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'train_path'].values[0]
         predict_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'predict_path'].values[0]
@@ -64,6 +66,7 @@ if __name__ == "__main__":
         dh = data_handler(base_data=base_data,
                           static_features=static_features,
                           global_dynamic_features=global_dynamic_features,
+                          specific_dynamic_features=specific_dynamic_features,
                           **refining_params
                           )
 
