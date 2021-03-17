@@ -10,7 +10,7 @@ from src.refining_specific_functions import (check_weeks_df, generate_empty_dyn_
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class data_handler:
