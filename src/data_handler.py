@@ -92,6 +92,13 @@ class data_handler:
             assert isinstance(output_paths[output], (str)), "Output paths for jsonline files must be `str`"
         self.output_paths = output_paths
 
+        logger.info(f"Data refining specific for Demand Forecast initialized for cutoff {self.cutoff}")
+        if self.rec_cold_start:
+            logger.info(f"Cold Start Reconstruction requested with {self.rec_cold_start_length} minimum weeks and average on values {self.rec_cold_start_group}")
+        else:
+            logger.debug("Cold Start Reconstruction not requested")
+        logger.info(f"Expected prediction length is {self.prediction_length}")
+
     def execute_data_refining_specific(self):
         """Workflow method for data refining pipeline for specific data
 
@@ -110,16 +117,20 @@ class data_handler:
         self.import_all_data()
 
         # Refining specific
+        logger.info("Starting Data Refining...")
         self.df_target, self.df_static_data, self.df_dynamic_data = self.refining_specific()
 
         # DeepAR Formatting
+        logger.info("Starting DeepAR formatting...")
         self.train_jsonline, self.predict_jsonline = self.deepar_formatting(self.df_target, self.df_static_data, self.df_dynamic_data)
 
         # Saving jsonline files on S3
         train_bucket, train_path = ut.from_uri(self.output_paths['train_path'])
         predict_bucket, predict_path = ut.from_uri(self.output_paths['predict_path'])
         ut.write_str_to_file_on_s3(self.train_jsonline, train_bucket, train_path)
+        logger.info(f"Train jsonline file saved at {self.output_paths['train_path']}")
         ut.write_str_to_file_on_s3(self.predict_jsonline, predict_bucket, predict_path)
+        logger.info(f"Predict jsonline file saved at {self.output_paths['predict_path']}")
 
     def import_all_data(self):
         """Workflow method to integrate datasets.
@@ -130,28 +141,28 @@ class data_handler:
         """
         # Base data import
         self.import_base_data()
-        logger.debug("Attribute `base_data` created.")
+        logger.info("Attribute `base_data` created.")
 
         # Static features import
         if hasattr(self, 'static_features'):
             self.import_static_features()
-            logger.debug("Attribute `static_features` created")
+            logger.info("Attribute `static_features` created")
         else:
-            logger.debug("No static features specified.")
+            logger.info("No static features specified.")
 
         # Global dynamic features import
         if hasattr(self, 'global_dynamic_features'):
             self.import_global_dynamic_features()
-            logger.debug("Attribute `global_dynamic_features` created")
+            logger.info("Attribute `global_dynamic_features` created")
         else:
-            logger.debug("No global dynamic features specified.")
+            logger.info("No global dynamic features specified.")
 
         # Specific dynamic features import
         if hasattr(self, 'specific_dynamic_features'):
             self.import_specific_dynamic_features()
-            logger.debug("Attribute `specific_dynamic_features` created")
+            logger.info("Attribute `specific_dynamic_features` created")
         else:
-            logger.debug("No specific dynamic features specified.")
+            logger.info("No specific dynamic features specified.")
 
     def refining_specific(self):
         """Workflow method for data refining specific to Demand Forecast
@@ -177,30 +188,38 @@ class data_handler:
         df_sales = self.base_data['model_week_sales']
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
         self.base_data['model_week_sales'] = df_sales
+        logger.debug(f"Limited sales data up to cutoff {self.cutoff}")
 
         # MRP refining
         df_mrp = self.base_data['model_week_mrp']
         df_mrp = df_mrp[df_mrp['week_id'] == self.cutoff]
         self.base_data['model_week_mrp'] = df_mrp
+        logger.debug(f"Limited MRP data to cutoff {self.cutoff}")
 
         # Tree refining
         df_tree = self.base_data['model_week_tree']
         df_tree = df_tree[df_tree['week_id'] == self.cutoff]
         self.base_data['model_week_tree'] = df_tree
+        logger.debug(f"Limited tree data to cutoff {self.cutoff}")
 
         # Limiting Sales data to MRP active models
         df_sales = pd.merge(df_sales, df_mrp.loc[df_mrp['is_mrp_active'], ['model_id']])
+        logger.debug("Sales data filtered on active MRP status")
 
         # Pad to cutoff Sales data
+        logger.debug("Starting pad to cutoff...")
         df_sales = pad_to_cutoff(df_sales, self.cutoff)
+        logger.debug("Pad to cutoff done")
 
         # Cold start reconstruction
         if self.rec_cold_start:
+            logger.debug("Cold start reconstruction requested. Starting reconstruction...")
             df_sales = cold_start_rec(df_sales,
                                       self.base_data['model_week_sales'],
                                       self.base_data['model_week_tree'],
                                       self.rec_cold_start_length,
                                       self.rec_cold_start_group)
+            logger.debug("Cold start reconstruction done.")
 
         # Creating df_target
         df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
@@ -211,6 +230,7 @@ class data_handler:
             for dataset in self.static_features.keys():
                 df_static_features = self._add_static_feat(df_static_features,
                                                            df_feat=self.static_features[dataset])
+                logger.debug(f"Added static feature {dataset} to `df_static_features`")
 
         # Creating df_dynamic_features
         min_week = df_sales['week_id'].min()
@@ -229,6 +249,7 @@ class data_handler:
                                                      min_week=min_week,
                                                      cutoff=self.cutoff,
                                                      future_weeks=self.prediction_length)
+            logger.debug("Cold start reconstruction requested. Added reconstruction to `df_dynamic_features`.")
 
         # Adding provided global dynamic features
         if hasattr(self, 'global_dynamic_features'):
@@ -238,6 +259,7 @@ class data_handler:
                                                          min_week=min_week,
                                                          cutoff=self.cutoff,
                                                          future_weeks=self.prediction_length)
+                logger.debug(f"Added global dynamic feature {dataset} to `df_dynamic_features`")
 
         # Adding provided specific dynamic features
         if hasattr(self, 'specific_dynamic_features'):
@@ -247,6 +269,7 @@ class data_handler:
                                                          min_week=min_week,
                                                          cutoff=self.cutoff,
                                                          future_weeks=self.prediction_length)
+                logger.debug(f"Added specific dynamic feature {dataset} to `df_dynamic_features`")
 
         return df_target, df_static_features, df_dynamic_features
 
@@ -272,6 +295,7 @@ class data_handler:
             le = LabelEncoder()
             df_static_features[c] = le.fit_transform(df_static_features[c])
         df_static_features['cat'] = df_static_features[self.static_features.keys()].values.tolist()
+        logger.debug("Static features label-encoded.")
 
         # Building df_predict
         # Adding prediction weeks necessary for dynamic features in df_predict
@@ -282,6 +306,7 @@ class data_handler:
                                                                          target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
         df_predict = df_predict.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+        logger.debug("Added categorical features to `df_predict`")
 
         # Identifying final list of dynamic features
         dynamic_features = list(set(self.df_dynamic_data.columns) - set(['model_id', 'week_id']))
@@ -293,6 +318,7 @@ class data_handler:
         # Adding dynamic features
         df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']], left_index=True, right_index=True, how='left')
         df_predict.reset_index(inplace=True)
+        logger.debug("Added dynamic features to `df_predict`")
 
         # Building df_train
         # Limiting dataset to avoid any future data
@@ -304,6 +330,7 @@ class data_handler:
                                                                      target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
         df_train = df_train.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+        logger.debug("Added static features to `df_train`")
         # Concatenating dynamic features in list format
         df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
@@ -311,6 +338,7 @@ class data_handler:
         df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
         # Adding dynamic features
         df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']], left_index=True, right_index=True, how='left')
+        logger.debug("Added dynamic features to `df_train`")
         # Shuffling df_train
         df_train = df_train.sample(frac=1)
         df_train.reset_index(inplace=True)
@@ -318,10 +346,14 @@ class data_handler:
         # Converting to jsonline
         train_jsonline = df_train.to_json(orient='records', lines=True)
         predict_jsonline = df_predict.to_json(orient='records', lines=True)
+        logger.debug("Jsonline files created")
 
         # Checking jsonline datasets
+        logger.info("Checking train jsonline file...")
         self.check_json_line(train_jsonline)
+        logger.info("Checking predict jsonline file...")
         self.check_json_line(predict_jsonline, future_proj_len=52)
+        logger.debug("All checks on jsonline files passed")
 
         return train_jsonline, predict_jsonline
 
@@ -354,7 +386,7 @@ class data_handler:
     def import_global_dynamic_features(self):
         """Helper for potential data import for global dynamic features if S3 URI was provided.
 
-        Also provides a forward fill function if required.
+        Also provides a forward fill function if requested.
         Checks if dynamic features datasets contain only one features each
         """
         for dataset in self.global_dynamic_features.keys():
@@ -373,7 +405,7 @@ class data_handler:
     def import_specific_dynamic_features(self):
         """Helper for potential data import for specific dynamic features if S3 URI was provided.
 
-        Also provides a forward fill function if required.
+        Also provides a forward fill function if requested.
         Checks if dynamic features datasets contain only one features each
         """
         for dataset in self.specific_dynamic_features.keys():
@@ -490,16 +522,19 @@ class data_handler:
         df['target_len'] = df.apply(lambda x: len(x['target']), axis=1)
         test = df['target_len'] >= self.rec_cold_start_length
         assert all(test.values), 'Some models have a `target` less than `rec_cold_start_length`'
+        logger.debug("All target time series have a length longer than `rec_cold_start_length`")
 
         # Test if target length is right
         df['target_len_test'] = df.apply(lambda x: ut.date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')) == self.cutoff, axis=1)
         assert all(df['target_len_test'].values), "Some models have a 'target' length which doesn't match with the 'start' date"
+        logger.debug("All target time series have a length matching with start_date and cutoff")
 
         if 'cat' in df.columns:
             # Test if right number of categorical features
             df['cat_feat_nb'] = df.apply(lambda x: len(x['cat']), axis=1)
             test = df['cat_feat_nb'] == len(set(self.df_static_data.columns) - set(['model_id']))
             assert all(test.values), "Some models don't have the right number of categorical features"
+            logger.debug(f"All models have {len(set(self.df_static_data.columns) - set(['model_id']))} categorical features ")
 
         if 'dynamic_feat' in df.columns:
             nb_dyn_feat = len(set(self.df_dynamic_data.columns) - set(['model_id', 'week_id']))
@@ -508,14 +543,17 @@ class data_handler:
             df['dyn_feat_nb'] = df.apply(lambda x: len(x['dynamic_feat']), axis=1)
             test = df[['dyn_feat_nb']] == nb_dyn_feat
             assert all(test.values), "Some models don't have the right number of dynamic features"
+            logger.debug(f"All models have {nb_dyn_feat} dynamic features")
 
             # Test if right length of dynamic features
-            test_dict = {}
-            for i in range(nb_dyn_feat):
-                df[f'dyn_feat_{i}_len'] = df.apply(lambda x: len(x['dynamic_feat'][i]), axis=1)
-                df[f'dyn_feat_{i}_len_test'] = df[f'dyn_feat_{i}_len'] == df['target_len'] + future_proj_len
-                test_dict[i] = f'dyn_feat_{i}_len_test'
+            dynamic_features_names = list(self.df_dynamic_data.columns)
+            dynamic_features_names.remove('week_id')
+            dynamic_features_names.remove('model_id')
+            for i, feat in enumerate(dynamic_features_names):
+                df[f'dyn_feat_{feat}_len'] = df.apply(lambda x: len(x['dynamic_feat'][i]), axis=1)
+                df[f'dyn_feat_{feat}_len_test'] = df[f'dyn_feat_{feat}_len'] == df['target_len'] + future_proj_len
 
-            for i in test_dict.keys():
-                assert df[df[test_dict[i]]].shape[0] == df.shape[0], \
-                    f"Some models don't have the right dynamic feature length for feature {i}"
+            for feat in dynamic_features_names:
+                assert df[df[f'dyn_feat_{feat}_len_test']].shape[0] == df.shape[0], \
+                    f"Some models don't have the right dynamic feature length for feature {feat}"
+                logger.debug(f"All models have the right dynamic features {feat} length")

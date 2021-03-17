@@ -1,7 +1,17 @@
+import argparse
+
 import pandas as pd
+
 import src.utils as ut
-from src.data_handler import data_handler
-from src.sagemaker_utils import generate_df_jobs, SagemakerHandler
+import src.data_handler as dh
+import src.sagemaker_utils as su
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--logging_lvl', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'],
+                    default="INFO", help="Level for logger")
+args = parser.parse_args()
+su.logger.setLevel(args.logging_lvl)
+dh.logger.setLevel(args.logging_lvl)
 
 list_cutoff = [202105]
 run_name = 'testrun'
@@ -20,11 +30,11 @@ refined_data_specific_path = ut.to_uri(ut.import_raw_config(environment)['bucket
                                        ut.import_raw_config(environment)['paths']['refined_specific_path']
                                        )
 algorithm = ut.import_raw_config(environment)['modeling_parameters']['algorithm']
-df_jobs = generate_df_jobs(list_cutoff=list_cutoff,
-                           run_name=run_name,
-                           algorithm=algorithm,
-                           refined_data_specific_path=refined_data_specific_path
-                           )
+df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
+                              run_name=run_name,
+                              algorithm=algorithm,
+                              refined_data_specific_path=refined_data_specific_path
+                              )
 
 if __name__ == "__main__":
     for cutoff in list_cutoff:
@@ -51,8 +61,6 @@ if __name__ == "__main__":
                                    }
 
         specific_dynamic_features = None
-                                    # {'test_feat': {'dataset': df_test_feat,
-                                    #                'projection': 'as_provided'}}
         
         train_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'train_path'].values[0]
         predict_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'predict_path'].values[0]
@@ -64,21 +72,21 @@ if __name__ == "__main__":
                                                     predict_path=predict_path
                                                     )
 
-        dh = data_handler(base_data=base_data,
-                          static_features=static_features,
-                          global_dynamic_features=global_dynamic_features,
-                          specific_dynamic_features=specific_dynamic_features,
-                          **refining_params
-                          )
+        refining_handler = dh.data_handler(base_data=base_data,
+                                           static_features=static_features,
+                                           global_dynamic_features=global_dynamic_features,
+                                           specific_dynamic_features=specific_dynamic_features,
+                                           **refining_params
+                                           )
 
-        dh.execute_data_refining_specific()
+        refining_handler.execute_data_refining_specific()
 
     sagemaker_params = ut.import_sagemaker_params(environment=environment)
 
-    sh = SagemakerHandler(run_name=run_name,
-                          df_jobs=df_jobs,
-                          **sagemaker_params)
+    # modeling_handler = su.SagemakerHandler(run_name=run_name,
+    #                                        df_jobs=df_jobs,
+    #                                        **sagemaker_params)
 
-    sh.launch_training_jobs()
+    # modeling_handler.launch_training_jobs()
 
-    sh.launch_transform_jobs()
+    # modeling_handler.launch_transform_jobs()
