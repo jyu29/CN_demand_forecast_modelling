@@ -211,8 +211,10 @@ def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
 def import_raw_config(environment: str) -> dict:
     """Handler to import full configuration from YML file
 
+    The handler will import all parameters in the config file, regardless of values.
+
     Args:
-        environment (str):
+        environment (str): Set of parameters on which to load the parameters
 
     Returns:
         A dictionary with all parameters
@@ -232,10 +234,11 @@ def import_refining_config(environment: str,
     """Handler to import specific refining configuration from YML file
 
     Args:
-        environment (str):
-        cutoff (int):
-        run_name (str):
-        df_jobs (pd.DataFrame):
+        environment (str): Set of parameters on which to load the parameters
+        cutoff (int): Cutoff week in format YYYYWW (ISO 8601)
+        run_name (str): Custom name for the current name - will propagate to saved files names
+        df_jobs (pd.DataFrame): helper to ensure Sagemaker tracking of training & inference, and associated
+            files paths.
 
     Returns:
         A dictionary with all parameters for specific refining process
@@ -262,9 +265,7 @@ def import_sagemaker_params(environment: str,
     """Handler to import sagemaker configuration from YML file
 
     Args:
-        environment (str):
-        cutoff (int):
-        run_name (str):
+        environment (str): Set of parameters on which to load the parameters
 
     Returns:
         A dictionary with all parameters for sagemaker training & inference
