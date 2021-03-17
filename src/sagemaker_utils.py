@@ -47,6 +47,12 @@ def generate_df_jobs(list_cutoff: list,
     df_jobs['transform_job_name'] = np.nan
     df_jobs['transform_status'] = 'NotStarted'
 
+    # Serialized model path
+    df_jobs['model_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/model/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+
+    # Jsonline prediction file output path
+    df_jobs['output_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/output/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+
     return df_jobs
 
 
@@ -63,10 +69,7 @@ class SagemakerHandler:
 
     def __init__(self,
                  run_name: str,
-                 list_cutoff: list,
                  df_jobs,
-                 bucket: str,
-                 refined_path: str,
                  train_instance_type: str,
                  train_instance_count: int,
                  train_max_instances: int,
@@ -81,16 +84,11 @@ class SagemakerHandler:
                  ):
         # tests
         assert isinstance(run_name, (str))
-        assert isinstance(list_cutoff, (list))
-        for cutoff in list_cutoff:
-            assert isinstance(cutoff, (int))
+        assert isinstance(df_jobs, pd.DataFrame)
 
         # Attributes
         self.run_name = run_name
-        self.list_cutoff = list_cutoff
         self.df_jobs = df_jobs
-        self.bucket = bucket
-        self.refined_path = refined_path
         self.train_instance_type = train_instance_type
         self.train_instance_count = train_instance_count
         self.train_max_instances = train_max_instances
@@ -133,7 +131,7 @@ class SagemakerHandler:
                 # Starting jobs
                 for i, row in df_jobs_to_start.iterrows():
                     base_job_name = row['base_job_name']
-                    model_path = ut.to_uri(self.bucket, f"{self.refined_path}{base_job_name}/model/")
+                    model_path = row['model_path']
 
                     # Creating the estimator
                     estimator = sagemaker.estimator.Estimator(
@@ -191,7 +189,7 @@ class SagemakerHandler:
 
                     base_job_name = row['base_job_name']
                     training_job_name = row['training_job_name']
-                    output_path = ut.to_uri(self.bucket, f"{self.refined_path}{base_job_name}/output/")
+                    output_path = row['output_path']
 
                     # Delete old model version if exists
                     try:

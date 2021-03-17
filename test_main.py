@@ -50,8 +50,9 @@ if __name__ == "__main__":
                                                 'projection': 'as_provided'}
                                    }
 
-        specific_dynamic_features = {'test_feat': {'dataset': df_test_feat,
-                                                   'projection': 'as_provided'}}
+        specific_dynamic_features = None
+                                    # {'test_feat': {'dataset': df_test_feat,
+                                    #                'projection': 'as_provided'}}
         
         train_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'train_path'].values[0]
         predict_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'predict_path'].values[0]
@@ -76,7 +77,6 @@ if __name__ == "__main__":
 
     sh = SagemakerHandler(run_name=run_name,
                           df_jobs=df_jobs,
-                          list_cutoff=list_cutoff,
                           **sagemaker_params)
 
     sh.launch_training_jobs()

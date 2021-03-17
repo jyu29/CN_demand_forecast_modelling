@@ -17,8 +17,6 @@ class data_handler:
     """
     Data Handler from refined data global to feature engineering for
     the demand Forecast project.
-
-    Args:
     """
 
     def __init__(self,
@@ -115,6 +113,9 @@ class data_handler:
         ut.write_str_to_file_on_s3(self.predict_jsonline, predict_bucket, predict_path)
 
     def import_all_data(self):
+        """
+
+        """
         # Base data import
         self.import_base_data()
         logger.debug("Attribute `base_data` created.")
