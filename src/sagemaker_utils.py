@@ -1,14 +1,18 @@
+import logging
 import time
 from datetime import datetime
 
+import boto3
 import numpy as np
 import pandas as pd
-
-import boto3
 import sagemaker
+from sagemaker.amazon.amazon_estimator import get_image_uri
+
 import src.utils as ut
 
-from sagemaker.amazon.amazon_estimator import get_image_uri
+logger = logging.getLogger(__name__)
+logging.basicConfig()
+logger.setLevel(logging.INFO)
 
 
 def generate_df_jobs(list_cutoff: list,
@@ -52,6 +56,8 @@ def generate_df_jobs(list_cutoff: list,
 
     # Jsonline prediction file output path
     df_jobs['output_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/output/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+
+    logger.debug(f"df_jobs created for cutoffs {list_cutoff}")
 
     return df_jobs
 
@@ -117,6 +123,7 @@ class SagemakerHandler:
     def launch_training_jobs(self):
         job_type = 'training'
 
+        logger.info(f"Launching {self.df_jobs.shape[0]} training jobs on AWS Sagemaker...")
         while set(self.df_jobs['training_status'].unique()) - {'Failed', 'Completed', 'Stopped'} != set():
 
             # Condition to check if the running instances limit is not capped
@@ -152,6 +159,7 @@ class SagemakerHandler:
                     estimator.set_hyperparameters(**self.hyperparameters)
 
                     # Launching the fit
+                    logger.debug(f"Starting fit for job {base_job_name}")
                     estimator.fit(inputs={'train': row['train_path']}, wait=False)
 
                     # fill job name
@@ -168,11 +176,12 @@ class SagemakerHandler:
         time.sleep(10)
         self._update_jobs_status(job_type)
 
-        print('Training done.')
+        logger.info("Training jobs finished.")
 
     def launch_transform_jobs(self):
         job_type = 'transform'
 
+        logger.info(f"Launching {self.df_jobs.shape[0]} inference jobs on AWS Sagemaker...")
         while set(self.df_jobs['transform_status'].unique()) - {'Failed', 'Completed', 'Stopped'} != set():
 
             # Condition to check if the running instances limit is not capped
@@ -219,6 +228,7 @@ class SagemakerHandler:
                     )
 
                     # Forecast
+                    logger.debug("Launching inference job {training_job_name}")
                     transformer.transform(data=row['predict_path'], split_type='Line')
 
                     # Fill job name
@@ -235,7 +245,7 @@ class SagemakerHandler:
         time.sleep(10)
         self._update_jobs_status(job_type)
 
-        print('Transform job done.')
+        logger.info("Transform jobs finished.")
 
     def _identify_jobs_to_start(self, max_running_instances, job_type):
         """Returns the jobs to start by analyzing the Sagemaker jobs monitoring dataframe
