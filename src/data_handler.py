@@ -93,8 +93,17 @@ class data_handler:
         self.output_paths = output_paths
 
     def execute_data_refining_specific(self):
-        """
-        Data refining pipeline for specific data
+        """Workflow method for data refining pipeline for specific data
+
+        Executes all steps for data refining specific to Demand Forecast :
+        * Data import (including optional S3 download & potential forward fill)
+        * Data refining specific to Demand Forecast, including :
+          * Dataset limitation to instance cutoff
+          * Pad to cutoff for missing data (models for which sales stopped before the instance cutoff)
+          * Optional cold start reconstruction (depending on parameters) and addition to dynamic features
+          * static & dynamic features concatenation
+        * Formatting datasets to the algorithm expected scheme
+        * Upload to S3
         """
 
         # Static all data
@@ -113,8 +122,11 @@ class data_handler:
         ut.write_str_to_file_on_s3(self.predict_jsonline, predict_bucket, predict_path)
 
     def import_all_data(self):
-        """
+        """Workflow method to integrate datasets.
 
+        Provides a workflow to integrate base data (used for cold start reconstruction for example), static features,
+        Global dynamic features (temporal features not specific to a model), and specific dynamic features (temporal
+        features defined at model level)
         """
         # Base data import
         self.import_base_data()
@@ -142,6 +154,21 @@ class data_handler:
             logger.debug("No specific dynamic features specified.")
 
     def refining_specific(self):
+        """Workflow method for data refining specific to Demand Forecast
+
+        Processes base data, static features, global dynamic features & specific dynamic features to return
+        concatenated and refined datasets (target, static features & dynamic features), with several format checks.
+        Steps include:
+          * Dataset limitation to instance cutoff
+          * Pad to cutoff for missing data (models for which sales stopped before the instance cutoff)
+          * Optional cold start reconstruction (depending on parameters) and addition to dynamic features
+          * static & dynamic features concatenation
+
+        Returns:
+            df_target (pd.DataFrame): Temporal & model-specific dataset including target values up to instance cutoff
+            df_static_features (pd.DataFrame): Model-specific dataset with static labels
+            df_dynamic_features (pd.DataFrame): Temporal & model-specific dataset with dynamic values
+        """
         # Init
         df_static_features = None
         df_dynamic_features = None
@@ -186,8 +213,8 @@ class data_handler:
                                                            df_feat=self.static_features[dataset])
 
         # Creating df_dynamic_features
+        min_week = df_sales['week_id'].min()
         if any([self.rec_cold_start, hasattr(self, 'global_dynamic_features'), hasattr(self, 'specific_dynamic_features')]):
-            min_week = df_sales['week_id'].min()
             df_dynamic_features = generate_empty_dyn_feat_global(df_target,
                                                                  min_week=min_week,
                                                                  cutoff=self.cutoff,
@@ -224,6 +251,21 @@ class data_handler:
         return df_target, df_static_features, df_dynamic_features
 
     def deepar_formatting(self, df_target, df_static_features, df_dynamic_data):
+        """Method formatting datasets to DeepAR-specific scheme.
+
+        Takes target, static & dynamic features datasets, label-encodes & puts data in jsonline-compliant format.
+
+        Args:
+            df_target (pd.DataFrame): Temporal & model-specific dataset including target values up to instance cutoff
+            df_static_features (pd.DataFrame): Model-specific dataset with static labels
+            df_dynamic_features (pd.DataFrame): Temporal & model-specific dataset with dynamic values
+
+        Returns:
+            train_jsonline (str): jsonline DeepAR-compliant string for training (limited to instance cutoff)
+            predict_jsonline (str): jsonline DeepAR-compliant string for inference (limited to instance cutoff
+                for target, and with future projection for dynamic features)
+            """
+
         # Label Encode Categorical features (also limiting df_static_data to avoid missing cat label error)
         df_static_features = df_static_features.merge(df_target[['model_id']].drop_duplicates(), on=['model_id'])
         for c in self.static_features.keys():
@@ -284,6 +326,8 @@ class data_handler:
         return train_jsonline, predict_jsonline
 
     def import_base_data(self):
+        """Helper for potential data import if S3 URI was provided. Also ensure datetime format for 'date' field.
+        """
         for dataset in self.base_data.keys():
             if isinstance(self.base_data[dataset], str):
                 logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
@@ -295,6 +339,8 @@ class data_handler:
                 self.base_data[dataset].loc[:, 'date'] = pd.to_datetime(self.base_data[dataset].loc[:, 'date'])
 
     def import_static_features(self):
+        """Helper for potential data import for static features if S3 URI was provided.
+        """
         for dataset in self.static_features.keys():
             if isinstance(self.static_features[dataset], str):
                 logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
@@ -306,6 +352,11 @@ class data_handler:
                 f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
     def import_global_dynamic_features(self):
+        """Helper for potential data import for global dynamic features if S3 URI was provided.
+
+        Also provides a forward fill function if required.
+        Checks if dynamic features datasets contain only one features each
+        """
         for dataset in self.global_dynamic_features.keys():
             if isinstance(self.global_dynamic_features[dataset], str):
                 logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
@@ -320,6 +371,11 @@ class data_handler:
                 f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
     def import_specific_dynamic_features(self):
+        """Helper for potential data import for specific dynamic features if S3 URI was provided.
+
+        Also provides a forward fill function if required.
+        Checks if dynamic features datasets contain only one features each
+        """
         for dataset in self.specific_dynamic_features.keys():
             if isinstance(self.specific_dynamic_features[dataset], str):
                 logger.info(f"Dataset {dataset} not passed to data handler, importing data from S3...")
@@ -334,6 +390,18 @@ class data_handler:
                 f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
     def _add_static_feat(self, df_static_features, df_feat):
+        """Adds unitary static feature to the concatenated static features dataset
+
+        Args:
+            df_static_features (pd.DataFrame): Concatenated dataframe for static features. Can be empty except for
+                'model_id'. The declared models will be exactly the models exposed to the modeling step.
+            df_feat (pd.DataFrame): Static features dataset. Must include column 'model_id' and one column with the
+                associated static feature. The name of this column will be the name of the feature.
+
+        Returns:
+            df_with_new_feat (pd.DataFrame): Updted concatenated dataframe for static features.
+        """
+
         feature_name = ', '.join((set(df_feat.columns) - set(['model_id', 'week_id'])))
         assert 'model_id' in df_feat.columns, f"Columns `model_id` is missing from static dataset {feature_name}"
 
@@ -346,6 +414,24 @@ class data_handler:
         return df_with_new_feat
 
     def _add_dyn_feat(self, df_dynamic_data, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):
+        """Adds unitary dynamic feature to the concatenated static features dataset. 
+
+        If the feature is global (not model-specific), it will explode the feature for each model in `df_dynamic_data`
+
+        Args:
+            df_dynamnic_data (pd.DataFrame): Concatenated dataframe for dynamic features. Can be empty except for
+                'model_id' and 'weekd_id'. The declared models and weeks will be exactly the models exposed to the modeling step.
+            df_feat (pd.DataFrame): Static features dataset. Must include column 'model_id' and one column with the
+                associated static feature. The name of this column will be the name of the feature.
+            min_week (int): Minimum week to check in the DataFrame (YYYYWW ISO Format)
+            cutoff (int): instance cutoff
+            future_weeks (int): number of weeks in the future to infer on
+            week_column (str): Column name for weeks
+
+        Returns:
+            df_with_new_feat (pd.DataFrame): Updted concatenated dataframe for dynamic features.
+        """
+
         # Checks
         check_weeks_df(df_feat, min_week, cutoff, future_weeks, week_column=week_column)
 
@@ -365,6 +451,16 @@ class data_handler:
         return df_with_new_feat
 
     def _add_future_weeks(self, df):
+        """Provides a model-specific dataframe with future weeks to infer on.
+
+        Args:
+            df (pd.DataFrame): dataframe including columns 'week_id' & 'model_id'. Can contains other columns.
+
+        Returns:
+            df (pd.DataFrame): updated dataframe appended with future weeks (exploded on 'model_id'). Other columns
+                are filled with np.nan
+        """
+
         cutoff = self.cutoff
         prediction_length = self.prediction_length
         model_ids = df['model_id'].unique()
@@ -381,6 +477,13 @@ class data_handler:
         return df
 
     def check_json_line(self, jsonline, future_proj_len=0):
+        """Checks DeepAR jsonline conformity
+
+        Args:
+            jsonline (str): Jsonline-compliant string
+            future_proj_len (int): future weeks to infer on
+        """
+
         df = pd.read_json(jsonline, orient='records', lines=True)
 
         # Test if target >= rec_cold_start_length
