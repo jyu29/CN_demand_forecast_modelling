@@ -10,7 +10,7 @@ from src.refining_specific_functions import (check_weeks_df, generate_empty_dyn_
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class data_handler:
@@ -96,7 +96,8 @@ class data_handler:
         if self.rec_cold_start:
             logger.info(f"Cold Start Reconstruction requested with {self.rec_cold_start_length} minimum weeks and average on values {self.rec_cold_start_group}")
         else:
-            logger.debug("Cold Start Reconstruction not requested")
+            logger.info("Cold Start Reconstruction not requested, a simple zero padding will be applied")
+            
         logger.info(f"Expected prediction length is {self.prediction_length}")
 
     def execute_data_refining_specific(self):
@@ -220,6 +221,12 @@ class data_handler:
                                       self.rec_cold_start_length,
                                       self.rec_cold_start_group)
             logger.debug("Cold start reconstruction done.")
+            
+        # Zero padding reconstruction
+        else:
+            logger.debug("Zero padding reconstruction requested. Starting reconstruction...")
+            df_sales = zero_padding_rec(df_sales, self.rec_cold_start_length)
+            logger.debug("Zero padding reconstruction done.")
 
         # Creating df_target
         df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
