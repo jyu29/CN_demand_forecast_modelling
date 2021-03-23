@@ -32,10 +32,57 @@ def pad_to_cutoff(df_ts, cutoff, col='sales_quantity'):
     return df
 
 
+def zero_padding_rec(df, df_model_week_sales, rec_length):
+    
+    # Create a complete TS dataframe
+    all_model = df['model_id'].sort_values().unique()
+    all_week = df_model_week_sales \
+        .loc[df_model_week_sales['week_id'] <= df['week_id'].max(), 'week_id'] \
+        .sort_values() \
+        .unique()
+
+    w, m = pd.core.reshape.util.cartesian_product([all_week, all_model])
+
+    complete_ts = pd.DataFrame({'model_id': m, 'week_id': w})
+    
+    # Add dates
+    complete_ts['date'] = week_id_to_date(complete_ts['week_id'])
+    
+    # Add current sales from df
+    complete_ts = pd.merge(complete_ts, df, how='left')
+    
+    # Calculate real age & total length of each TS
+    ts_start_end_date = complete_ts \
+        .loc[complete_ts['sales_quantity'].notnull()] \
+        .groupby(['model_id']) \
+        .agg(start_date=('date', 'min'),
+             end_date=('date', 'max')) \
+        .reset_index()
+
+    complete_ts = pd.merge(complete_ts, ts_start_end_date, how='left')
+
+    complete_ts['age'] = ((pd.to_datetime(complete_ts['date']) -
+                           pd.to_datetime(complete_ts['start_date'])) /
+                          np.timedelta64(1, 'W')).astype(int) + 1
+
+    complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) -
+                              pd.to_datetime(complete_ts['date'])) /
+                             np.timedelta64(1, 'W')).astype(int) + 1
+    
+    # Pad NaN quantities from 'rec_length' weeks ago
+    complete_ts.loc[((complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 0)), 'sales_quantity'] = 0
+   
+    # Format
+    complete_ts = complete_ts[list(df)].dropna(subset=['sales_quantity']).reset_index(drop=True)
+    complete_ts['sales_quantity'] = complete_ts['sales_quantity'].astype(int)
+
+    return complete_ts
+
+
 def cold_start_rec(df,
                    df_model_week_sales,
                    df_model_week_tree,
-                   rec_cold_start_length,
+                   rec_length,
                    rec_cold_start_group=['family_label']
                    ):
 
@@ -117,9 +164,9 @@ def cold_start_rec(df,
 
     complete_ts = pd.merge(complete_ts, end_impl_period, how='left')
 
-    # Update sales quantity from 'rec_cold_start_length' weeks ago to the end of the implementation period
-    cond = ((complete_ts['length'] <= rec_cold_start_length) & (complete_ts['age'] <= 0)) | \
-           ((complete_ts['length'] <= rec_cold_start_length) & (complete_ts['age'] > 0) &
+    # Update sales quantity from 'rec_length' weeks ago to the end of the implementation period
+    cond = ((complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 0)) | \
+           ((complete_ts['length'] <= rec_length) & (complete_ts['age'] > 0) &
             (complete_ts['age'] < complete_ts['end_impl_period']))
     complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
     complete_ts['is_rec'] = np.where(cond, 1, 0)

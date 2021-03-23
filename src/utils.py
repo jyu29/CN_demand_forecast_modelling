@@ -248,7 +248,7 @@ def import_refining_config(environment: str,
 
     refining_params = {'cutoff': cutoff,
                        'rec_cold_start': params['refining_specific_parameters']['rec_cold_start'],
-                       'rec_cold_start_length': params['refining_specific_parameters']['rec_cold_start_length'],
+                       'rec_length': params['refining_specific_parameters']['rec_length'],
                        'rec_cold_start_group': params['refining_specific_parameters']['rec_cold_start_group'],
                        'prediction_length': params['modeling_parameters']['hyperparameters']['prediction_length'],
                        'refined_global_bucket': params['buckets']['refined_data_global'],
