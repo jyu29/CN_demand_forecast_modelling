@@ -83,6 +83,7 @@ class SagemakerHandler:
                  transform_instance_type: str,
                  transform_instance_count: int,
                  transform_max_instances: int,
+                 max_concurrent_transforms: int,
                  role: str,
                  image_name_label: str,
                  tags: dict,
@@ -102,6 +103,7 @@ class SagemakerHandler:
         self.transform_instance_type = transform_instance_type
         self.transform_instance_count = transform_instance_count
         self.transform_max_instances = transform_max_instances
+        self.max_concurrent_transforms = max_concurrent_transforms
         self.role = role
         self.image_name_label = image_name_label
         self.tags = tags
@@ -221,6 +223,7 @@ class SagemakerHandler:
                         instance_type=self.transform_instance_type,
                         strategy='SingleRecord',
                         assemble_with='Line',
+                        max_concurrent_transforms=self.max_concurrent_transforms,
                         base_transform_job_name=base_job_name,
                         output_path=output_path,
                         sagemaker_session=self.sagemaker_session,

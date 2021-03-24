@@ -39,16 +39,17 @@ modeling_parameters:
     - 0.9
   algorithm: deepAR
   image_name_label: forecasting-deepar
-  train_max_instances: 10
-  transform_max_instances: 5
-  role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
+  role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-PROD
   tags:
     Key: project
     Value: demand-forecast
+  train_max_instances: 10
   train_instance_type: ml.p3.2xlarge
+  train_instance_count: 1
   train_max_run: 3600
   train_max_wait: 3600
   train_use_spot_instances: false
-  train_instance_count: 1
-  transform_instance_type: ml.c5.18xlarge
+  transform_max_instances: 5
+  transform_instance_type: ml.c5.9xlarge
   transform_instance_count: 1
+  max_concurrent_transforms: 36 # should be equal to the number of vcpu available in the transform_instance_type 
