@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 import src.utils as ut
 from src.refining_specific_functions import (check_weeks_df, generate_empty_dyn_feat_global,
                                              cold_start_rec, pad_to_cutoff, is_rec_feature_processing,
-                                             features_forward_fill)
+                                             features_forward_fill, apply_first_lockdown_patch)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -22,8 +22,9 @@ class data_handler:
     def __init__(self,
                  cutoff: int,
                  base_data: dict,
+                 patch_first_lockdown: bool,
                  rec_cold_start: bool,
-                 rec_cold_start_length: int,
+                 rec_length: int,
                  prediction_length: int,
                  rec_cold_start_group: list,
                  refined_global_bucket: str,
@@ -41,7 +42,7 @@ class data_handler:
         Args:
             cutoff (int): Cutoff week in format YYYYWW (ISO 8601)
             static_data (dict): Dictionnary of pd.DataFrame or S3 URIs for static data
-            rec_cold_start_length (int): Minimum weeks expected in each input time series
+            rec_length (int): Minimum weeks expected in each input time series
             prediction_length (int): Number of forecasted weeks in the future
             cat_cols (list): List of `str` to select static columns expected in model_week_tree
             rec_cold_start_group (list): for the cold start reconstruction, columns to use in model_week_tree for the group average
@@ -52,8 +53,9 @@ class data_handler:
         """
         self.cutoff = cutoff
 
+        self.patch_first_lockdown = patch_first_lockdown
         self.rec_cold_start = rec_cold_start
-        self.rec_cold_start_length = rec_cold_start_length
+        self.rec_length = rec_length
         self.rec_cold_start_group = rec_cold_start_group
 
         self.prediction_length = prediction_length
@@ -93,10 +95,13 @@ class data_handler:
         self.output_paths = output_paths
 
         logger.info(f"Data refining specific for Demand Forecast initialized for cutoff {self.cutoff}")
+        if self.patch_first_lockdown:
+            logger.info(f"Patch first lockdown of 2020 requested")
         if self.rec_cold_start:
-            logger.info(f"Cold Start Reconstruction requested with {self.rec_cold_start_length} minimum weeks and average on values {self.rec_cold_start_group}")
+            logger.info(f"Cold Start Reconstruction requested with {self.rec_length} minimum weeks and average on values {self.rec_cold_start_group}")
         else:
-            logger.debug("Cold Start Reconstruction not requested")
+            logger.info("Cold Start Reconstruction not requested, a simple zero padding will be applied")
+            
         logger.info(f"Expected prediction length is {self.prediction_length}")
 
     def execute_data_refining_specific(self):
@@ -187,6 +192,8 @@ class data_handler:
         # Sales refining
         df_sales = self.base_data['model_week_sales']
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
+        if self.patch_first_lockdown:
+            df_sales = apply_first_lockdown_patch(df_sales, self.base_data['imputed_sales_lockdown_1'])
         self.base_data['model_week_sales'] = df_sales
         logger.debug(f"Limited sales data up to cutoff {self.cutoff}")
 
@@ -217,9 +224,15 @@ class data_handler:
             df_sales = cold_start_rec(df_sales,
                                       self.base_data['model_week_sales'],
                                       self.base_data['model_week_tree'],
-                                      self.rec_cold_start_length,
+                                      self.rec_length,
                                       self.rec_cold_start_group)
             logger.debug("Cold start reconstruction done.")
+            
+        # Zero padding reconstruction
+        else:
+            logger.debug("Zero padding reconstruction requested. Starting reconstruction...")
+            df_sales = zero_padding_rec(df_sales, self.rec_length)
+            logger.debug("Zero padding reconstruction done.")
 
         # Creating df_target
         df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
@@ -518,11 +531,11 @@ class data_handler:
 
         df = pd.read_json(jsonline, orient='records', lines=True)
 
-        # Test if target >= rec_cold_start_length
+        # Test if target >= rec_length
         df['target_len'] = df.apply(lambda x: len(x['target']), axis=1)
-        test = df['target_len'] >= self.rec_cold_start_length
-        assert all(test.values), 'Some models have a `target` less than `rec_cold_start_length`'
-        logger.debug("All target time series have a length longer than `rec_cold_start_length`")
+        test = df['target_len'] >= self.rec_length
+        assert all(test.values), 'Some models have a `target` less than `rec_length`'
+        logger.debug("All target time series have a length longer than `rec_length`")
 
         # Test if target length is right
         df['target_len_test'] = df.apply(lambda x: ut.date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')) == self.cutoff, axis=1)
