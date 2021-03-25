@@ -17,7 +17,7 @@ modeling_parameters:
     context_length: 104
     epochs : 50
     likelihood : student-T
-    early_stopping_patience: 50
+    early_stopping_patience: 5à
     learning_rate: 1e-3
     mini_batch_size: 512
     num_layers: 2
@@ -50,6 +50,6 @@ modeling_parameters:
   train_max_wait: 3600
   train_use_spot_instances: true
   transform_max_instances: 5
-  transform_instance_type: ml.c5.9xlarge
+  transform_instance_type: ml.c5.4xlarge
   transform_instance_count: 1
-  max_concurrent_transforms: 36 # should be equal to the number of vcpu available in the transform_instance_type 
+  max_concurrent_transforms: 16 # should be equal to the number of vcpu available in the transform_instance_type

@@ -50,6 +50,6 @@ modeling_parameters:
   train_max_wait: 3600
   train_use_spot_instances: false
   transform_max_instances: 5
-  transform_instance_type: ml.c5.9xlarge
+  transform_instance_type: ml.c5.4xlarge
   transform_instance_count: 1
-  max_concurrent_transforms: 36 # should be equal to the number of vcpu available in the transform_instance_type 
+  max_concurrent_transforms: 16 # should be equal to the number of vcpu available in the transform_instance_type
