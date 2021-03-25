@@ -81,4 +81,3 @@ class weekIdToDateTests():
         for w in week_ids:
             with pytest.raises(AssertionError):
                 week_id_to_date(w)
-
