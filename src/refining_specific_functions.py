@@ -3,7 +3,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 
-from src.utils import date_to_week_id, week_id_to_date
+from src.utils import date_to_week_id, week_id_to_date, read_multipart_parquet_s3
 
 
 def pad_to_cutoff(df_ts, cutoff, col='sales_quantity'):
@@ -263,3 +263,14 @@ def features_forward_fill(df, cutoff, projection_length):
     df['week_id'] = date_to_week_id(df['week_id'])
 
     return df
+
+
+def apply_first_lockdown_patch(df_sales, df_sales_imputed):
+    """
+    """
+    df_sales = pd.merge(df_sales, df_sales_imputed, how='left')
+    df_sales['sales_quantity'] = np.where(df_sales['sales_quantity_imputed'].notnull(),
+                                          df_sales['sales_quantity_imputed'],
+                                          df_sales['sales_quantity'])
+    df_sales.drop(columns='sales_quantity_imputed', inplace=True)
+    return df_sales

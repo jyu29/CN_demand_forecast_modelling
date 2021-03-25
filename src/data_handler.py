@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 import src.utils as ut
 from src.refining_specific_functions import (check_weeks_df, generate_empty_dyn_feat_global,
                                              cold_start_rec, pad_to_cutoff, is_rec_feature_processing,
-                                             features_forward_fill)
+                                             features_forward_fill, apply_first_lockdown_patch)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -22,6 +22,7 @@ class data_handler:
     def __init__(self,
                  cutoff: int,
                  base_data: dict,
+                 patch_first_lockdown: bool,
                  rec_cold_start: bool,
                  rec_length: int,
                  prediction_length: int,
@@ -52,6 +53,7 @@ class data_handler:
         """
         self.cutoff = cutoff
 
+        self.patch_first_lockdown = patch_first_lockdown
         self.rec_cold_start = rec_cold_start
         self.rec_length = rec_length
         self.rec_cold_start_group = rec_cold_start_group
@@ -93,6 +95,8 @@ class data_handler:
         self.output_paths = output_paths
 
         logger.info(f"Data refining specific for Demand Forecast initialized for cutoff {self.cutoff}")
+        if self.patch_first_lockdown:
+            logger.info(f"Patch first lockdown of 2020 requested")
         if self.rec_cold_start:
             logger.info(f"Cold Start Reconstruction requested with {self.rec_length} minimum weeks and average on values {self.rec_cold_start_group}")
         else:
@@ -188,6 +192,8 @@ class data_handler:
         # Sales refining
         df_sales = self.base_data['model_week_sales']
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
+        if self.patch_first_lockdown:
+            df_sales = apply_first_lockdown_patch(df_sales, self.base_data['imputed_sales_lockdown_1'])
         self.base_data['model_week_sales'] = df_sales
         logger.debug(f"Limited sales data up to cutoff {self.cutoff}")
 
