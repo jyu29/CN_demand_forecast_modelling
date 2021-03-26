@@ -35,8 +35,9 @@ def import_refining_config(environment: str,
     params = ut.read_yml(params_full_path)
 
     refining_params = {'cutoff': cutoff,
+                       'patch_first_lockdown': params['refining_specific_parameters']['patch_first_lockdown'],
                        'rec_cold_start': params['refining_specific_parameters']['rec_cold_start'],
-                       'rec_cold_start_length': params['refining_specific_parameters']['rec_cold_start_length'],
+                       'rec_length': params['refining_specific_parameters']['rec_length'],
                        'rec_cold_start_group': params['refining_specific_parameters']['rec_cold_start_group'],
                        'prediction_length': params['modeling_parameters']['hyperparameters']['prediction_length'],
                        'refined_global_bucket': params['buckets']['refined_data_global'],
@@ -95,6 +96,10 @@ class data_handler:
 
         self.prediction_length = prediction_length
 
+        if patch_first_lockdown:
+            assert 'imputed_sales_lockdown_1' in base_data.keys(),\
+                "Patching first lockdown requested, but imputation dataset not provided in base_data"
+
         # Base data init
         for dataset in base_data.keys():
             assert isinstance(base_data[dataset], (str, pd.DataFrame)), "Value in dict `base_data` must be S3 URI or pd.DataFrame"
@@ -136,7 +141,7 @@ class data_handler:
             logger.info(f"Cold Start Reconstruction requested with {self.rec_length} minimum weeks and average on values {self.rec_cold_start_group}")
         else:
             logger.info("Cold Start Reconstruction not requested, a simple zero padding will be applied")
-            
+
         logger.info(f"Expected prediction length is {self.prediction_length}")
 
     def execute_data_refining_specific(self):
@@ -262,7 +267,7 @@ class data_handler:
                                       self.rec_length,
                                       self.rec_cold_start_group)
             logger.debug("Cold start reconstruction done.")
-            
+
         # Zero padding reconstruction
         else:
             logger.debug("Zero padding reconstruction requested. Starting reconstruction...")
@@ -357,7 +362,7 @@ class data_handler:
         logger.debug("Added categorical features to `df_predict`")
 
         # Identifying final list of dynamic features
-        dynamic_features = list(set(self.df_dynamic_data.columns) - set(['model_id', 'week_id']))
+        dynamic_features = [feat for feat in self.df_dynamic_data.columns if feat not in ['model_id', 'week_id']]
         # Concatenating dynamic features in list format
         df_dynamic_data_predict = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
@@ -494,7 +499,7 @@ class data_handler:
         return df_with_new_feat
 
     def _add_dyn_feat(self, df_dynamic_data, df_feat, min_week, cutoff, future_weeks, week_column='week_id'):
-        """Adds unitary dynamic feature to the concatenated static features dataset. 
+        """Adds unitary dynamic feature to the concatenated static features dataset.
 
         If the feature is global (not model-specific), it will explode the feature for each model in `df_dynamic_data`
 

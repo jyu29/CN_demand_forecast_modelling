@@ -24,6 +24,7 @@ df_model_week_mrp = pd.read_parquet('~/Downloads/modeling_data/model_week_mrp/')
 df_store_openings = pd.read_csv('~/Downloads/modeling_data/store_openings/store_openings.csv', sep=";")
 df_holidays = pd.read_csv('~/Downloads/modeling_data/holidays/holidays.csv', sep=";")
 df_test_feat = pd.read_csv('~/Downloads/modeling_data/test_dynamic_specific_feat/test_feat.csv', sep=";")
+df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3('fcst-refined-demand-forecast-dev', 'global/imputed_sales_lockdown_1.parquet')
 
 # Generate empty df_jobs
 refined_data_specific_path = ut.to_uri(ut.import_raw_config(environment)['buckets']['refined_data_specific'],
@@ -41,7 +42,8 @@ if __name__ == "__main__":
         # Data/Features init
         base_data = {'model_week_sales': df_model_week_sales,
                      'model_week_tree': df_model_week_tree,
-                     'model_week_mrp': df_model_week_mrp
+                     'model_week_mrp': df_model_week_mrp,
+                     'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
                      }
         
         df_static_tree = df_model_week_tree[df_model_week_tree['week_id'] == cutoff].copy()
