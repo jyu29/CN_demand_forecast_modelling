@@ -68,6 +68,35 @@ def _get_timestamp():
     return timestamp_suffix
 
 
+def import_sagemaker_params(environment: str,
+                            ) -> dict:
+    """Handler to import sagemaker configuration from YML file
+
+    Args:
+        environment (str): Set of parameters on which to load the parameters
+
+    Returns:
+        A dictionary with all parameters for sagemaker training & inference
+    """
+    params_full_path = f"config/{environment}.yml"
+    params = ut.read_yml(params_full_path)
+
+    sagemaker_params = {'train_instance_type': params['modeling_parameters']['train_instance_type'],
+                        'train_instance_count': params['modeling_parameters']['train_instance_count'],
+                        'train_max_instances': params['modeling_parameters']['train_max_instances'],
+                        'train_use_spot_instances': params['modeling_parameters']['train_use_spot_instances'],
+                        'transform_instance_type': params['modeling_parameters']['transform_instance_type'],
+                        'transform_instance_count': params['modeling_parameters']['transform_instance_count'],
+                        'transform_max_instances': params['modeling_parameters']['transform_max_instances'],
+                        'role': params['modeling_parameters']['role'],
+                        'image_name_label': params['modeling_parameters']['image_name_label'],
+                        'tags': [params['modeling_parameters']['tags']],
+                        'hyperparameters': params['modeling_parameters']['hyperparameters']
+                        }
+
+    return sagemaker_params
+
+
 class SagemakerHandler:
     """
     Sagemaker API handler. Allows for training and transform jobs.

@@ -13,6 +13,41 @@ logging.basicConfig()
 logger.setLevel(logging.INFO)
 
 
+def import_refining_config(environment: str,
+                           cutoff: int,
+                           run_name: str,
+                           train_path: str,
+                           predict_path: str
+                           ) -> dict:
+    """Handler to import specific refining configuration from YML file
+
+    Args:
+        environment (str): Set of parameters on which to load the parameters
+        cutoff (int): Cutoff week in format YYYYWW (ISO 8601)
+        run_name (str): Custom name for the current name - will propagate to saved files names
+        df_jobs (pd.DataFrame): helper to ensure Sagemaker tracking of training & inference, and associated
+            files paths.
+
+    Returns:
+        A dictionary with all parameters for specific refining process
+    """
+    params_full_path = f"config/{environment}.yml"
+    params = ut.read_yml(params_full_path)
+
+    refining_params = {'cutoff': cutoff,
+                       'rec_cold_start': params['refining_specific_parameters']['rec_cold_start'],
+                       'rec_cold_start_length': params['refining_specific_parameters']['rec_cold_start_length'],
+                       'rec_cold_start_group': params['refining_specific_parameters']['rec_cold_start_group'],
+                       'prediction_length': params['modeling_parameters']['hyperparameters']['prediction_length'],
+                       'refined_global_bucket': params['buckets']['refined_data_global'],
+                       'refined_specific_bucket': params['buckets']['refined_data_specific'],
+                       'output_paths': {'train_path': train_path,
+                                        'predict_path': predict_path
+                                        }
+                       }
+    return refining_params
+
+
 class data_handler:
     """
     Data Handler from refined data global to feature engineering for
