@@ -85,10 +85,10 @@ if __name__ == "__main__":
 
     sagemaker_params = su.import_sagemaker_params(environment=environment)
 
-    # modeling_handler = su.SagemakerHandler(run_name=run_name,
-    #                                        df_jobs=df_jobs,
-    #                                        **sagemaker_params)
+    modeling_handler = su.SagemakerHandler(run_name=run_name,
+                                           df_jobs=df_jobs,
+                                           **sagemaker_params)
 
-    # modeling_handler.launch_training_jobs()
+    modeling_handler.launch_training_jobs()
 
-    # modeling_handler.launch_transform_jobs()
+    modeling_handler.launch_transform_jobs()
