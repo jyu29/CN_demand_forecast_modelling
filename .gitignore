@@ -6,3 +6,4 @@
 *.DS_Store
 *.parquet
 *.json
+.coverage
