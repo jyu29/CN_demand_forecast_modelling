@@ -65,7 +65,7 @@ if __name__ == "__main__":
         train_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'train_path'].values[0]
         predict_path = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'predict_path'].values[0]
 
-        refining_params = ut.import_refining_config(environment=environment,
+        refining_params = dh.import_refining_config(environment=environment,
                                                     cutoff=cutoff,
                                                     run_name=run_name,
                                                     train_path=train_path,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
         refining_handler.execute_data_refining_specific()
 
-    sagemaker_params = ut.import_sagemaker_params(environment=environment)
+    sagemaker_params = su.import_sagemaker_params(environment=environment)
 
     # modeling_handler = su.SagemakerHandler(run_name=run_name,
     #                                        df_jobs=df_jobs,
