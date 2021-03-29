@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 import src.utils as ut
 from src.refining_specific_functions import (check_weeks_df, generate_empty_dyn_feat_global,
                                              cold_start_rec, pad_to_cutoff, is_rec_feature_processing,
-                                             features_forward_fill, apply_first_lockdown_patch)
+                                             features_forward_fill, apply_first_lockdown_patch, zero_padding_rec)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -273,7 +273,6 @@ class DataHandler:
                                       self.rec_length,
                                       self.rec_cold_start_group)
             logger.debug("Cold start reconstruction done.")
-
         # Zero padding reconstruction
         else:
             logger.debug("Zero padding reconstruction requested. Starting reconstruction...")

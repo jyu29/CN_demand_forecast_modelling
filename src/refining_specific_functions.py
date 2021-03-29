@@ -8,6 +8,10 @@ from src.utils import date_to_week_id, week_id_to_date, read_multipart_parquet_s
 
 def pad_to_cutoff(df_ts, cutoff, col='sales_quantity'):
 
+    assert isinstance(cutoff, (int, np.int64))
+    assert isinstance(df_ts, pd.DataFrame)
+    assert set(df_ts.columns) == set(['model_id', 'week_id', 'date', col])
+
     # Add the cutoff weekend to all models to put a limit for the bfill
     models = df_ts['model_id'].unique()
     test_cutoff_date = week_id_to_date(cutoff)

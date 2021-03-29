@@ -23,7 +23,6 @@ df_model_week_tree = pd.read_parquet('~/Downloads/modeling_data/model_week_tree/
 df_model_week_mrp = pd.read_parquet('~/Downloads/modeling_data/model_week_mrp/')
 df_store_openings = pd.read_csv('~/Downloads/modeling_data/store_openings/store_openings.csv', sep=";")
 df_holidays = pd.read_csv('~/Downloads/modeling_data/holidays/holidays.csv', sep=";")
-df_test_feat = pd.read_csv('~/Downloads/modeling_data/test_dynamic_specific_feat/test_feat.csv', sep=";")
 df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3('fcst-refined-demand-forecast-dev', 'global/imputed_sales_lockdown_1.parquet')
 
 # Generate empty df_jobs
@@ -75,11 +74,11 @@ if __name__ == "__main__":
                                                     )
 
         refining_handler = dh.DataHandler(base_data=base_data,
-                                           static_features=static_features,
-                                           global_dynamic_features=global_dynamic_features,
-                                           specific_dynamic_features=specific_dynamic_features,
-                                           **refining_params
-                                           )
+                                          static_features=static_features,
+                                          global_dynamic_features=global_dynamic_features,
+                                          specific_dynamic_features=specific_dynamic_features,
+                                          **refining_params
+                                          )
 
         refining_handler.execute_data_refining_specific()
 

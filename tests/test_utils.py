@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from pytest import mark
 
-from src.utils import week_id_to_date
+from src.utils import week_id_to_date, is_iso_format
 
 
 @mark.utils
@@ -81,3 +81,30 @@ class weekIdToDateTests():
         for w in week_ids:
             with pytest.raises(AssertionError):
                 week_id_to_date(w)
+
+
+@mark.utils
+class isIsoFormatTests():
+    def test_nominal(self):
+        week_ids = [202103, 202250, 205824]
+
+        for w in week_ids:
+            try:
+                assert is_iso_format(w)
+            except AssertionError:
+                pytest.fail("Test failed on nominal case")
+            
+    def test_wrong_weeks(self):
+        week_ids = [202100, 20143, 199901]
+
+        for w in week_ids:
+            try:
+                assert not is_iso_format(w)
+            except AssertionError:
+                pytest.fail("Test failed on nominal case")
+
+    def test_wrong_type(self):
+        week_id = '202001'
+
+        with pytest.raises(AssertionError):
+            is_iso_format(week_id)
