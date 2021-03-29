@@ -31,6 +31,12 @@ def import_refining_config(environment: str,
     Returns:
         A dictionary with all parameters for specific refining process
     """
+    assert isinstance(environment, str)
+    assert isinstance(cutoff, int)
+    assert isinstance(run_name, str)
+    assert isinstance(train_path, str)
+    assert isinstance(predict_path, str)
+
     params_full_path = f"config/{environment}.yml"
     params = ut.read_yml(params_full_path)
 
@@ -49,7 +55,7 @@ def import_refining_config(environment: str,
     return refining_params
 
 
-class data_handler:
+class DataHandler:
     """
     Data Handler from refined data global to feature engineering for
     the demand Forecast project.

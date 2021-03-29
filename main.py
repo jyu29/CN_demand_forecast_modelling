@@ -74,7 +74,7 @@ if __name__ == "__main__":
                                                     predict_path=predict_path
                                                     )
 
-        refining_handler = dh.data_handler(base_data=base_data,
+        refining_handler = dh.DataHandler(base_data=base_data,
                                            static_features=static_features,
                                            global_dynamic_features=global_dynamic_features,
                                            specific_dynamic_features=specific_dynamic_features,
