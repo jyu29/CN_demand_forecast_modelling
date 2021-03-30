@@ -3,15 +3,37 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 
-from src.utils import date_to_week_id, week_id_to_date, read_multipart_parquet_s3
+from src.utils import (date_to_week_id, week_id_to_date, read_multipart_parquet_s3,
+                       is_iso_format)
 
 
-def pad_to_cutoff(df_ts, cutoff, col='sales_quantity'):
+def pad_to_cutoff(df_ts: pd.DataFrame,
+                  cutoff: int,
+                  col: str = 'sales_quantity'
+                  ) -> pd.DataFrame:
+    """
+    Forward fills with zeros time series in Pandas DataFrame up to week cutoff.
 
+    The function will complete the dataframe for all models (`model_id`) with a frequency
+    of 1 week, up to week_id cutoff (excluding it) on the column `col` with value = 0.
+    The input dataframe must include columns ['model_id', 'week_id', 'date'].
+
+    Args:
+        df_ts (pd.DataFrame): Timeseries DataFrame
+        cutoff (int): ISO 8601 Format Week id (YYYYWW) to forward fill to
+        col (str): Name of the column to fill
+
+    Returns:
+        df (pd.DataFrame): Padded DataFrame
+    """
+    assert is_iso_format(cutoff)
     assert isinstance(cutoff, (int, np.int64))
     assert isinstance(df_ts, pd.DataFrame)
+    assert pd.api.types.is_datetime64_any_dtype(df_ts['date'])
     assert set(df_ts.columns) == set(['model_id', 'week_id', 'date', col])
 
+    # Limiting dataset to avoid errors if we have data further than cutoff
+    df_ts = df_ts[df_ts['week_id'] < cutoff]
     # Add the cutoff weekend to all models to put a limit for the bfill
     models = df_ts['model_id'].unique()
     test_cutoff_date = week_id_to_date(cutoff)
