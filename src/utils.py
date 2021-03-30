@@ -77,7 +77,7 @@ def is_iso_format(week_id: int) -> bool:
     :param week_id: (int or pd.Series) the week id or pandas column of week ids
     :return: (bool) wether `week_id` follows the expected format
     """
-    assert isinstance(week_id, (int, np.int64)), "week_id must be of type integer."
+    assert isinstance(week_id, (int, np.int32, np.int64)), "week_id must be of type integer."
     pattern = "^20[0-9]{2}(0[1-9]|[1-4][0-9]|5[0-3])$"
     is_iso_format = re.match(pattern, str(week_id))
 
