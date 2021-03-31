@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import pandas.api.types as ptypes
 import pytest
@@ -6,19 +7,19 @@ from pytest import mark
 from src.data_handler import DataHandler, import_refining_config
 
 
-DATA_PATH = 'tests/data/'
+DATA_PATH = os.path.join('tests', 'data')
 ENVIRONMENT = 'testing'
 CUTOFF = 202001
 RUN_NAME = 'testing_run_name'
 TRAIN_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
 PREDICT_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
 
-df_model_week_sales = pd.read_csv(f"{DATA_PATH}model_week_sales.csv", sep=';', parse_dates=['date'])
-df_model_week_tree = pd.read_csv(f"{DATA_PATH}model_week_tree.csv", sep=';')
-df_model_week_mrp = pd.read_csv(f"{DATA_PATH}model_week_mrp.csv", sep=';')
-df_store_openings = pd.read_csv(f"{DATA_PATH}store_openings.csv", sep=';')
-df_holidays = pd.read_csv(f"{DATA_PATH}holidays.csv", sep=';')
-df_imputed_sales_lockdown_1 = pd.read_csv(f"{DATA_PATH}model_week_imputed_lockdown_1.csv", sep=';', parse_dates=['date'])
+df_model_week_sales = pd.read_csv(os.path.join(DATA_PATH, "model_week_sales.csv"), sep=';', parse_dates=['date'])
+df_model_week_tree = pd.read_csv(os.path.join(DATA_PATH, "model_week_tree.csv"), sep=';')
+df_model_week_mrp = pd.read_csv(os.path.join(DATA_PATH, "model_week_mrp.csv"), sep=';')
+df_store_openings = pd.read_csv(os.path.join(DATA_PATH, "store_openings.csv"), sep=';')
+df_holidays = pd.read_csv(os.path.join(DATA_PATH, "holidays.csv"), sep=';')
+df_imputed_sales_lockdown_1 = pd.read_csv(os.path.join(DATA_PATH, "model_week_imputed_lockdown_1.csv"), sep=';', parse_dates=['date'])
 
 base_data = {'model_week_sales': df_model_week_sales,
              'model_week_tree': df_model_week_tree,
