@@ -458,7 +458,7 @@ class DataHandler:
                                                                               cutoff=self.cutoff,
                                                                               projection_length=self.prediction_length)
             assert len(set(self.global_dynamic_features[dataset].columns) - set(['week_id'])) == 1, \
-                f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
+                f"Global dynamic feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
     def import_specific_dynamic_features(self):
         """Helper for potential data import for specific dynamic features if S3 URI was provided.
