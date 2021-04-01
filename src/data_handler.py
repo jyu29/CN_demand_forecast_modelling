@@ -276,7 +276,7 @@ class DataHandler:
         # Zero padding reconstruction
         else:
             logger.debug("Zero padding reconstruction requested. Starting reconstruction...")
-            df_sales = zero_padding_rec(df_sales, self.rec_length)
+            df_sales = zero_padding_rec(df_sales, self.base_data['model_week_sales'], self.rec_length)
             logger.debug("Zero padding reconstruction done.")
 
         # Creating df_target
