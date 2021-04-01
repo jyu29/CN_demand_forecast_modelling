@@ -19,7 +19,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     su.logger.setLevel(args.logging_lvl)
     dh.logger.setLevel(args.logging_lvl)
-    
+
     # Defining variables
     environment = args.environment
     if args.list_cutoff == 'today':
@@ -70,7 +70,6 @@ if __name__ == "__main__":
                                                     train_path=TRAIN_PATH,
                                                     predict_path=PREDICT_PATH
                                                     )
-
 
         # Data/Features init
         base_data = {'model_week_sales': df_model_week_sales,
