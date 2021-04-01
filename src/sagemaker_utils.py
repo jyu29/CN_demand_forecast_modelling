@@ -235,11 +235,11 @@ class SagemakerHandler:
                     # Delete old model version if exists
                     try:
                         self.sagemaker_session.delete_model(base_job_name)
-                    except:
+                    except:  # noqa: E722
                         pass
 
                     # Create new one
-                    model = self.sagemaker_session.create_model_from_job(
+                    model = self.sagemaker_session.create_model_from_job(  # noqa: F841
                         training_job_name=training_job_name,
                         name=base_job_name,
                         role=self.role,
