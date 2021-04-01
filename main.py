@@ -49,8 +49,8 @@ if __name__ == "__main__":
     df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_BUCKET, MODEL_WEEK_TREE_PATH)
     df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_BUCKET, MODEL_WEEK_MRP_PATH)
     df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3(REFINED_BUCKET, IMPUTED_SALES_LOCKDOWN_1_PATH)
-    df_store_openings = pd.read_csv('data/store_openings.csv', sep=";")
-    df_holidays = pd.read_csv('data/holidays.csv', sep=";")
+    df_store_openings = pd.read_csv('data/store_openings.csv')
+    df_holidays = pd.read_csv('data/holidays.csv')
 
     # Generate empty df_jobs
     df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
