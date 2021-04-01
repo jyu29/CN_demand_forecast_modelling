@@ -22,7 +22,9 @@ jobs:
         conda env create environment.yml
         source /usr/share/miniconda/etc/profile.d/conda.sh
         conda activate forecast-modeling-demand
-        python -m pytest -v --cov=src
+        python -m pytest -v --cache-clear --cov=src > pytest-coverage.txt
+    - name: Comment coverage
+      uses: coroo/pytest-coverage-commentator@v1.0.2
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
