@@ -3,8 +3,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 
-from src.utils import (date_to_week_id, week_id_to_date, read_multipart_parquet_s3,
-                       is_iso_format)
+from src.utils import (date_to_week_id, week_id_to_date, is_iso_format)
 
 
 def pad_to_cutoff(df_ts: pd.DataFrame,

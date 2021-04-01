@@ -71,7 +71,7 @@ class weekIdToDateTests():
 
     def test_format_str(self):
         week_id = '202103'
-        
+
         with pytest.raises(AssertionError):
             week_id_to_date(week_id)
 
@@ -93,7 +93,7 @@ class isIsoFormatTests():
                 assert is_iso_format(w)
             except AssertionError:
                 pytest.fail("Test failed on nominal case")
-            
+
     def test_wrong_weeks(self):
         week_ids = [202100, 20143, 199901]
 

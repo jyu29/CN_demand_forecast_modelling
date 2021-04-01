@@ -142,7 +142,7 @@ class DataHandler:
 
         logger.info(f"Data refining specific for Demand Forecast initialized for cutoff {self.cutoff}")
         if self.patch_first_lockdown:
-            logger.info(f"Patch first lockdown of 2020 requested")
+            logger.info("Patch first lockdown of 2020 requested")
         if self.rec_cold_start:
             logger.info(f"Cold Start Reconstruction requested with {self.rec_length} minimum weeks and average on values {self.rec_cold_start_group}")
         else:

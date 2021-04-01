@@ -124,7 +124,7 @@ class ImportRefiningConfigTests():
 class DataHandlerImportBaseDataTests:
     def test_date_parsing(self):
         data_handler.import_base_data()
-        
+
         try:
             assert ptypes.is_datetime64_ns_dtype(data_handler.base_data['model_week_sales']['date'])
         except AssertionError:

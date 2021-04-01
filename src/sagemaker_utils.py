@@ -316,4 +316,3 @@ class SagemakerHandler:
                     status = analytics.description()['HyperParameterTuningJobStatus']
                 # Update status
                 self.df_jobs.loc[i, status_col] = status
-
