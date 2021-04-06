@@ -410,7 +410,7 @@ class DataHandler:
         logger.info("Checking train jsonline file...")
         self.check_json_line(train_jsonline)
         logger.info("Checking predict jsonline file...")
-        self.check_json_line(predict_jsonline, future_proj_len=52)
+        self.check_json_line(predict_jsonline, future_proj_len=self.prediction_length)
         logger.debug("All checks on jsonline files passed")
 
         return train_jsonline, predict_jsonline
