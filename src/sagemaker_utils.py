@@ -2,6 +2,7 @@ import logging
 import time
 from datetime import datetime
 
+import re
 import boto3
 import numpy as np
 import pandas as pd
@@ -13,6 +14,8 @@ import src.utils as ut
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
+
+JOB_NAME_REGEX = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
 
 
 def generate_df_jobs(list_cutoff: list,
@@ -37,6 +40,12 @@ def generate_df_jobs(list_cutoff: list,
     Returns:
         A pandas DataFrame containing all information for each cutoff to handle training & inference
     """
+
+    assert isinstance(list_cutoff, (list))
+    for c in list_cutoff:
+        assert isinstance(c, (int))
+        assert ut.is_iso_format(c)
+    assert bool(re.compile(JOB_NAME_REGEX).match(run_name))
 
     df_jobs = pd.DataFrame()
     run_suffix = _get_timestamp()
