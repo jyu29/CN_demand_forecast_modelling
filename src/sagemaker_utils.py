@@ -22,14 +22,17 @@ def generate_df_jobs(list_cutoff: list,
                      ):
     """Generates an empty pd.DataFrame `df_jobs`
 
-    Given arguments for cutoffs, run_name & paths, returns a pd.DataFrame `df_jobs` on which sagemaker utils can iterate
-    to handle regarding training & inference.
+    Given arguments for cutoffs, run_name & paths, returns a pd.DataFrame
+    `df_jobs` on which sagemaker utils can iterate to handle regarding
+    training & inference.
 
     Args:
         list_cutoff: A list of integers in format YYYYWW (ISO 8601)
-        run_name: A string describing the training & inference run name (for readability)
+        run_name: A string describing the training & inference run name
+                    (for readability)
         algorithm: The used algorithm name (for path purpose)
-        refined_data_refined_path: A string pointing to a S3 path (URI format) for input data with trailing slash
+        refined_data_refined_path: A string pointing to a S3 path (URI format)
+                    for input data with trailing slash
 
     Returns:
         A pandas DataFrame containing all information for each cutoff to handle training & inference
@@ -42,20 +45,23 @@ def generate_df_jobs(list_cutoff: list,
     df_jobs['base_job_name'] = [f'{run_name}-{c}' for c in df_jobs['cutoff']]
 
     # Training
-    df_jobs['train_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/input/train_{c}{run_suffix}.json' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+    path = f'{refined_data_specific_path}{run_name}/{algorithm}'
+    df_jobs['train_path'] = [f'{path}/{n}/input/train_{c}{run_suffix}.json'
+                             for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
     df_jobs['training_job_name'] = np.nan
     df_jobs['training_status'] = 'NotStarted'
 
     # Inference
-    df_jobs['predict_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/input/predict_{c}{run_suffix}.json' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+    df_jobs['predict_path'] = [f'{path}/{n}/input/predict_{c}{run_suffix}.json'
+                               for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
     df_jobs['transform_job_name'] = np.nan
     df_jobs['transform_status'] = 'NotStarted'
 
     # Serialized model path
-    df_jobs['model_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/model/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+    df_jobs['model_path'] = [f'{path}/{n}/model/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
 
     # Jsonline prediction file output path
-    df_jobs['output_path'] = [f'{refined_data_specific_path}{run_name}/{algorithm}/{n}/output/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
+    df_jobs['output_path'] = [f'{path}/{n}/output/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
 
     logger.debug(f"df_jobs created for cutoffs {list_cutoff}")
 
@@ -159,7 +165,8 @@ class SagemakerHandler:
         while set(self.df_jobs['training_status'].unique()) - {'Failed', 'Completed', 'Stopped'} != set():
 
             # Condition to check if the running instances limit is not capped
-            if self.df_jobs[self.df_jobs['training_status'].isin(['InProgress', 'Stopping'])].shape[0] < self.train_max_instances:
+            if self.df_jobs[self.df_jobs['training_status'].isin(['InProgress', 'Stopping'])].shape[0]\
+                    < self.train_max_instances:
 
                 # Waiting for jobs status to propagate to Sagemaker API
                 time.sleep(10)
@@ -217,7 +224,8 @@ class SagemakerHandler:
         while set(self.df_jobs['transform_status'].unique()) - {'Failed', 'Completed', 'Stopped'} != set():
 
             # Condition to check if the running instances limit is not capped
-            if self.df_jobs[self.df_jobs['transform_status'].isin(['InProgress', 'Stopping'])].shape[0] < self.transform_max_instances:
+            if self.df_jobs[self.df_jobs['transform_status'].isin(['InProgress', 'Stopping'])].shape[0]\
+                    < self.transform_max_instances:
 
                 # Waiting for jobs status to propagate to Sagemaker API
                 time.sleep(10)
