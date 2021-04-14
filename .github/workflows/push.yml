@@ -21,7 +21,6 @@ jobs:
         python-version: 3.7
         auto-activate-base: false
     - name: Testing & code coverage
-      shell: bash -l {0}
       run: |
         source "$CONDA/etc/profile.d/conda.sh"
         conda activate $CONDA_ENV
@@ -29,7 +28,6 @@ jobs:
     - name: Comment coverage
       uses: coroo/pytest-coverage-commentator@v1.0.2
     - name: Lint with flake8
-      shell: bash -l {0}
       run: |
         source "$CONDA/etc/profile.d/conda.sh"
         conda activate $CONDA_ENV
