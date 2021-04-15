@@ -15,7 +15,7 @@ dependencies:
   - uritools=3.0.0
   - pytest=6.2.2
   - pytest-mock=3.5.1
-  - pytest-cov=2.11.1
+  - coverage=5.5
   - flake8=3.8.4
   - pip:
     - sagemaker==1.71.0

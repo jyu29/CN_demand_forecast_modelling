@@ -6,7 +6,7 @@ jobs:
     name: CI/CD pipeline
     runs-on: ubuntu-latest
     env:
-      COVERAGE_TOTAL: 30
+      COVERAGE_TOTAL: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -39,8 +39,8 @@ jobs:
       - name: Report code coverage
         shell: bash -l {0}
         run: |
-            coverage report -m --omit='tests/*' --fail-under=$COVERAGE_TOTAL
-            coverage xml --omit='tests/*' --fail-under=$COVERAGE_TOTAL
+            coverage report -m --omit='tests/*' --fail-under=$COVERAGE_TOTAL --skip-empty
+            coverage xml --omit='tests/*' --fail-under=$COVERAGE_TOTAL --skip-empty
       - name: Coverage comment in PR
         uses: 5monkeys/cobertura-action@master
         with:
