@@ -46,4 +46,4 @@ jobs:
         with:
           path: coverage.xml
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          minimum_coverage: ${{ COVERAGE_TOTAL }}
+          minimum_coverage: ${{ env.COVERAGE_TOTAL }}
