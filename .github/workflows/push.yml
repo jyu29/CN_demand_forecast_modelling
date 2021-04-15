@@ -43,7 +43,7 @@ on: [pull_request]
 
 jobs:
   miniconda:
-    name: Miniconda ${{ matrix.os }}
+    name: CI/CD pipeline
     runs-on: ubuntu-latest
 
     steps:
@@ -62,6 +62,6 @@ jobs:
       - name: Run pytest
         shell: bash -l {0}
         run: |
-            python -m pytest -v --cov=src #> pytest-coverage.txt
+            python -m pytest -v --cov=src > pytest-coverage.txt
       # - name: Comment coverage
       #   uses: coroo/pytest-coverage-commentator@v1.0.2
