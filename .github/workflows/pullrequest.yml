@@ -39,10 +39,11 @@ jobs:
       - name: Report code coverage
         shell: bash -l {0}
         run: |
-            coverage report -m --omit='tests/*' --fail-under=$COVERAGE_TOTAL --skip-empty
             coverage xml --omit='tests/*' --fail-under=$COVERAGE_TOTAL --skip-empty
+            coverage report -m --omit='tests/*' --fail-under=$COVERAGE_TOTAL --skip-empty
       - name: Coverage comment in PR
         uses: 5monkeys/cobertura-action@master
+        if: ${{ always() }}
         with:
           path: coverage.xml
           repo_token: ${{ secrets.GITHUB_TOKEN }}
