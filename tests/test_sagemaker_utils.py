@@ -1,8 +1,11 @@
 import pandas as pd
+import re
+import os
 import pytest
 from pytest import mark
+from shutil import copyfile
 
-from src.sagemaker_utils import generate_df_jobs
+from src.sagemaker_utils import generate_df_jobs, _get_timestamp, import_sagemaker_params
 
 RUN_NAME = 'test'
 ALGORITHM = 'test_algorithm'
@@ -74,4 +77,30 @@ class generateDfJobTests():
                              )
 
 
+@mark.sagemaker_utils
+class GetTimestampTests:
+    def test_nominal(self):
+        REGEX = "^-20[1-9][1-9]-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])-([0-1][0-9]|2[0-3])-([0-5][0-9]-){2}[0-9]{3}$"  # noqa: E501
+        rule = re.compile(REGEX)
+        timestamp = _get_timestamp()
 
+        try:
+            assert bool(rule.match(timestamp))
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+
+@mark.sagemaker_utils
+class ImportSagemakerParamsTests:
+    def test_nominal(self):
+        assert os.path.isfile(os.path.join('tests', 'data', 'test_config.yml')), \
+            "Test configuration file missing in tests/data/"
+        copyfile(os.path.join('tests', 'data', 'test_config.yml'), os.path.join('config', 'test_config.yml'))
+
+        params = import_sagemaker_params('test_config')
+        try:
+            assert isinstance(params, (dict))
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
+
+        os.remove(os.path.join('config', 'test_config.yml'))
