@@ -65,5 +65,5 @@ jobs:
         shell: bash -l {0}
         run: |
             python -m pytest -v --cov=src > pytest-coverage.txt
-    - name: Comment coverage
-      uses: coroo/pytest-coverage-commentator@v1.0.2
+      - name: Comment coverage
+        uses: coroo/pytest-coverage-commentator@v1.0.2
