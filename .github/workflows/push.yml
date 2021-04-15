@@ -48,12 +48,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Cache conda
+        uses: actions/cache@v2
+        env:
+          # Increase this value to reset cache if etc/example-environment.yml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key:
+            ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
+            hashFiles('etc/example-environment.yml') }}
       - uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: forecast-modeling-demand
           environment-file: environment.yml
           python-version: 3.7
           auto-activate-base: false
+          use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
       - name: Lint
         shell: bash -l {0}
         run: |
@@ -63,5 +74,5 @@ jobs:
         shell: bash -l {0}
         run: |
             python -m pytest -v --cov=src > pytest-coverage.txt
-      # - name: Comment coverage
-      #   uses: coroo/pytest-coverage-commentator@v1.0.2
+      - name: Comment coverage
+        uses: coroo/pytest-coverage-commentator@v1.0.2
