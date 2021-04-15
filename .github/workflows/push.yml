@@ -1,40 +1,72 @@
-name: push
+# name: push
+# on: [pull_request]
+
+# env:
+#   CONDA_ENV: forecast-modeling-demand
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         python-version: [3.7]
+
+#     steps:
+#     - name: Checkout
+#       uses: actions/checkout@v2
+#     - uses: conda-incubator/setup-miniconda@v2
+#       with:
+#         activate-environment: forecast-modeling-demand
+#         environment-file: environment.yml
+#         python-version: 3.7
+#         auto-activate-base: false
+#     - shell: bash -l {0}
+#       run: |
+#         conda info
+#         conda list
+#     - name: Testing & code coverage
+#       shell: bash -l {0}
+#       run: |
+#         conda activate $CONDA_ENV
+#         python -m pytest -v --cache-clear --cov=src > pytest-coverage.txt
+#     - name: Comment coverage
+#       uses: coroo/pytest-coverage-commentator@v1.0.2
+#     - name: Lint with flake8
+#       shell: bash -l {0}
+#       run: |
+#         # stop the build if there are Python syntax errors or undefined names
+#         conda run --no-capture-output -n $CONDA_ENV flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+#         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+#         conda run --no-capture-output -n $CONDA_ENV flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+name: Use Setup-Miniconda From Marketplace
 on: [pull_request]
 
-env:
-  CONDA_ENV: forecast-modeling-demand
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  miniconda:
+    name: Miniconda ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.7]
-
+        matrix:
+            os: ["ubuntu-latest"]
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - uses: conda-incubator/setup-miniconda@v2
-      with:
-        activate-environment: forecast-modeling-demand
-        environment-file: environment.yml
-        python-version: 3.7
-        auto-activate-base: false
-    - name: echo variables
-      run: |
-        echo $GITHUB_REF
-        cat environment.yml
-    - name: Testing & code coverage
-      shell: bash -l {0}
-      run: |
-        conda activate $CONDA_ENV
-        python -m pytest -v --cache-clear --cov=src > pytest-coverage.txt
-    - name: Comment coverage
-      uses: coroo/pytest-coverage-commentator@v1.0.2
-    - name: Lint with flake8
-      shell: bash -l {0}
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        conda run --no-capture-output -n $CONDA_ENV flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        conda run --no-capture-output -n $CONDA_ENV flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: forecast-modeling-demand
+          environment-file: environment.yml
+          python-version: 3.7
+          auto-activate-base: false
+      - shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+      - name: Lint
+        shell: bash -l {0}
+        run: |
+            conda install flake8
+            python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+            python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Run pytest
+        shell: bash -l {0}
+        run: |
+            pytest
