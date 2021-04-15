@@ -1,13 +1,12 @@
 name: CI/CD
 on: [pull_request]
 
-env:
-  MIN_COVERAGE: 60
-
 jobs:
   miniconda:
     name: CI/CD pipeline
     runs-on: ubuntu-latest
+    env:
+      COVERAGE_TOTAL: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -36,6 +35,6 @@ jobs:
       - name: Run pytest
         shell: bash -l {0}
         run: |
-            python -m pytest -v --cov=src --cov-fail-under=$MIN_COVERAGE > pytest-coverage.txt
+            python -m pytest -v --cov=src --cov-fail-under=$COVERAGE_TOTAL > pytest-coverage.txt
       - name: Comment coverage
         uses: coroo/pytest-coverage-commentator@v1.0.2
