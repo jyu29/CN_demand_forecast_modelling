@@ -35,6 +35,15 @@ jobs:
       - name: Run pytest
         shell: bash -l {0}
         run: |
-            python -m pytest -v --cov=src --cov-fail-under=$COVERAGE_TOTAL > pytest-coverage.txt
-      - name: Comment coverage
-        uses: coroo/pytest-coverage-commentator@v1.0.2
+            coverage run -m pytest -v
+      - name: Report code coverage
+        shell: bash -l {0}
+        run: |
+            coverage report -m --omit='tests/*' --fail-under=$COVERAGE_TOTAL
+            coverage xml --omit='tests/*' --fail-under=$COVERAGE_TOTAL
+      - name: Coverage comment in PR
+        uses: 5monkeys/cobertura-action@master
+        with:
+          path: coverage.xml
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_coverage: ${{ COVERAGE_TOTAL }}
