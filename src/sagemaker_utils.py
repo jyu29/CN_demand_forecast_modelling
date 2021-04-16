@@ -2,6 +2,7 @@ import logging
 import time
 from datetime import datetime
 
+import os
 import re
 import boto3
 import numpy as np
@@ -93,7 +94,9 @@ def import_sagemaker_params(environment: str,
     Returns:
         A dictionary with all parameters for sagemaker training & inference
     """
-    params_full_path = f"config/{environment}.yml"
+    params_full_path = os.path.join('config', f"{environment}.yml")
+    assert os.path.isfile(params_full_path), f"Environment {environment} has no associated configuration file"
+
     params = ut.read_yml(params_full_path)
 
     sagemaker_params = {'train_instance_type': params['modeling_parameters']['train_instance_type'],

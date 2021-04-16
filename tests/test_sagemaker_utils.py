@@ -104,3 +104,10 @@ class ImportSagemakerParamsTests:
             pytest.fail("Test failed on nominal case.")
 
         os.remove(os.path.join('config', 'test_config.yml'))
+
+    def test_missing_env(self):
+        env = 'missing_env'
+        assert not os.path.isfile(os.path.join('config', f'{env}.yml'))
+
+        with pytest.raises(AssertionError):
+            import_sagemaker_params(env)
