@@ -115,6 +115,7 @@ class ImportSagemakerParamsTests:
 
 
 class SagemakerHandlerTests:
+    @patch('src.sagemaker_utils.time.sleep')
     @patch('src.sagemaker_utils.get_image_uri')
     @patch('src.sagemaker_utils.sagemaker.estimator.Estimator')
     @patch.object(src.sagemaker_utils.sagemaker.estimator.Estimator, 'fit')
@@ -123,7 +124,8 @@ class SagemakerHandlerTests:
                      session_mocker,
                      fit_estimator_mocker,
                      estimator_mocker,
-                     get_image_uri_mocker
+                     get_image_uri_mocker,
+                     time_sleep_mocker
                      ):
 
         d = {'TrainingJobStatus': 'Completed'}
