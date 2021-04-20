@@ -13,6 +13,9 @@ CUTOFF = 202001
 RUN_NAME = 'testing_run_name'
 TRAIN_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
 PREDICT_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
+REFINED_TARGET_PATH = os.path.join(DATA_PATH, "refining_target.csv")
+REFINED_STATIC_PATH = os.path.join(DATA_PATH, "refining_static_data.csv")
+REFINED_DYNAMIC_PATH = os.path.join(DATA_PATH, "refining_dynamic_data.csv")
 
 df_model_week_sales = pd.read_csv(os.path.join(DATA_PATH, "model_week_sales.csv"), sep=';', parse_dates=['date'])
 df_model_week_tree = pd.read_csv(os.path.join(DATA_PATH, "model_week_tree.csv"), sep=';')
@@ -132,3 +135,21 @@ class DataHandlerImportBaseDataTests:
             assert ptypes.is_datetime64_ns_dtype(data_handler.base_data['model_week_sales']['date'])
         except AssertionError:
             pytest.fail("Test failed on nominal case")
+
+
+class DataHandlerRefiningSpecificTests:
+    def test_nominal(self):
+        data_handler.import_base_data()
+
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
+        expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
+
+        target, static_data, dynamic_data = data_handler.refining_specific()
+
+        try:
+            target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
+            dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
