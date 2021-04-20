@@ -173,7 +173,10 @@ class DataHandler:
 
         # DeepAR Formatting
         logger.info("Starting DeepAR formatting...")
-        self.train_jsonline, self.predict_jsonline = self.deepar_formatting(self.df_target, self.df_static_data, self.df_dynamic_data)
+        self.train_jsonline, self.predict_jsonline = self.deepar_formatting(self.df_target,
+                                                                            self.df_static_data,
+                                                                            self.df_dynamic_data
+                                                                            )
 
         # Saving jsonline files on S3
         train_bucket, train_path = ut.from_uri(self.output_paths['train_path'])
