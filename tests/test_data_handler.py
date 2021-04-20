@@ -153,3 +153,30 @@ class DataHandlerRefiningSpecificTests:
             dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
+
+
+class DataHandlerDeepArFormatingTests:
+    def test_nominal(self):
+        data_handler.import_all_data()
+        target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
+        dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
+
+        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+            target, static_data, dynamic_data
+
+        with open(os.path.join(DATA_PATH, 'train_jsonline'), 'r') as f:
+            expected_train_jsonline = f.read()
+        with open(os.path.join(DATA_PATH, 'predict_jsonline'), 'r') as f:
+            expected_predict_jsonline = f.read()
+
+        train_jsonline, predict_jsonline = data_handler.deepar_formatting(target,
+                                                                          static_data,
+                                                                          dynamic_data
+                                                                          )
+
+        try:
+            train_jsonline == expected_train_jsonline
+            predict_jsonline == expected_predict_jsonline
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
