@@ -87,10 +87,12 @@ class DataHandler:
             rec_length (int): Minimum weeks expected in each input time series
             prediction_length (int): Number of forecasted weeks in the future
             cat_cols (list): List of `str` to select static columns expected in model_week_tree
-            rec_cold_start_group (list): for the cold start reconstruction, columns to use in model_week_tree for the group average
+            rec_cold_start_group (list): for the cold start reconstruction, columns to use in model_week_tree
+                                    for the group average
             refined_global_bucket (str): S3 bucket on which the refined global data should be downloaded
             refined_specific_bucket (str): S3 bucket on which the refined specific data should be uploaded
-            output_paths (dict): Dictionnary of S3 URIs for dynamic data (without bucket, including file name & extension) for the train  & predict JSON output files
+            output_paths (dict): Dictionnary of S3 URIs for dynamic data (without bucket, including file name
+                                    & extension) for the train  & predict JSON output files
             global_dynamic_data (dict)(optional): Dictionnary of pd.DataFrame or S3 URIs for dynamic data
         """
         self.cutoff = cutoff
@@ -108,13 +110,15 @@ class DataHandler:
 
         # Base data init
         for dataset in base_data.keys():
-            assert isinstance(base_data[dataset], (str, pd.DataFrame)), "Value in dict `base_data` must be S3 URI or pd.DataFrame"
+            assert isinstance(base_data[dataset], (str, pd.DataFrame)), \
+                "Value in dict `base_data` must be S3 URI or pd.DataFrame"
         self.base_data = base_data
 
         # Static features init
         if static_features:
             for dataset in static_features.keys():
-                assert isinstance(static_features[dataset], (str, pd.DataFrame)), "Value in dict `static_features` must be S3 URI or pd.DataFrame"
+                assert isinstance(static_features[dataset], (str, pd.DataFrame)), \
+                    "Value in dict `static_features` must be S3 URI or pd.DataFrame"
             self.static_features = static_features
 
         # Global dynamic data init
@@ -122,16 +126,20 @@ class DataHandler:
             for dataset in global_dynamic_features.keys():
                 assert isinstance(global_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
                     "Value in dict `global_dynamic_features` must be S3 URI or pd.DataFrame"
-            self.global_dynamic_features = {key: global_dynamic_features[key]['dataset'] for key in global_dynamic_features}
-            self.global_dynamic_features_projection = {key: global_dynamic_features[key]['projection'] for key in global_dynamic_features}
+            self.global_dynamic_features = {key: global_dynamic_features[key]['dataset']
+                                            for key in global_dynamic_features}
+            self.global_dynamic_features_projection = {key: global_dynamic_features[key]['projection']
+                                                       for key in global_dynamic_features}
 
         # Specific dynamic data init
         if specific_dynamic_features:
             for dataset in specific_dynamic_features.keys():
                 assert isinstance(specific_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
                     "Value in dict `specific_dynamic_features` must be S3 URI or pd.DataFrame"
-            self.specific_dynamic_features = {key: specific_dynamic_features[key]['dataset'] for key in specific_dynamic_features}
-            self.specific_dynamic_features_projection = {key: specific_dynamic_features[key]['projection'] for key in specific_dynamic_features}
+            self.specific_dynamic_features = {key: specific_dynamic_features[key]['dataset']
+                                              for key in specific_dynamic_features}
+            self.specific_dynamic_features_projection = {key: specific_dynamic_features[key]['projection']
+                                                         for key in specific_dynamic_features}
 
         # Output json line datasets init
         assert 'train_path' in output_paths, "Output paths must include `train_path`"
@@ -144,7 +152,8 @@ class DataHandler:
         if self.patch_first_lockdown:
             logger.info("Patch first lockdown of 2020 requested")
         if self.rec_cold_start:
-            logger.info(f"Cold Start Reconstruction requested with {self.rec_length} minimum weeks and average on values {self.rec_cold_start_group}")
+            logger.info(f"Cold Start Reconstruction requested with {self.rec_length} minimum "
+                        f"weeks and average on values {self.rec_cold_start_group}")
         else:
             logger.info("Cold Start Reconstruction not requested, a simple zero padding will be applied")
 
@@ -367,10 +376,14 @@ class DataHandler:
         df_predict = self._add_future_weeks(df_target).merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
         df_predict.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
         # Building data `start` & `target`
-        df_predict = df_predict.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
-                                                                         target=('sales_quantity', lambda x: list(x.dropna())))
+        df_predict = df_predict.groupby(by=['model_id'], sort=False)\
+            .agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
+                 target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
-        df_predict = df_predict.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+        df_predict = df_predict.merge(df_static_features[['model_id', 'cat']],
+                                      left_index=True,
+                                      right_on='model_id'
+                                      ).set_index('model_id')
         logger.debug("Added categorical features to `df_predict`")
 
         # Identifying final list of dynamic features
@@ -381,7 +394,11 @@ class DataHandler:
             .agg({feat: list for feat in dynamic_features})
         df_dynamic_data_predict['dynamic_feat'] = df_dynamic_data_predict.values.tolist()
         # Adding dynamic features
-        df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']], left_index=True, right_index=True, how='left')
+        df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']],
+                                      left_index=True,
+                                      right_index=True,
+                                      how='left'
+                                      )
         df_predict.reset_index(inplace=True)
         logger.debug("Added dynamic features to `df_predict`")
 
@@ -391,10 +408,13 @@ class DataHandler:
         df_dynamic_data_train = df_dynamic_data[df_dynamic_data['week_id'] < self.cutoff]
         # Building data `start` & `target`
         df_train.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
-        df_train = df_train.groupby(by=['model_id'], sort=False).agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
-                                                                     target=('sales_quantity', lambda x: list(x.dropna())))
+        df_train = df_train.groupby(by=['model_id'], sort=False)\
+            .agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
+                 target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
-        df_train = df_train.merge(df_static_features[['model_id', 'cat']], left_index=True, right_on='model_id').set_index('model_id')
+        df_train = df_train.merge(df_static_features[['model_id', 'cat']],
+                                  left_index=True,
+                                  right_on='model_id').set_index('model_id')
         logger.debug("Added static features to `df_train`")
         # Concatenating dynamic features in list format
         df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
@@ -402,7 +422,11 @@ class DataHandler:
             .agg({feat: list for feat in dynamic_features})
         df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
         # Adding dynamic features
-        df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']], left_index=True, right_index=True, how='left')
+        df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']],
+                                  left_index=True,
+                                  right_index=True,
+                                  how='left'
+                                  )
         logger.debug("Added dynamic features to `df_train`")
         # Shuffling df_train
         df_train = df_train.sample(frac=1)
@@ -480,9 +504,11 @@ class DataHandler:
                 self.specific_dynamic_features[dataset] = ut.read_multipart_parquet_s3(bucket, path)
                 logger.debug(f"Global dynamic feature {dataset} imported from S3.")
             if self.specific_dynamic_features_projection[dataset] == 'ffill':
-                self.specific_dynamic_features[dataset] = features_forward_fill(df=self.specific_dynamic_features[dataset],
-                                                                                cutoff=self.cutoff,
-                                                                                projection_length=self.prediction_length)
+                self.specific_dynamic_features[dataset] = \
+                    features_forward_fill(df=self.specific_dynamic_features[dataset],
+                                          cutoff=self.cutoff,
+                                          projection_length=self.prediction_length
+                                          )
             assert len(set(self.specific_dynamic_features[dataset].columns) - set(['week_id', 'model_id'])) == 1, \
                 f"Static feature dataset {dataset} must contains only one column, aside 'model_id' & 'week_id'"
 
@@ -517,7 +543,8 @@ class DataHandler:
 
         Args:
             df_dynamnic_data (pd.DataFrame): Concatenated dataframe for dynamic features. Can be empty except for
-                'model_id' and 'weekd_id'. The declared models and weeks will be exactly the models exposed to the modeling step.
+                'model_id' and 'weekd_id'. The declared models and weeks will be exactly the models exposed to
+                the modeling step.
             df_feat (pd.DataFrame): Static features dataset. Must include column 'model_id' and one column with the
                 associated static feature. The name of this column will be the name of the feature.
             min_week (int): Minimum week to check in the DataFrame (YYYYWW ISO Format)
@@ -533,7 +560,8 @@ class DataHandler:
         check_weeks_df(df_feat, min_week, cutoff, future_weeks, week_column=week_column)
 
         if 'model_id' not in df_feat.columns:
-            # assert models is not None, "If `df_feat` is a global dynamic feature, you must provide `models` with a pd.DataFrame of expected models with 'model_id' column"
+            # assert models is not None, "If `df_feat` is a global dynamic feature, you must provide `models` with
+            # a pd.DataFrame of expected models with 'model_id' column"
             models = pd.DataFrame({'model_id': df_dynamic_data['model_id'].unique()})
             df_feat = df_feat.merge(models, how='cross')
 
@@ -590,8 +618,12 @@ class DataHandler:
         logger.debug("All target time series have a length longer than `rec_length`")
 
         # Test if target length is right
-        df['target_len_test'] = df.apply(lambda x: ut.date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')) == self.cutoff, axis=1)
-        assert all(df['target_len_test'].values), "Some models have a 'target' length which doesn't match with the 'start' date"
+        df['target_len_test'] = \
+            df.apply(lambda x: ut.date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')
+                                                  ) == self.cutoff, axis=1
+                     )
+        assert all(df['target_len_test'].values), \
+            "Some models have a 'target' length which doesn't match with the 'start' date"
         logger.debug("All target time series have a length matching with start_date and cutoff")
 
         if 'cat' in df.columns:
@@ -599,7 +631,8 @@ class DataHandler:
             df['cat_feat_nb'] = df.apply(lambda x: len(x['cat']), axis=1)
             test = df['cat_feat_nb'] == len(set(self.df_static_data.columns) - set(['model_id']))
             assert all(test.values), "Some models don't have the right number of categorical features"
-            logger.debug(f"All models have {len(set(self.df_static_data.columns) - set(['model_id']))} categorical features ")
+            logger.debug(f"All models have {len(set(self.df_static_data.columns) - set(['model_id']))} "
+                         f"categorical features")
 
         if 'dynamic_feat' in df.columns:
             nb_dyn_feat = len(set(self.df_dynamic_data.columns) - set(['model_id', 'week_id']))

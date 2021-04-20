@@ -83,8 +83,10 @@ class ColdStartRecTests:
 
         # Checking if all models have expected reconstruction length
         df = df_cold_start.groupby(['model_id']).agg(min_week_id=('week_id', 'min'), max_week_id=('week_id', 'max'))
-        df['length'] = df.apply(lambda x: len(pd.date_range(start=week_id_to_date(x['min_week_id']), end=week_id_to_date(x['max_week_id']), freq='1W')), axis=1)
+        df['length'] = df.apply(lambda x: len(pd.date_range(start=week_id_to_date(x['min_week_id']),
+                                                            end=week_id_to_date(x['max_week_id']), freq='1W')), axis=1)
         try:
             assert all([le >= REC_LENGTH for le in df['length'].to_list()])
         except AssertionError:
-            pytest.fail("Test failed on nominal case : some models don't have the expected length after cold start reconstruction.")
+            pytest.fail("Test failed on nominal case : some models don't have the expected length "
+                        "after cold start reconstruction.")

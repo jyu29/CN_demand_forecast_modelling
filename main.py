@@ -10,11 +10,20 @@ import src.utils as ut
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logging_lvl', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'],
-                        default="INFO", help="Level for logger")
-    parser.add_argument('--environment', choices=['dev', 'prod', 'dev_old'], default="dev",
-                        help="'dev' or 'prod', to set the right configurations")
-    parser.add_argument('--list_cutoff', default=str('today'), help="List of cutoffs in format YYYYWW between brackets or 'today'")
+    parser.add_argument('--logging_lvl',
+                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'],
+                        default="INFO",
+                        help="Level for logger"
+                        )
+    parser.add_argument('--environment',
+                        choices=['dev', 'prod', 'dev_old'],
+                        default="dev",
+                        help="'dev' or 'prod', to set the right configurations"
+                        )
+    parser.add_argument('--list_cutoff',
+                        default=str('today'),
+                        help="List of cutoffs in format YYYYWW between brackets or 'today'"
+                        )
     parser.add_argument('--run_name', help="Run Name for file hierarchy purpose")
     args = parser.parse_args()
     su.logger.setLevel(args.logging_lvl)
