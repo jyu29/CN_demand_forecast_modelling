@@ -19,7 +19,10 @@ df_model_week_tree = pd.read_csv(os.path.join(DATA_PATH, "model_week_tree.csv"),
 df_model_week_mrp = pd.read_csv(os.path.join(DATA_PATH, "model_week_mrp.csv"), sep=';')
 df_store_openings = pd.read_csv(os.path.join(DATA_PATH, "store_openings.csv"), sep=';')
 df_holidays = pd.read_csv(os.path.join(DATA_PATH, "holidays.csv"), sep=';')
-df_imputed_sales_lockdown_1 = pd.read_csv(os.path.join(DATA_PATH, "model_week_imputed_lockdown_1.csv"), sep=';', parse_dates=['date'])
+df_imputed_sales_lockdown_1 = pd.read_csv(os.path.join(DATA_PATH, "model_week_imputed_lockdown_1.csv"),
+                                          sep=';',
+                                          parse_dates=['date']
+                                          )
 
 base_data = {'model_week_sales': df_model_week_sales,
              'model_week_tree': df_model_week_tree,
