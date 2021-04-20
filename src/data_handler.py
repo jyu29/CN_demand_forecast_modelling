@@ -295,7 +295,11 @@ class DataHandler:
 
         # Creating df_dynamic_features
         min_week = df_sales['week_id'].min()
-        if any([self.rec_cold_start, hasattr(self, 'global_dynamic_features'), hasattr(self, 'specific_dynamic_features')]):
+        if any([self.rec_cold_start,
+                hasattr(self, 'global_dynamic_features'),
+                hasattr(self, 'specific_dynamic_features')
+                ]
+               ):
             df_dynamic_features = generate_empty_dyn_feat_global(df_target,
                                                                  min_week=min_week,
                                                                  cutoff=self.cutoff,
