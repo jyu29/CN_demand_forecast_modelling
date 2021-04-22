@@ -6,7 +6,7 @@ jobs:
     name: CI/CD pipeline
     runs-on: ubuntu-latest
     env:
-      COVERAGE_TOTAL: 60
+      COVERAGE_TOTAL: env.TEST_COVERAGE_FAIL_UNDER
 
     steps:
       - uses: actions/checkout@v2
