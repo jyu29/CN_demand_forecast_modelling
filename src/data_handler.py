@@ -115,7 +115,7 @@ class DataHandler:
         self.base_data = base_data
 
         # Static features init
-        self.static_features = {}
+        self.static_features = None
         if static_features:
             for dataset in static_features.keys():
                 assert isinstance(static_features[dataset], (str, pd.DataFrame)), \
@@ -123,7 +123,7 @@ class DataHandler:
             self.static_features = static_features
 
         # Global dynamic data init
-        self.global_dynamic_features = {}
+        self.global_dynamic_features = None
         if global_dynamic_features:
             for dataset in global_dynamic_features.keys():
                 assert isinstance(global_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
@@ -134,7 +134,7 @@ class DataHandler:
                                                        for key in global_dynamic_features}
 
         # Specific dynamic data init
-        self.specific_dynamic_features = {}
+        self.specific_dynamic_features = None
         if specific_dynamic_features:
             for dataset in specific_dynamic_features.keys():
                 assert isinstance(specific_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
@@ -210,21 +210,21 @@ class DataHandler:
         logger.info("Attribute `base_data` created.")
 
         # Static features import
-        if hasattr(self, 'static_features'):
+        if self.static_features:
             self.import_static_features()
             logger.info("Attribute `static_features` created")
         else:
             logger.info("No static features specified.")
 
         # Global dynamic features import
-        if hasattr(self, 'global_dynamic_features'):
+        if self.global_dynamic_features:
             self.import_global_dynamic_features()
             logger.info("Attribute `global_dynamic_features` created")
         else:
             logger.info("No global dynamic features specified.")
 
         # Specific dynamic features import
-        if hasattr(self, 'specific_dynamic_features'):
+        if self.specific_dynamic_features:
             self.import_specific_dynamic_features()
             logger.info("Attribute `specific_dynamic_features` created")
         else:
@@ -298,7 +298,7 @@ class DataHandler:
         df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
 
         # Creating df_static_features
-        if hasattr(self, 'static_features'):
+        if self.static_features:
             df_static_features = df_target[['model_id']].drop_duplicates().copy()
             for dataset in self.static_features.keys():
                 df_static_features = self._add_static_feat(df_static_features,
@@ -308,8 +308,8 @@ class DataHandler:
         # Creating df_dynamic_features
         min_week = df_sales['week_id'].min()
         if any([self.rec_cold_start,
-                hasattr(self, 'global_dynamic_features'),
-                hasattr(self, 'specific_dynamic_features')
+                self.global_dynamic_features,
+                self.specific_dynamic_features
                 ]
                ):
             df_dynamic_features = generate_empty_dyn_feat_global(df_target,
@@ -329,7 +329,7 @@ class DataHandler:
             logger.debug("Cold start reconstruction requested. Added reconstruction to `df_dynamic_features`.")
 
         # Adding provided global dynamic features
-        if hasattr(self, 'global_dynamic_features'):
+        if self.global_dynamic_features:
             for dataset in self.global_dynamic_features.keys():
                 df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
                                                          df_feat=self.global_dynamic_features[dataset],
@@ -339,7 +339,7 @@ class DataHandler:
                 logger.debug(f"Added global dynamic feature {dataset} to `df_dynamic_features`")
 
         # Adding provided specific dynamic features
-        if hasattr(self, 'specific_dynamic_features'):
+        if self.specific_dynamic_features:
             for dataset in self.specific_dynamic_features.keys():
                 df_dynamic_features = self._add_dyn_feat(df_dynamic_features,
                                                          df_feat=self.specific_dynamic_features[dataset],
