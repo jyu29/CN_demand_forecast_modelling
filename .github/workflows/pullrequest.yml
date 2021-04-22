@@ -5,8 +5,6 @@ jobs:
   miniconda:
     name: CI/CD pipeline
     runs-on: ubuntu-latest
-    env:
-      COVERAGE_TOTAL: env.TEST_COVERAGE_FAIL_UNDER
 
     steps:
       - uses: actions/checkout@v2
@@ -47,4 +45,4 @@ jobs:
         with:
           path: coverage.xml
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          minimum_coverage: ${{ env.COVERAGE_TOTAL }}
+          minimum_coverage: ${{ env.TEST_COVERAGE_FAIL_UNDER }}
