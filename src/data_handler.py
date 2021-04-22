@@ -367,12 +367,13 @@ class DataHandler:
             """
 
         # Label Encode Categorical features (also limiting df_static_data to avoid missing cat label error)
-        df_static_features = df_static_features.merge(df_target[['model_id']].drop_duplicates(), on=['model_id'])
-        for c in self.static_features.keys():
-            le = LabelEncoder()
-            df_static_features[c] = le.fit_transform(df_static_features[c])
-        df_static_features['cat'] = df_static_features[self.static_features.keys()].values.tolist()
-        logger.debug("Static features label-encoded.")
+        if df_static_features is not None:
+            df_static_features = df_static_features.merge(df_target[['model_id']].drop_duplicates(), on=['model_id'])
+            for c in self.static_features.keys():
+                le = LabelEncoder()
+                df_static_features[c] = le.fit_transform(df_static_features[c])
+            df_static_features['cat'] = df_static_features[self.static_features.keys()].values.tolist()
+            logger.debug("Static features label-encoded.")
 
         # Building df_predict
         # Adding prediction weeks necessary for dynamic features in df_predict
@@ -383,11 +384,12 @@ class DataHandler:
             .agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                  target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
-        df_predict = df_predict.merge(df_static_features[['model_id', 'cat']],
-                                      left_index=True,
-                                      right_on='model_id'
-                                      ).set_index('model_id')
-        logger.debug("Added categorical features to `df_predict`")
+        if df_static_features is not None:
+            df_predict = df_predict.merge(df_static_features[['model_id', 'cat']],
+                                          left_index=True,
+                                          right_on='model_id'
+                                          ).set_index('model_id')
+            logger.debug("Added categorical features to `df_predict`")
 
         # Identifying final list of dynamic features
         dynamic_features = [feat for feat in self.df_dynamic_data.columns if feat not in ['model_id', 'week_id']]
@@ -415,10 +417,11 @@ class DataHandler:
             .agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                  target=('sales_quantity', lambda x: list(x.dropna())))
         # Adding categorical features
-        df_train = df_train.merge(df_static_features[['model_id', 'cat']],
-                                  left_index=True,
-                                  right_on='model_id').set_index('model_id')
-        logger.debug("Added static features to `df_train`")
+        if df_static_features is not None:
+            df_train = df_train.merge(df_static_features[['model_id', 'cat']],
+                                      left_index=True,
+                                      right_on='model_id').set_index('model_id')
+            logger.debug("Added static features to `df_train`")
         # Concatenating dynamic features in list format
         df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
             .groupby(by=['model_id'], sort=False)\
