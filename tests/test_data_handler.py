@@ -148,11 +148,165 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
-            static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
-            dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
+            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
+
+    def test_nominal_isrec_no_feat(self):
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=None,
+                                   global_dynamic_features=None,
+                                   specific_dynamic_features=None,
+                                   **refining_params
+                                   )
+
+        data_handler.import_base_data()
+
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id', 'model_id', 'is_rec']]
+
+        target, static_data, dynamic_data = data_handler.refining_specific()
+
+        try:
+            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert static_data is None
+            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
+
+    def test_nominal_isrec_only_specific_dyn_feat(self):
+        pass
+
+    def test_nominal_isrec_only_global_dyn_feat(self):
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=None,
+                                   global_dynamic_features=global_dynamic_features,
+                                   specific_dynamic_features=None,
+                                   **refining_params
+                                   )
+
+        data_handler.import_base_data()
+
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
+
+        target, static_data, dynamic_data = data_handler.refining_specific()
+
+        try:
+            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert static_data is None
+            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
+
+    def test_nominal_isrec_only_static_feat(self):
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=static_features,
+                                   global_dynamic_features=None,
+                                   specific_dynamic_features=None,
+                                   **refining_params
+                                   )
+
+        data_handler.import_base_data()
+
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
+        expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id', 'model_id', 'is_rec']]
+
+        target, static_data, dynamic_data = data_handler.refining_specific()
+
+        try:
+            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
+            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
+
+    def test_nominal_norec_no_feat(self):
+        refining_params['rec_cold_start'] = False
+
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=None,
+                                   global_dynamic_features=None,
+                                   specific_dynamic_features=None,
+                                   **refining_params
+                                   )
+
+        data_handler.import_base_data()
+
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+
+        target, static_data, dynamic_data = data_handler.refining_specific()
+
+        try:
+            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert static_data is None
+            assert dynamic_data is None
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
+
+    def test_nominal_norec_only_specific_dyn_feat(self):
+        refining_params['rec_cold_start'] = False
+
+        pass
+
+    def test_nominal_norec_only_global_dyn_feat(self):
+        refining_params['rec_cold_start'] = False
+
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=None,
+                                   global_dynamic_features=global_dynamic_features,
+                                   specific_dynamic_features=None,
+                                   **refining_params
+                                   )
+
+        data_handler.import_base_data()
+
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id',
+                                                                            'model_id',
+                                                                            'perc_store_open',
+                                                                            'holidays'
+                                                                            ]]
+
+        target, static_data, dynamic_data = data_handler.refining_specific()
+
+        test_dynamic_data = dynamic_data.merge(expected_dynamic_data, on=['week_id', 'model_id'])
+
+        try:
+            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert static_data is None
+            assert (test_dynamic_data['perc_store_open_x'] == test_dynamic_data['perc_store_open_y']).all()
+            assert (test_dynamic_data['holidays_x'] == test_dynamic_data['holidays_y']).all()
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
+
+    def test_nominal_norec_only_static_feat(self):
+        refining_params['rec_cold_start'] = False
+
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=static_features,
+                                   global_dynamic_features=None,
+                                   specific_dynamic_features=None,
+                                   **refining_params
+                                   )
+
+        data_handler.import_base_data()
+
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
+
+        target, static_data, dynamic_data = data_handler.refining_specific()
+
+        try:
+            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
+            assert dynamic_data is None
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")
+
 
 
 class DataHandlerDeepArFormatingTests:
