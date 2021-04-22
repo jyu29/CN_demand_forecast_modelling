@@ -115,6 +115,7 @@ class DataHandler:
         self.base_data = base_data
 
         # Static features init
+        self.static_features = {}
         if static_features:
             for dataset in static_features.keys():
                 assert isinstance(static_features[dataset], (str, pd.DataFrame)), \
@@ -122,6 +123,7 @@ class DataHandler:
             self.static_features = static_features
 
         # Global dynamic data init
+        self.global_dynamic_features = {}
         if global_dynamic_features:
             for dataset in global_dynamic_features.keys():
                 assert isinstance(global_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
@@ -132,6 +134,7 @@ class DataHandler:
                                                        for key in global_dynamic_features}
 
         # Specific dynamic data init
+        self.specific_dynamic_features = {}
         if specific_dynamic_features:
             for dataset in specific_dynamic_features.keys():
                 assert isinstance(specific_dynamic_features[dataset]['dataset'], (str, pd.DataFrame)), \
