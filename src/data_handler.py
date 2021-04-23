@@ -380,11 +380,11 @@ class DataHandler:
         df_predict = self._add_future_weeks(df_target)
         if df_dynamic_data is not None:
             df_predict = df_predict.merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
+            # Limiting df_dynamic_data to ensure that unwanted week_ids are not in the dataset
+            df_dynamic_data = df_dynamic_data.merge(df_predict[['model_id', 'week_id']].drop_duplicates(),
+                                                    on=['model_id', 'week_id'],
+                                                    how='inner')
         df_predict.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
-        # Limiting df_dynamic_data to ensure that unwanted week_ids are not in the dataset
-        df_dynamic_data = df_dynamic_data.merge(df_predict[['model_id', 'week_id']].drop_duplicates(),
-                                                on=['model_id', 'week_id'],
-                                                how='inner')
         # Building data `start` & `target`
         df_predict = df_predict.groupby(by=['model_id'], sort=False)\
             .agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
@@ -398,28 +398,30 @@ class DataHandler:
             logger.debug("Added categorical features to `df_predict`")
 
         # Identifying final list of dynamic features
-        dynamic_features = [feat for feat in self.df_dynamic_data.columns if feat not in ['model_id', 'week_id']]
-        # Concatenating dynamic features in list format
-        df_dynamic_data_predict = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
-            .groupby(by=['model_id'], sort=False)\
-            .agg({feat: list for feat in dynamic_features})
-        df_dynamic_data_predict['dynamic_feat'] = df_dynamic_data_predict.values.tolist()
-        # Adding dynamic features
-        df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']],
-                                      left_index=True,
-                                      right_index=True,
-                                      how='left'
-                                      )
+        if df_dynamic_data is not None:
+            dynamic_features = [feat for feat in self.df_dynamic_data.columns if feat not in ['model_id', 'week_id']]
+            # Concatenating dynamic features in list format
+            df_dynamic_data_predict = df_dynamic_data.sort_values(by=['model_id', 'week_id'], ascending=True)\
+                .groupby(by=['model_id'], sort=False)\
+                .agg({feat: list for feat in dynamic_features})
+            df_dynamic_data_predict['dynamic_feat'] = df_dynamic_data_predict.values.tolist()
+            # Adding dynamic features
+            df_predict = df_predict.merge(df_dynamic_data_predict[['dynamic_feat']],
+                                          left_index=True,
+                                          right_index=True,
+                                          how='left'
+                                          )
+            logger.debug("Added dynamic features to `df_predict`")
         df_predict.reset_index(inplace=True)
-        logger.debug("Added dynamic features to `df_predict`")
 
         # Building df_train
         # Limiting dataset to avoid any future data
         df_train = df_target[df_target['week_id'] < self.cutoff]
-        df_dynamic_data_train = df_dynamic_data.merge(df_train[['model_id', 'week_id']].drop_duplicates(),
-                                                      on=['model_id', 'week_id'],
-                                                      how='inner'
-                                                      )
+        if df_dynamic_data is not None:
+            df_dynamic_data_train = df_dynamic_data.merge(df_train[['model_id', 'week_id']].drop_duplicates(),
+                                                          on=['model_id', 'week_id'],
+                                                          how='inner'
+                                                          )
         # Building data `start` & `target`
         df_train.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
         df_train = df_train.groupby(by=['model_id'], sort=False)\
@@ -432,17 +434,18 @@ class DataHandler:
                                       right_on='model_id').set_index('model_id')
             logger.debug("Added static features to `df_train`")
         # Concatenating dynamic features in list format
-        df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
-            .groupby(by=['model_id'], sort=False)\
-            .agg({feat: list for feat in dynamic_features})
-        df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
-        # Adding dynamic features
-        df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']],
-                                  left_index=True,
-                                  right_index=True,
-                                  how='left'
-                                  )
-        logger.debug("Added dynamic features to `df_train`")
+        if df_dynamic_data is not None:
+            df_dynamic_data_train = df_dynamic_data_train.sort_values(by=['model_id', 'week_id'], ascending=True)\
+                .groupby(by=['model_id'], sort=False)\
+                .agg({feat: list for feat in dynamic_features})
+            df_dynamic_data_train['dynamic_feat'] = df_dynamic_data_train.values.tolist()
+            # Adding dynamic features
+            df_train = df_train.merge(df_dynamic_data_train[['dynamic_feat']],
+                                      left_index=True,
+                                      right_index=True,
+                                      how='left'
+                                      )
+            logger.debug("Added dynamic features to `df_train`")
         # Shuffling df_train
         df_train = df_train.sample(frac=1)
         df_train.reset_index(inplace=True)
