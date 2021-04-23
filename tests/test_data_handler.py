@@ -514,7 +514,7 @@ class DataHandlerDeepArFormatingTests:
 
     def test_nominal_norec_no_dynamic_feat(self):
         # Expected
-        with open(os.path.join(DATA_PATH, 'train_jsonline_isrec_no_dynamic_feat'), 'r') as f:
+        with open(os.path.join(DATA_PATH, 'train_jsonline_norec_no_dynamic_feat'), 'r') as f:
             expected_train_jsonline = f.read()
         df_expected_train_jsonline = pd.read_json(expected_train_jsonline,
                                                   orient='records',
@@ -522,7 +522,7 @@ class DataHandlerDeepArFormatingTests:
                                                   )
         df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
         df_expected_train_jsonline.reset_index(drop=True, inplace=True)
-        with open(os.path.join(DATA_PATH, 'predict_jsonline_isrec_no_dynamic_feat'), 'r') as f:
+        with open(os.path.join(DATA_PATH, 'predict_jsonline_norec_no_dynamic_feat'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
@@ -564,7 +564,7 @@ class DataHandlerDeepArFormatingTests:
 
     def test_nominal_norec_no_static_dynamic_feat(self):
         # Expected
-        with open(os.path.join(DATA_PATH, 'train_jsonline_isrec_no_static_dynamic_feat'), 'r') as f:
+        with open(os.path.join(DATA_PATH, 'train_jsonline_norec_no_static_dynamic_feat'), 'r') as f:
             expected_train_jsonline = f.read()
         df_expected_train_jsonline = pd.read_json(expected_train_jsonline,
                                                   orient='records',
@@ -572,7 +572,7 @@ class DataHandlerDeepArFormatingTests:
                                                   )
         df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
         df_expected_train_jsonline.reset_index(drop=True, inplace=True)
-        with open(os.path.join(DATA_PATH, 'predict_jsonline_isrec_no_static_dynamic_feat'), 'r') as f:
+        with open(os.path.join(DATA_PATH, 'predict_jsonline_norec_no_static_dynamic_feat'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
