@@ -377,8 +377,14 @@ class DataHandler:
 
         # Building df_predict
         # Adding prediction weeks necessary for dynamic features in df_predict
-        df_predict = self._add_future_weeks(df_target).merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
+        df_predict = self._add_future_weeks(df_target)
+        if df_dynamic_data is not None:
+            df_predict = df_predict.merge(df_dynamic_data, on=['model_id', 'week_id'], how='left')
         df_predict.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
+        # Limiting df_dynamic_data to ensure that unwanted week_ids are not in the dataset
+        df_dynamic_data = df_dynamic_data.merge(df_predict[['model_id', 'week_id']].drop_duplicates(),
+                                                on=['model_id', 'week_id'],
+                                                how='inner')
         # Building data `start` & `target`
         df_predict = df_predict.groupby(by=['model_id'], sort=False)\
             .agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
@@ -410,7 +416,10 @@ class DataHandler:
         # Building df_train
         # Limiting dataset to avoid any future data
         df_train = df_target[df_target['week_id'] < self.cutoff]
-        df_dynamic_data_train = df_dynamic_data[df_dynamic_data['week_id'] < self.cutoff]
+        df_dynamic_data_train = df_dynamic_data.merge(df_train[['model_id', 'week_id']].drop_duplicates(),
+                                                      on=['model_id', 'week_id'],
+                                                      how='inner'
+                                                      )
         # Building data `start` & `target`
         df_train.sort_values(by=['model_id', 'week_id'], ascending=True, inplace=True)
         df_train = df_train.groupby(by=['model_id'], sort=False)\
