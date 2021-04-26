@@ -1,8 +1,11 @@
 import datetime
+import json
 import gzip
 import io
 import pprint
 import re
+import os
+import logging
 
 import boto3
 import numpy as np
@@ -11,7 +14,12 @@ import pyarrow.parquet as pq
 import s3fs
 import yaml
 from uritools import urisplit
+from typing import Union
 
+
+logger = logging.getLogger(__name__)
+logging.basicConfig()
+logger.setLevel(logging.INFO)
 
 def read_yml(file_path):
     """
@@ -220,6 +228,30 @@ def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
         return resp
 
 
+def import_modeling_parameters(environment: str) -> dict:
+    """Handler to import modeling configuration from YML file
+
+    Args:
+        environment (str): Set of parameters on which to load the parameters
+
+    Returns:
+        A dictionary with all parameters for modeling import
+    """
+    params_full_path = os.path.join('config', f"{environment}.yml")
+    assert os.path.isfile(params_full_path), f"Environment {environment} has no associated configuration file"
+
+    params = read_yml(params_full_path)
+
+    data_params = {'refined_data_global_bucket': params['buckets']['refined_data_global'],
+                   'refined_data_specific_bucket': params['buckets']['refined_data_specific'],
+                   'refined_global_path': params['paths']['refined_global_path'],
+                   'refined_specific_path': params['paths']['refined_specific_path'],
+                   'algorithm': params['modeling_parameters']['algorithm']
+                   }
+
+    return data_params
+
+
 def import_raw_config(environment: str) -> dict:
     """Handler to import full configuration from YML file
 
@@ -235,3 +267,73 @@ def import_raw_config(environment: str) -> dict:
     params = read_yml(params_full_path)
 
     return params
+
+
+def check_environment(environment: str,
+                      config_path: str = 'config/'
+                      ) -> None:
+    """
+    Check if environment `environment` matches with a config file in path `config_path`
+
+    Args:
+        environment (str): environment config name to check for
+        config_path (str): path in which to look for configuration files
+    """
+
+    assert isinstance(environment, (str)), "Variable `environment` must be a string"
+    assert isinstance(config_path, (str)), "Variable `config_path` must be a string"
+
+    if config_path[-1] != os.path.sep:
+        config_path += os.path.sep
+    assert os.path.exists(os.path.dirname(config_path)), f"Path {config_path} doesn't exist"
+
+    regex = "^.*.yml$"
+    rule = re.compile(regex)
+
+    available_config = [c.replace('.yml', '') for c in os.listdir(config_path) if bool(rule.match(c))]
+
+    assert environment in available_config, (f"Environment {environment} doesn't match with "
+                                             "any configuration files available")
+
+
+def check_list_cutoff(list_cutoff: Union[str, int, list]) -> list:
+    """
+    Check if `list_cutoff` is conform.
+
+    Args:
+        list_cutoff (str): list of cutoffs
+    Return:
+        conform_list_cutoff (str): list of cutoffs validated
+    """
+
+    assert isinstance(list_cutoff, (str, int, list)), ("list_cutoff must be a string representing "
+                                                       "a list of cutoff, a list of integers or 'today'")
+
+    if isinstance(list_cutoff, (str)):
+        if list_cutoff == 'today':
+            list_cutoff = [get_current_week()]
+        else:
+            list_cutoff = json.loads(list_cutoff)
+    elif isinstance(list_cutoff, (int)):
+        assert is_iso_format(list_cutoff), "Provided cutoff is not in ISO Format YYYYWW"
+        list_cutoff = [list_cutoff]
+
+    assert all([isinstance(cutoff, (int)) for cutoff in list_cutoff]), ("One of the provided cutoffs "
+                                                                        "is not an integer")
+    assert all([is_iso_format(cutoff) for cutoff in list_cutoff]), ("One of the provided cutoffs is not "
+                                                                    "in iso format YYYYWW")
+
+    return list_cutoff
+
+
+def check_run_name(run_name: str) -> None:
+    """
+    Checks if `run_name` matches Sagemaker's regex on job_name.
+
+    Args:
+        run_name (str): Name to check the regez on.
+    """
+    job_name_regex = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
+    rule = re.compile(job_name_regex)
+
+    assert rule.match(run_name), f"Run name {run_name} doesn't match Sagemaker Regex {job_name_regex}"

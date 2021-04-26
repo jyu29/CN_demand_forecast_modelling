@@ -1,5 +1,6 @@
-import argparse
 import json
+import os
+import logging
 
 import pandas as pd
 
@@ -8,64 +9,77 @@ import src.sagemaker_utils as su
 import src.utils as ut
 
 
+logger = logging.getLogger(__name__)
+logging.basicConfig()
+logger.setLevel(logging.INFO)
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--logging_lvl',
-                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'],
-                        default="INFO",
-                        help="Level for logger"
-                        )
-    parser.add_argument('--environment',
-                        choices=['dev', 'prod', 'dev_old'],
-                        default="dev",
-                        help="'dev' or 'prod', to set the right configurations"
-                        )
-    parser.add_argument('--list_cutoff',
-                        default=str('today'),
-                        help="List of cutoffs in format YYYYWW between brackets or 'today'"
-                        )
-    parser.add_argument('--run_name', help="Run Name for file hierarchy purpose")
-    args = parser.parse_args()
-    su.logger.setLevel(args.logging_lvl)
-    dh.logger.setLevel(args.logging_lvl)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--logging_lvl',
+    #                     choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'],
+    #                     default="INFO",
+    #                     help="Level for logger"
+    #                     )
+    # parser.add_argument('--environment',
+    #                     choices=['dev', 'prod', 'dev_old'],
+    #                     default="dev",
+    #                     help="'dev' or 'prod', to set the right configurations"
+    #                     )
+    # parser.add_argument('--list_cutoff',
+    #                     default=str('today'),
+    #                     help="List of cutoffs in format YYYYWW between brackets or 'today'"
+    #                     )
+    # parser.add_argument('--run_name', help="Run Name for file hierarchy purpose")
 
-    # Defining variables
-    environment = args.environment
-    if args.list_cutoff == 'today':
-        list_cutoff = [ut.get_current_week()]
-    else:
-        list_cutoff = json.loads(args.list_cutoff)
+    # Modeling arguments handling
+    ENVIRONMENT = os.environ['environment']
+    LIST_CUTOFF = os.environ['list_cutoff']
+    RUN_NAME = os.environ['run_name']
 
-    for cutoff in list_cutoff:
-        assert type(cutoff) == int
+    ut.check_environment(ENVIRONMENT)
+    list_cutoff = ut.check_list_cutoff(LIST_CUTOFF)
+    ut.check_run_name(RUN_NAME)
 
-    assert type(args.run_name) == str
-    run_name = args.run_name
+    try:
+        LOGGING_LVL = os.environ['logging_lvl']
+        assert LOGGING_LVL in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], 'Wrong logging level'
+    except KeyError:
+        LOGGING_LVL = 'INFO'
+        logger.info("Logging level set to INFO")
+
+    for module in [ut, su, dh]:
+        module.logger.setLevel(LOGGING_LVL)
 
     # Constants
-    REFINED_BUCKET = ut.import_raw_config(environment)['buckets']['refined_data_specific']
-    REFINED_DATA_SPECIFIC_PATH = ut.to_uri(ut.import_raw_config(environment)['buckets']['refined_data_specific'],
-                                           ut.import_raw_config(environment)['paths']['refined_specific_path']
-                                           )
-    ALGORITHM = ut.import_raw_config(environment)['modeling_parameters']['algorithm']
-    MODEL_WEEK_SALES_PATH = 'global/model_week_sales'
-    MODEL_WEEK_TREE_PATH = 'global/model_week_tree'
-    MODEL_WEEK_MRP_PATH = 'global/model_week_mrp'
-    IMPUTED_SALES_LOCKDOWN_1_PATH = 'global/imputed_sales_lockdown_1.parquet'
+    main_params = ut.import_modeling_parameters(ENVIRONMENT)
+    REFINED_DATA_GLOBAL_BUCKET = main_params['refined_data_global_bucket']
+    REFINED_DATA_SPECIFIC_BUCKET = main_params['refined_data_global_bucket']
+
+    REFINED_DATA_GLOBAL_PATH = main_params['refined_global_path']
+    REFINED_DATA_SPECIFIC_PATH = main_params['refined_specific_path']
+    REFINED_DATA_SPECIFIC_URI = ut.to_uri(REFINED_DATA_SPECIFIC_BUCKET, REFINED_DATA_SPECIFIC_PATH)
+    ALGORITHM = main_params['algorithm']
+    MODEL_WEEK_SALES_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_sales"
+    MODEL_WEEK_TREE_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_tree"
+    MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
+    IMPUTED_SALES_LOCKDOWN_1_PATH = f"{REFINED_DATA_GLOBAL_PATH}imputed_sales_lockdown_1.parquet"
+    STORE_OPENINGS_PATH = f"{REFINED_DATA_GLOBAL_PATH}store_openings/store_openings.parquet"
+    HOLIDAYS_PATH = f"{REFINED_DATA_GLOBAL_PATH}holidays/holidays.parquet"
 
     # Data loading
-    df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_BUCKET, MODEL_WEEK_SALES_PATH)
-    df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_BUCKET, MODEL_WEEK_TREE_PATH)
-    df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_BUCKET, MODEL_WEEK_MRP_PATH)
-    df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3(REFINED_BUCKET, IMPUTED_SALES_LOCKDOWN_1_PATH)
-    df_store_openings = pd.read_csv('data/store_openings.csv')
-    df_holidays = pd.read_csv('data/holidays.csv')
+    df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
+    df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_TREE_PATH)
+    df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_MRP_PATH)
+    df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET,
+                                                               IMPUTED_SALES_LOCKDOWN_1_PATH)
+    df_store_openings = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, STORE_OPENINGS_PATH)
+    df_holidays = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, HOLIDAYS_PATH)
 
     # Generate empty df_jobs
     df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
-                                  run_name=run_name,
+                                  run_name=RUN_NAME,
                                   algorithm=ALGORITHM,
-                                  refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
+                                  refined_data_specific_path=REFINED_DATA_SPECIFIC_URI
                                   )
 
     for cutoff in list_cutoff:
@@ -73,9 +87,9 @@ if __name__ == "__main__":
         TRAIN_PATH = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'train_path'].values[0]
         PREDICT_PATH = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'predict_path'].values[0]
 
-        refining_params = dh.import_refining_config(environment=environment,
+        refining_params = dh.import_refining_config(environment=ENVIRONMENT,
                                                     cutoff=cutoff,
-                                                    run_name=run_name,
+                                                    run_name=ENVIRONMENT,
                                                     train_path=TRAIN_PATH,
                                                     predict_path=PREDICT_PATH
                                                     )
@@ -114,9 +128,9 @@ if __name__ == "__main__":
 
         refining_handler.execute_data_refining_specific()
 
-    sagemaker_params = su.import_sagemaker_params(environment=environment)
+    sagemaker_params = su.import_sagemaker_params(environment=ENVIRONMENT)
 
-    modeling_handler = su.SagemakerHandler(run_name=run_name,
+    modeling_handler = su.SagemakerHandler(run_name=RUN_NAME,
                                            df_jobs=df_jobs,
                                            **sagemaker_params)
 
