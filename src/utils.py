@@ -335,6 +335,7 @@ def check_run_name(run_name: str) -> None:
     Args:
         run_name (str): Name to check the regez on.
     """
+    assert isinstance(run_name, (str)), "Run_name should be a string"
     job_name_regex = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
     rule = re.compile(job_name_regex)
 

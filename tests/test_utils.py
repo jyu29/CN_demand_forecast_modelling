@@ -1,12 +1,14 @@
 from datetime import date
 
 import json
+import datetime
 import numpy as np
 import pandas as pd
 import pytest
 from pytest import mark
 
-from src.utils import week_id_to_date, is_iso_format, check_list_cutoff
+from src.utils import (week_id_to_date, is_iso_format, check_list_cutoff, check_run_name,
+                       check_environment)
 
 
 @mark.utils
@@ -116,7 +118,7 @@ class CheckCutoffListTests:
         list_cutoff = [202001]
 
         try:
-            check_list_cutoff(list_cutoff)
+            assert check_list_cutoff(list_cutoff) == list_cutoff
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
@@ -124,15 +126,20 @@ class CheckCutoffListTests:
         list_cutoff = [202001, 202003]
 
         try:
-            check_list_cutoff(list_cutoff)
+            assert check_list_cutoff(list_cutoff) == list_cutoff
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
-    def test_nominal_today(self):
+    def test_nominal_today(self, mocker):
+        mocker.patch(
+            # api_call is from slow.py but imported to main.py
+            'src.utils.get_current_week',
+            return_value=202117
+        )
         list_cutoff = 'today'
 
         try:
-            check_list_cutoff(list_cutoff)
+            assert check_list_cutoff(list_cutoff) == [202117]
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
@@ -140,7 +147,7 @@ class CheckCutoffListTests:
         list_cutoff = '[202110]'
 
         try:
-            check_list_cutoff(list_cutoff)
+            assert check_list_cutoff(list_cutoff) == [202110]
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
@@ -148,7 +155,7 @@ class CheckCutoffListTests:
         list_cutoff = '[202110, 201940]'
 
         try:
-            check_list_cutoff(list_cutoff)
+            assert check_list_cutoff(list_cutoff) == [202110, 201940]
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
@@ -156,7 +163,7 @@ class CheckCutoffListTests:
         list_cutoff = '201805'
 
         try:
-            check_list_cutoff(list_cutoff)
+            assert check_list_cutoff(list_cutoff) == [201805]
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
@@ -177,3 +184,63 @@ class CheckCutoffListTests:
 
         with pytest.raises(AssertionError):
             check_list_cutoff(list_cutoff)
+
+
+class CheckRunNameTests:
+    def test_nominal_case(self):
+        run_name = 'testname'
+
+        try:
+            check_run_name(run_name)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_nominal_case_with_characters(self):
+        run_name = 'test-name'
+
+        try:
+            check_run_name(run_name)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_nominal_case_with_number(self):
+        run_name = 'test-name2'
+
+        try:
+            check_run_name(run_name)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_underscore(self):
+        run_name = 'test_name'
+
+        with pytest.raises(AssertionError):
+            check_run_name(run_name)
+
+    def test_too_long(self):
+        run_name = 'testnamsdofuhsdlfjshdflkusdgflsdkfjbqwleifgslkausdgfasfasgdfdskjhgdwfe'
+
+        with pytest.raises(AssertionError):
+            check_run_name(run_name)
+
+
+class CheckEnvironmentTests:
+    def test_nominal(self):
+        environment = 'testing'
+
+        try:
+            environment = check_environment(environment)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_no_config(self):
+        environment = 'doesntexist'
+
+        with pytest.raises(AssertionError):
+            check_environment(environment)
+
+    def test_wrong_type(self):
+        environment = 1234
+
+        with pytest.raises(AssertionError):
+            check_environment(environment)
