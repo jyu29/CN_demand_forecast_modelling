@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # parser.add_argument('--run_name', help="Run Name for file hierarchy purpose")
 
     # Modeling arguments handling
-    ENVIRONMENT = os.environ['environment']
+    ENVIRONMENT = os.environ['run_env']
     LIST_CUTOFF = os.environ['list_cutoff']
     RUN_NAME = os.environ['run_name']
 
