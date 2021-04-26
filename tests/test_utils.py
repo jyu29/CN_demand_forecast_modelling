@@ -1,11 +1,12 @@
 from datetime import date
 
+import json
 import numpy as np
 import pandas as pd
 import pytest
 from pytest import mark
 
-from src.utils import week_id_to_date, is_iso_format
+from src.utils import week_id_to_date, is_iso_format, check_list_cutoff
 
 
 @mark.utils
@@ -108,3 +109,71 @@ class isIsoFormatTests():
 
         with pytest.raises(AssertionError):
             is_iso_format(week_id)
+
+
+class CheckCutoffListTests:
+    def test_nominal_onecutoff(self):
+        list_cutoff = [202001]
+
+        try:
+            check_list_cutoff(list_cutoff)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_nominal_twocutoff(self):
+        list_cutoff = [202001, 202003]
+
+        try:
+            check_list_cutoff(list_cutoff)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_nominal_today(self):
+        list_cutoff = 'today'
+
+        try:
+            check_list_cutoff(list_cutoff)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_nominal_str_onecutoff(self):
+        list_cutoff = '[202110]'
+
+        try:
+            check_list_cutoff(list_cutoff)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_nominal_str_twocutoff(self):
+        list_cutoff = '[202110, 201940]'
+
+        try:
+            check_list_cutoff(list_cutoff)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_nominal_str_nolist(self):
+        list_cutoff = '201805'
+
+        try:
+            check_list_cutoff(list_cutoff)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case")
+
+    def test_mispelled_today(self):
+        list_cutoff = 'toaday'
+
+        with pytest.raises(json.decoder.JSONDecodeError):
+            check_list_cutoff(list_cutoff)
+
+    def test_wrong_iso_weeks(self):
+        list_cutoff = [202067, 29134]
+
+        with pytest.raises(AssertionError):
+            check_list_cutoff(list_cutoff)
+
+    def test_wrong_iso_weeks_str(self):
+        list_cutoff = '[202067, 29134]'
+
+        with pytest.raises(AssertionError):
+            check_list_cutoff(list_cutoff)

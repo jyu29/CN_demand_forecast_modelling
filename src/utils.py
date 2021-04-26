@@ -314,6 +314,8 @@ def check_list_cutoff(list_cutoff: Union[str, int, list]) -> list:
             list_cutoff = [get_current_week()]
         else:
             list_cutoff = json.loads(list_cutoff)
+            if isinstance(list_cutoff, (int)):
+                list_cutoff = [list_cutoff]
     elif isinstance(list_cutoff, (int)):
         assert is_iso_format(list_cutoff), "Provided cutoff is not in ISO Format YYYYWW"
         list_cutoff = [list_cutoff]
