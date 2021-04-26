@@ -73,7 +73,7 @@ class ImportRefiningConfigTests():
         expected_config = {'cutoff': 202001,
                            'patch_first_lockdown': True,
                            'rec_cold_start': True,
-                           'rec_length': 104,
+                           'rec_length': 156,
                            'rec_cold_start_group': ['family_id'],
                            'prediction_length': 52,
                            'refined_global_bucket': 'fcst-refined-demand-forecast-dev',
