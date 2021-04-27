@@ -578,8 +578,6 @@ class DataHandler:
         check_weeks_df(df_feat, min_week, cutoff, future_weeks, week_column=week_column)
 
         if 'model_id' not in df_feat.columns:
-            # assert models is not None, "If `df_feat` is a global dynamic feature, you must provide `models` with
-            # a pd.DataFrame of expected models with 'model_id' column"
             models = pd.DataFrame({'model_id': df_dynamic_data['model_id'].unique()})
             df_feat = df_feat.merge(models, how='cross')
 
