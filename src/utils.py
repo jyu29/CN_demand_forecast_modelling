@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
 
+
 def read_yml(file_path):
     """
     Read a local yaml file and return a python dictionary

@@ -1,7 +1,6 @@
 from datetime import date
 
 import json
-import datetime
 import numpy as np
 import pandas as pd
 import pytest
