@@ -22,12 +22,8 @@ pipeline {
                 git changelog: false, credentialsId: 'github_dktjenkins', poll: false, url: "${gitUrl}", branch: "${branch_name}"
                 sh('''
                 source ~/miniconda3/etc/profile.d/conda.sh
-                conda deactivate
                 conda env update -f environment.yml
-                conda activate ${conda_env}
-                python -u main.py --environment ${run_env} --run_name ${run_name} --list_cutoff ${list_cutoff}
-                conda deactivate
-                #conda remove --name ${conda_env} --all
+                conda run --no-capture-output -n ${conda_env} python -u main.py
                 ''')
             }
         }
@@ -35,12 +31,12 @@ pipeline {
 
     post {
             failure {
-                    mail to: 'benjamin.bouillet@decathlon.com',
+                    mail to: 'forecastunited@decathlon.net',
                     subject: "Pipeline ${env.JOB_NAME} failed", body: "${env.BUILD_URL}"
                     }
 
             unstable {
-                    mail to: 'benjamin.bouillet@decathlon.com',
+                    mail to: 'forecastunited@decathlon.net',
                     subject: "Pipeline ${env.JOB_NAME} unstable", body: "${env.BUILD_URL}"
                     }
         }

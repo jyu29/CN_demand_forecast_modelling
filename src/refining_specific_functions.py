@@ -3,11 +3,36 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 
-from src.utils import date_to_week_id, week_id_to_date, read_multipart_parquet_s3
+from src.utils import (date_to_week_id, week_id_to_date, is_iso_format)
 
 
-def pad_to_cutoff(df_ts, cutoff, col='sales_quantity'):
+def pad_to_cutoff(df_ts: pd.DataFrame,
+                  cutoff: int,
+                  col: str = 'sales_quantity'
+                  ) -> pd.DataFrame:
+    """
+    Forward fills with zeros time series in Pandas DataFrame up to week cutoff.
 
+    The function will complete the dataframe for all models (`model_id`) with a frequency
+    of 1 week, up to week_id cutoff (excluding it) on the column `col` with value = 0.
+    The input dataframe must include columns ['model_id', 'week_id', 'date'].
+
+    Args:
+        df_ts (pd.DataFrame): Timeseries DataFrame
+        cutoff (int): ISO 8601 Format Week id (YYYYWW) to forward fill to
+        col (str): Name of the column to fill
+
+    Returns:
+        df (pd.DataFrame): Padded DataFrame
+    """
+    assert is_iso_format(cutoff)
+    assert isinstance(cutoff, (int, np.int64))
+    assert isinstance(df_ts, pd.DataFrame)
+    assert pd.api.types.is_datetime64_any_dtype(df_ts['date'])
+    assert set(df_ts.columns) == set(['model_id', 'week_id', 'date', col])
+
+    # Limiting dataset to avoid errors if we have data further than cutoff
+    df_ts = df_ts[df_ts['week_id'] < cutoff]
     # Add the cutoff weekend to all models to put a limit for the bfill
     models = df_ts['model_id'].unique()
     test_cutoff_date = week_id_to_date(cutoff)
@@ -33,7 +58,7 @@ def pad_to_cutoff(df_ts, cutoff, col='sales_quantity'):
 
 
 def zero_padding_rec(df, df_model_week_sales, rec_length):
-    
+
     # Create a complete TS dataframe
     all_model = df['model_id'].sort_values().unique()
     all_week = df_model_week_sales \
@@ -44,13 +69,13 @@ def zero_padding_rec(df, df_model_week_sales, rec_length):
     w, m = pd.core.reshape.util.cartesian_product([all_week, all_model])
 
     complete_ts = pd.DataFrame({'model_id': m, 'week_id': w})
-    
+
     # Add dates
     complete_ts['date'] = week_id_to_date(complete_ts['week_id'])
-    
+
     # Add current sales from df
     complete_ts = pd.merge(complete_ts, df, how='left')
-    
+
     # Calculate real age & total length of each TS
     ts_start_end_date = complete_ts \
         .loc[complete_ts['sales_quantity'].notnull()] \
@@ -61,17 +86,15 @@ def zero_padding_rec(df, df_model_week_sales, rec_length):
 
     complete_ts = pd.merge(complete_ts, ts_start_end_date, how='left')
 
-    complete_ts['age'] = ((pd.to_datetime(complete_ts['date']) -
-                           pd.to_datetime(complete_ts['start_date'])) /
-                          np.timedelta64(1, 'W')).astype(int) + 1
+    complete_ts['age'] = ((pd.to_datetime(complete_ts['date']) - pd.to_datetime(complete_ts['start_date'])
+                           ) / np.timedelta64(1, 'W')).astype(int) + 1
 
-    complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) -
-                              pd.to_datetime(complete_ts['date'])) /
-                             np.timedelta64(1, 'W')).astype(int) + 1
-    
+    complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) - pd.to_datetime(complete_ts['date'])
+                              ) / np.timedelta64(1, 'W')).astype(int) + 1
+
     # Pad NaN quantities from 'rec_length' weeks ago
     complete_ts.loc[((complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 0)), 'sales_quantity'] = 0
-   
+
     # Format
     complete_ts = complete_ts[list(df)].dropna(subset=['sales_quantity']).reset_index(drop=True)
     complete_ts['sales_quantity'] = complete_ts['sales_quantity'].astype(int)
@@ -146,13 +169,11 @@ def cold_start_rec(df,
 
     complete_ts = pd.merge(complete_ts, ts_start_end_date, how='left')
 
-    complete_ts['age'] = ((pd.to_datetime(complete_ts['date']) -
-                           pd.to_datetime(complete_ts['start_date'])) /
-                          np.timedelta64(1, 'W')).astype(int) + 1
+    complete_ts['age'] = ((pd.to_datetime(complete_ts['date']) - pd.to_datetime(complete_ts['start_date'])
+                           ) / np.timedelta64(1, 'W')).astype(int) + 1
 
-    complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) -
-                              pd.to_datetime(complete_ts['date'])) /
-                             np.timedelta64(1, 'W')).astype(int) + 1
+    complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) - pd.to_datetime(complete_ts['date'])
+                              ) / np.timedelta64(1, 'W')).astype(int) + 1
 
     # Estimate the implementation period: while fake sales quantity > sales quantity
     complete_ts['is_sales_quantity_sup'] = complete_ts['sales_quantity'] > complete_ts['fake_sales_quantity']
@@ -165,9 +186,11 @@ def cold_start_rec(df,
     complete_ts = pd.merge(complete_ts, end_impl_period, how='left')
 
     # Update sales quantity from 'rec_length' weeks ago to the end of the implementation period
-    cond = ((complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 0)) | \
-           ((complete_ts['length'] <= rec_length) & (complete_ts['age'] > 0) &
-            (complete_ts['age'] < complete_ts['end_impl_period']))
+    cond = ((complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 0)
+            ) | ((complete_ts['length'] <= rec_length
+                  ) & (complete_ts['age'] > 0
+                       ) & (complete_ts['age'] < complete_ts['end_impl_period'])
+                 )
     complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
     complete_ts['is_rec'] = np.where(cond, 1, 0)
 
@@ -253,7 +276,7 @@ def features_forward_fill(df, cutoff, projection_length):
     cutoff_date = week_id_to_date(cutoff)
     last_week_date = cutoff_date + pd.Timedelta(value=projection_length - 1, unit='W')
     last_week = date_to_week_id(last_week_date)
-    
+
     df = df[df['week_id'] < cutoff]
     df = df.append({'week_id': last_week}, ignore_index=True).astype({'week_id': int})
     df['week_id'] = week_id_to_date(df['week_id'])
