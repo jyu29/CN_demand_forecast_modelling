@@ -1,12 +1,12 @@
 buckets:
-  refined_data_global: fcst-refined-demand-forecast-dev
+  refined_data_global: fcst-refined-demand-forecast-prod
   refined_data_specific: fcst-refined-demand-forecast-dev
 paths:
   refined_global_path: global/
   refined_specific_path: specific/
 refining_specific_parameters:
   patch_first_lockdown: true
-  rec_length: 156 # should be at least context_length + prediction_length
+  rec_length: 104 # should be at least context_length + prediction_length
   rec_cold_start: true # if false, apply a zero padding by TS until rec_length
   rec_cold_start_group:
   - family_id
@@ -14,7 +14,7 @@ modeling_parameters:
   hyperparameters:
     time_freq : W
     prediction_length: 52
-    context_length: 104
+    context_length: 52
     epochs : 50
     likelihood : student-T
     early_stopping_patience: 50
@@ -52,4 +52,4 @@ modeling_parameters:
   transform_max_instances: 5
   transform_instance_type: ml.c5.4xlarge
   transform_instance_count: 1
-  max_concurrent_transforms: 16 # should be equal to the number of vcpu available in the transform_instance_type
+  max_concurrent_transforms: 16 # should be equal to the number of vcpu available in the transform_instance_type 

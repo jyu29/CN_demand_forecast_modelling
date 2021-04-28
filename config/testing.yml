@@ -14,7 +14,7 @@ modeling_parameters:
   hyperparameters:
     time_freq : W
     prediction_length: 52
-    context_length: 104
+    context_length: 52
     epochs : 50
     likelihood : student-T
     early_stopping_patience: 50
@@ -52,4 +52,4 @@ modeling_parameters:
   transform_max_instances: 5
   transform_instance_type: ml.c5.4xlarge
   transform_instance_count: 1
-  max_concurrent_transforms: 16 # should be equal to the number of vcpu available in the transform_instance_type
+  max_concurrent_transforms: 16 # should be equal to the number of vcpu available in the transform_instance_type 

@@ -6,5 +6,4 @@
 *.DS_Store
 *.parquet
 *.json
-data/
-script.py
+.coverage
