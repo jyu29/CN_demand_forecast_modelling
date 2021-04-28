@@ -17,5 +17,6 @@ dependencies:
   - pytest-mock=3.5.1
   - coverage=5.5
   - flake8=3.8.4
+  - ipykernel=5.5.3
   - pip:
     - sagemaker==1.71.0
