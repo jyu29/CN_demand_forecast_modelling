@@ -22,6 +22,7 @@ if __name__ == "__main__":
     list_cutoff = ut.check_list_cutoff(LIST_CUTOFF)
     ut.check_run_name(RUN_NAME)
 
+    # Logging level
     try:
         LOGGING_LVL = os.environ['logging_lvl']
         assert LOGGING_LVL in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], 'Wrong logging level'
@@ -35,87 +36,85 @@ if __name__ == "__main__":
     # Constants
     main_params = ut.import_modeling_parameters(ENVIRONMENT)
     REFINED_DATA_GLOBAL_BUCKET = main_params['refined_data_global_bucket']
-    REFINED_DATA_SPECIFIC_BUCKET = main_params['refined_data_global_bucket']
-
+    REFINED_DATA_SPECIFIC_BUCKET = main_params['refined_data_specific_bucket']
     REFINED_DATA_GLOBAL_PATH = main_params['refined_global_path']
     REFINED_DATA_SPECIFIC_PATH = main_params['refined_specific_path']
     REFINED_DATA_SPECIFIC_URI = ut.to_uri(REFINED_DATA_SPECIFIC_BUCKET, REFINED_DATA_SPECIFIC_PATH)
-    ALGORITHM = main_params['algorithm']
     MODEL_WEEK_SALES_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_sales"
     MODEL_WEEK_TREE_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_tree"
     MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
     IMPUTED_SALES_LOCKDOWN_1_PATH = f"{REFINED_DATA_GLOBAL_PATH}imputed_sales_lockdown_1.parquet"
-    STORE_OPENINGS_PATH = f"{REFINED_DATA_GLOBAL_PATH}store_openings/store_openings.parquet"
-    HOLIDAYS_PATH = f"{REFINED_DATA_GLOBAL_PATH}holidays/holidays.parquet"
-
+    LIST_ALGORITHM = list(main_params['algorithm'].keys())
+    
     # Data loading
     df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
     df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_TREE_PATH)
     df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_MRP_PATH)
     df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET,
                                                                IMPUTED_SALES_LOCKDOWN_1_PATH)
-    df_store_openings = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, STORE_OPENINGS_PATH)
-    df_holidays = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, HOLIDAYS_PATH)
 
-    # Generate empty df_jobs
+    # Initialize df_jobs
     df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
-                                  run_name=RUN_NAME,
-                                  algorithm=ALGORITHM,
-                                  refined_data_specific_path=REFINED_DATA_SPECIFIC_URI
-                                  )
+                              run_name=RUN_NAME,
+                              list_algorithm=LIST_ALGORITHM,
+                              refined_data_specific_path=REFINED_DATA_SPECIFIC_URI
+                              )
 
-    for cutoff in list_cutoff:
+    for _, job in df_jobs.iterrows():
+
         # Parameters init
-        TRAIN_PATH = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'train_path'].values[0]
-        PREDICT_PATH = df_jobs[df_jobs['cutoff'] == cutoff].loc[:, 'predict_path'].values[0]
-
+        algorithm = job['algorithm']
+        cutoff = job['cutoff']
+        train_path = job['train_path']
+        predict_path = job['predict_path']
+        
         refining_params = dh.import_refining_config(environment=ENVIRONMENT,
+                                                    algorithm=algorithm,
                                                     cutoff=cutoff,
-                                                    run_name=ENVIRONMENT,
-                                                    train_path=TRAIN_PATH,
-                                                    predict_path=PREDICT_PATH
+                                                    train_path=train_path,
+                                                    predict_path=predict_path
                                                     )
-
+    
         # Data/Features init
-        base_data = {'model_week_sales': df_model_week_sales,
-                     'model_week_tree': df_model_week_tree,
-                     'model_week_mrp': df_model_week_mrp,
-                     'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
-                     }
-
+        base_data = {
+            'model_week_sales': df_model_week_sales,
+            'model_week_tree': df_model_week_tree,
+            'model_week_mrp': df_model_week_mrp,
+            'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
+        }
+    
         df_static_tree = df_model_week_tree[df_model_week_tree['week_id'] == cutoff].copy()
-        static_features = {'model_identifier': pd.DataFrame({'model_id': df_static_tree['model_id'],
-                                                             'model_identifier': df_static_tree['model_id']}),
-                           'family_id': df_static_tree[['model_id', 'family_id']],
-                           'sub_department_id': df_static_tree[['model_id', 'sub_department_id']],
-                           'department_id': df_static_tree[['model_id', 'department_id']],
-                           'product_nature_id': df_static_tree[['model_id', 'product_nature_id']],
-                           'univers_id': df_static_tree[['model_id', 'univers_id']],
-                           }
-
-        global_dynamic_features = {'store_openings': {'dataset': df_store_openings,
-                                                      'projection': 'ffill'},
-                                   'holidays': {'dataset': df_holidays,
-                                                'projection': 'as_provided'}
-                                   }
-
+        
+        static_features = {
+            'family_id': df_static_tree[['model_id', 'family_id']],
+            'sub_department_id': df_static_tree[['model_id', 'sub_department_id']],
+            'department_id': df_static_tree[['model_id', 'department_id']],
+            'univers_id': df_static_tree[['model_id', 'univers_id']],
+            'product_nature_id': df_static_tree[['model_id', 'product_nature_id']]
+        }
+    
+        global_dynamic_features = None
+    
         specific_dynamic_features = None
-
+    
+        # Execute data refining
         refining_handler = dh.DataHandler(base_data=base_data,
                                           static_features=static_features,
                                           global_dynamic_features=global_dynamic_features,
                                           specific_dynamic_features=specific_dynamic_features,
                                           **refining_params
                                           )
-
+    
         refining_handler.execute_data_refining_specific()
 
-    sagemaker_params = su.import_sagemaker_params(environment=ENVIRONMENT)
-
-    modeling_handler = su.SagemakerHandler(run_name=RUN_NAME,
-                                           df_jobs=df_jobs,
-                                           **sagemaker_params)
-
-    modeling_handler.launch_training_jobs()
-
-    modeling_handler.launch_transform_jobs()
+    # WIP
+    ## Launch parallel Fit & Transform
+    #sagemaker_params = su.import_sagemaker_params(environment=ENVIRONMENT)
+    #
+    #modeling_handler = su.SagemakerHandler(run_name=RUN_NAME,
+    #                                       df_jobs=df_jobs,
+    #                                       **sagemaker_params)
+    #
+    #modeling_handler.launch_training_jobs()
+    #
+    #modeling_handler.launch_transform_jobs()
