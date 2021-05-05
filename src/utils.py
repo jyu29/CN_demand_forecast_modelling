@@ -165,7 +165,7 @@ def from_uri(uri):
     return bucket, key
 
 
-def write_df_to_csv_on_s3(df, bucket, filename, sep=',', header=True, index=False, compression=None, verbose=True):
+def write_df_to_csv_on_s3(df, bucket, filename, sep=',', header=True, index=False, compression=None, verbose=False):
     """
     Write an in-memory pandas DataFrame to a CSV file on a S3 bucket
     :param df: (pandas DataFrame) the data to save
