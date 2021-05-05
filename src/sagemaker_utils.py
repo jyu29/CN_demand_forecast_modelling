@@ -1,13 +1,14 @@
-import logging
-import time
-from datetime import datetime
-
 import os
 import re
+import time
 import boto3
+import logging
+import sagemaker
 import numpy as np
 import pandas as pd
-import sagemaker
+
+from datetime import datetime
+from itertools import product
 from sagemaker.amazon.amazon_estimator import get_image_uri
 
 import src.utils as ut
@@ -21,12 +22,12 @@ JOB_NAME_REGEX = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
 
 def generate_df_jobs(list_cutoff: list,
                      run_name: str,
-                     algorithm: str,
+                     list_algorithm: list,
                      refined_data_specific_path: str
                      ):
-    """Generates an empty pd.DataFrame `df_jobs`
+    """Generates a pd.DataFrame `df_jobs`
 
-    Given arguments for cutoffs, run_name & paths, returns a pd.DataFrame
+    Given arguments for cutoffs, run_name & algorithms, returns a pd.DataFrame
     `df_jobs` on which sagemaker utils can iterate to handle regarding
     training & inference.
 
@@ -36,7 +37,7 @@ def generate_df_jobs(list_cutoff: list,
                     (for readability)
         algorithm: The used algorithm name (for path purpose)
         refined_data_refined_path: A string pointing to a S3 path (URI format)
-                    for input data with trailing slash
+                    for modeling data with trailing slash
 
     Returns:
         A pandas DataFrame containing all information for each cutoff to handle training & inference
@@ -46,34 +47,45 @@ def generate_df_jobs(list_cutoff: list,
     for c in list_cutoff:
         assert isinstance(c, (int))
         assert ut.is_iso_format(c)
-    assert bool(re.compile(JOB_NAME_REGEX).match(run_name))
-
-    df_jobs = pd.DataFrame()
-    run_suffix = _get_timestamp()
-    # Global
-    df_jobs['cutoff'] = list_cutoff
-    df_jobs['base_job_name'] = [f'{run_name}-{c}' for c in df_jobs['cutoff']]
-
-    # Training
-    path = f'{refined_data_specific_path}{run_name}/{algorithm}'
-    df_jobs['train_path'] = [f'{path}/{n}/input/train_{c}{run_suffix}.json'
-                             for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
-    df_jobs['training_job_name'] = np.nan
-    df_jobs['training_status'] = 'NotStarted'
-
-    # Inference
-    df_jobs['predict_path'] = [f'{path}/{n}/input/predict_{c}{run_suffix}.json'
-                               for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
-    df_jobs['transform_job_name'] = np.nan
-    df_jobs['transform_status'] = 'NotStarted'
-
-    # Serialized model path
-    df_jobs['model_path'] = [f'{path}/{n}/model/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
-
-    # Jsonline prediction file output path
-    df_jobs['output_path'] = [f'{path}/{n}/output/' for (c, n) in zip(df_jobs['cutoff'], df_jobs['base_job_name'])]
-
-    logger.debug(f"df_jobs created for cutoffs {list_cutoff}")
+    assert isinstance(list_algorithm, (list))
+    for a in list_algorithm:
+        assert isinstance(a, (str))
+    
+    l_dict_job = []
+    data_timestamp = _get_timestamp()
+    data_path = f'{refined_data_specific_path}{run_name}'
+    
+    for algorithm, cutoff in product(list_algorithm, list_cutoff):
+        
+        dict_job = {}
+        base_job_name = f'{run_name}-{algorithm}-{cutoff}'
+        assert bool(re.compile(JOB_NAME_REGEX).match(base_job_name))
+        
+        # Global
+        dict_job['algorithm'] = algorithm
+        dict_job['cutoff'] = cutoff
+        dict_job['base_job_name'] = base_job_name
+                
+        # Input
+        dict_job['train_path'] = f'{data_path}/{base_job_name}/input/train{data_timestamp}'
+        dict_job['training_job_name'] = np.nan
+        dict_job['training_status'] = 'NotStarted'
+    
+        dict_job['predict_path'] = f'{data_path}/{base_job_name}/input/predict{data_timestamp}'
+        dict_job['transform_job_name'] = np.nan
+        dict_job['transform_status'] = 'NotStarted'
+    
+        # Model
+        dict_job['model_path'] = f'{data_path}/{base_job_name}/model/'
+    
+        # Output
+        dict_job['output_path'] = f'{data_path}/{base_job_name}/output/'
+        
+        l_dict_job.append(dict_job)
+    
+    df_jobs = pd.DataFrame.from_dict(l_dict_job)
+    
+    logger.debug(f"df_job created for algorithm {list_algorithm} and cutoffs {list_cutoff}")
 
     return df_jobs
 
