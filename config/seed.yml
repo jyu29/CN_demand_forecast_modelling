@@ -6,8 +6,8 @@ paths:
   refined_specific_path: specific/
 refining_specific_parameters:
   patch_first_lockdown: true
-  rec_length: 156 # should be at least context_length + prediction_length
-  rec_cold_start: true # if false, apply a zero padding by TS until rec_length
+  rec_length: 156
+  rec_cold_start: true 
   rec_cold_start_group:
   - family_id
 modeling_parameters:
@@ -54,11 +54,12 @@ modeling_parameters:
       transform_max_instances: 20
       transform_instance_type: ml.c5.9xlarge
       transform_instance_count: 1
-      max_concurrent_transforms: 36 # should be equal to the number of vcpu available in the transform_instance_type
+      max_concurrent_transforms: 36
     arima:
       image_name_label: forecasting-auto-arima
       hyperparameters:
         prediction_length: 104
+        context_length: 156
         fourier_seasonal_period: 52
         fourier_order: 10
         arima_p: None
