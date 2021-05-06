@@ -59,7 +59,7 @@ def generate_df_jobs(list_cutoff: list,
         
         dict_job = {}
         base_job_name = f'{run_name}-{algorithm}-{cutoff}'
-        assert bool(re.compile(JOB_NAME_REGEX).match(base_job_name))
+        assert bool(re.compile(JOB_NAME_REGEX).match(base_job_name)), "Run name does not match Sagemaker Regex"
         
         # Global
         dict_job['algorithm'] = algorithm
