@@ -323,7 +323,7 @@ class DataHandlerRefiningSpecificTests:
         test_dynamic_data = dynamic_data.merge(expected_dynamic_data, on=['week_id', 'model_id'])
 
         try:
-        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
             assert (test_dynamic_data['perc_store_open_x'] == test_dynamic_data['perc_store_open_y']).all()
             assert (test_dynamic_data['holidays_x'] == test_dynamic_data['holidays_y']).all()
@@ -349,7 +349,7 @@ class DataHandlerRefiningSpecificTests:
 
         try:
             assert check_dataframe_equality(target, expected_target)
-            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
+            assert check_dataframe_equality(static_data, expected_static_data)
             assert dynamic_data is None
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
