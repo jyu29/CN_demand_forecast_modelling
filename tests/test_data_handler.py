@@ -299,14 +299,14 @@ class DataHandlerRefiningSpecificTests:
 
         pass
 
-    def test_nominal_norec_only_global_dyn_feat(self):
-        refining_params['rec_cold_start'] = False
+    def test_nominal_norec_only_global_dyn_feat(self, default_refiningparams):
+        default_refiningparams['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=global_dynamic_features,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
         data_handler.process_input_data()
@@ -323,7 +323,7 @@ class DataHandlerRefiningSpecificTests:
         test_dynamic_data = dynamic_data.merge(expected_dynamic_data, on=['week_id', 'model_id'])
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
             assert (test_dynamic_data['perc_store_open_x'] == test_dynamic_data['perc_store_open_y']).all()
             assert (test_dynamic_data['holidays_x'] == test_dynamic_data['holidays_y']).all()
