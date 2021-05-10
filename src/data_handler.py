@@ -1,17 +1,24 @@
 import logging
+import os
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 import src.utils as ut
-from src.refining_specific_functions import (pad_to_cutoff, cold_start_rec, initialize_df_dynamic_features,
-                                             is_rec_feature_processing, features_forward_fill, 
-                                             apply_first_lockdown_patch)
+from src.refining_specific_functions import (apply_first_lockdown_patch,
+                                             cold_start_rec,
+                                             features_forward_fill,
+                                             initialize_df_dynamic_features,
+                                             is_rec_feature_processing,
+                                             pad_to_cutoff)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
+
+SUPPORTED_ALGORITHMS = ['deepar', 'arima']
+CONFIG_PATH = 'config'
 
 
 def import_refining_config(environment: str,
@@ -35,12 +42,14 @@ def import_refining_config(environment: str,
         A dictionary with all parameters for specific refining process
     """
     assert isinstance(environment, str)
-    assert algorithm in ['deepar', 'arima'] # the list of algorithms currently supported by the refining
+    # the list of algorithms currently supported by the refining
+    assert algorithm in SUPPORTED_ALGORITHMS, \
+        f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
     assert isinstance(cutoff, int)
     assert isinstance(train_path, str)
     assert isinstance(predict_path, str)
 
-    params_full_path = f"config/{environment}.yml"
+    params_full_path = os.path.join(CONFIG_PATH, f"{environment}.yml")
     params = ut.read_yml(params_full_path)
 
     refining_params = {
