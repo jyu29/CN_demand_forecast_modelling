@@ -7,6 +7,7 @@ import pytest
 
 import src.data_handler
 from src.data_handler import DataHandler, import_refining_config
+from src.utils import check_dataframe_equality
 
 
 DATA_PATH = os.path.join('tests', 'data')
@@ -132,7 +133,7 @@ class ImportRefiningConfigTests():
                                    )
 
     def test_not_known_environment(self):
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(AssertionError):
             import_refining_config(environment='my_unknown_environment',
                                    algorithm=ALGORITHM,
                                    cutoff=CUTOFF,
@@ -182,9 +183,9 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = default_datahandler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
-            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
+            assert check_dataframe_equality(static_data, expected_static_data)
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
@@ -196,7 +197,7 @@ class DataHandlerRefiningSpecificTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id', 'model_id', 'is_rec']]
