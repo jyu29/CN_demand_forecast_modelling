@@ -144,6 +144,18 @@ class ImportRefiningConfigTests():
 
 @pytest.fixture()
 @patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
+def default_refiningparams():
+    refining_params = import_refining_config(environment=ENVIRONMENT,
+                                             algorithm=ALGORITHM,
+                                             cutoff=CUTOFF,
+                                             train_path=TRAIN_PATH,
+                                             predict_path=PREDICT_PATH
+                                             )
+    return refining_params
+
+
+@pytest.fixture()
+@patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
 def default_datahandler():
     refining_params = import_refining_config(environment=ENVIRONMENT,
                                              algorithm=ALGORITHM,
@@ -189,12 +201,12 @@ class DataHandlerRefiningSpecificTests:
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_isrec_no_feat(self):
+    def test_nominal_isrec_no_feat(self, default_refiningparams):
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
         data_handler.process_input_data()
@@ -205,24 +217,24 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
     def test_nominal_isrec_only_specific_dyn_feat(self):
         pass
 
-    def test_nominal_isrec_only_global_dyn_feat(self):
+    def test_nominal_isrec_only_global_dyn_feat(self, default_refiningparams):
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=global_dynamic_features,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
@@ -230,21 +242,21 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_isrec_only_static_feat(self):
+    def test_nominal_isrec_only_static_feat(self, default_refiningparams):
         data_handler = DataHandler(base_data=base_data,
                                    static_features=static_features,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
@@ -253,30 +265,30 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
-            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
+            assert check_dataframe_equality(static_data, expected_static_data)
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_norec_no_feat(self):
-        refining_params['rec_cold_start'] = False
+    def test_nominal_norec_no_feat(self, default_refiningparams):
+        default_refiningparams['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
-        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_target = pd.read_csv(os.path.join(DATA_PATH, 'refining_target_no_rec.csv'), sep=';')
 
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
             assert dynamic_data is None
         except AssertionError:
@@ -297,7 +309,7 @@ class DataHandlerRefiningSpecificTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id',
@@ -328,7 +340,7 @@ class DataHandlerRefiningSpecificTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
@@ -425,7 +437,7 @@ class DataHandlerDeepArFormatingTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
             data_handler.refining_specific()
@@ -475,7 +487,7 @@ class DataHandlerDeepArFormatingTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
             data_handler.refining_specific()
@@ -575,7 +587,7 @@ class DataHandlerDeepArFormatingTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
             data_handler.refining_specific()
@@ -625,7 +637,7 @@ class DataHandlerDeepArFormatingTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
             data_handler.refining_specific()

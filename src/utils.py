@@ -309,12 +309,16 @@ def check_dataframe_equality(df1, df2):
             e.args += ('Dataframes formats are incompatible, comparison is not possible',)
             raise
 
-    # Resetting index
-    df1.reset_index(drop=True, inplace=True)
-    df2.reset_index(drop=True, inplace=True)
-
     # Columns order handling
     df1 = df1[list(set(df1.columns))]
     df2 = df2[list(set(df2.columns))]
+
+    # Overall order
+    df1 = df1.transform(np.sort)
+    df2 = df2.transform(np.sort)
+
+    # Resetting index
+    df1.reset_index(drop=True, inplace=True)
+    df2.reset_index(drop=True, inplace=True)
 
     return df1.equals(df2)
