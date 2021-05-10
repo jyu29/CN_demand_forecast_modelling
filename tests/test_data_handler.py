@@ -294,8 +294,8 @@ class DataHandlerRefiningSpecificTests:
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_norec_only_specific_dyn_feat(self):
-        refining_params['rec_cold_start'] = False
+    def test_nominal_norec_only_specific_dyn_feat(self, default_refiningparams):
+        default_refiningparams['rec_cold_start'] = False
 
         pass
 
@@ -311,7 +311,7 @@ class DataHandlerRefiningSpecificTests:
 
         data_handler.process_input_data()
 
-        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_target = pd.read_csv(os.path.join(DATA_PATH, 'refining_target_no_rec.csv'), sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id',
                                                                             'model_id',
                                                                             'perc_store_open',
@@ -323,32 +323,32 @@ class DataHandlerRefiningSpecificTests:
         test_dynamic_data = dynamic_data.merge(expected_dynamic_data, on=['week_id', 'model_id'])
 
         try:
-            assert check_dataframe_equality(target, expected_target)
+        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
             assert static_data is None
             assert (test_dynamic_data['perc_store_open_x'] == test_dynamic_data['perc_store_open_y']).all()
             assert (test_dynamic_data['holidays_x'] == test_dynamic_data['holidays_y']).all()
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_norec_only_static_feat(self):
-        refining_params['rec_cold_start'] = False
+    def test_nominal_norec_only_static_feat(self, default_refiningparams):
+        default_refiningparams['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
                                    static_features=static_features,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
         data_handler.process_input_data()
 
-        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_target = pd.read_csv(os.path.join(DATA_PATH, 'refining_target_no_rec.csv'), sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
 
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
             assert dynamic_data is None
         except AssertionError:
