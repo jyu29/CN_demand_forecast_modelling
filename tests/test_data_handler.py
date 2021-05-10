@@ -437,12 +437,12 @@ class DataHandlerDeepArFormatingTests:
 
         data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
         df_train_jsonline.sort_values(by=['model_id'], inplace=True)
@@ -486,12 +486,12 @@ class DataHandlerDeepArFormatingTests:
 
         data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
         df_train_jsonline.sort_values(by=['model_id'], inplace=True)
@@ -536,12 +536,12 @@ class DataHandlerDeepArFormatingTests:
 
         data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
         df_train_jsonline.sort_values(by=['model_id'], inplace=True)
@@ -586,12 +586,12 @@ class DataHandlerDeepArFormatingTests:
 
         data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
         df_train_jsonline.sort_values(by=['model_id'], inplace=True)
@@ -636,12 +636,12 @@ class DataHandlerDeepArFormatingTests:
 
         data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
         df_train_jsonline.sort_values(by=['model_id'], inplace=True)
