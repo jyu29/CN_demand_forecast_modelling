@@ -1,18 +1,17 @@
 import datetime
 import json
-import gzip
 import io
-import pprint
 import re
 import os
 import logging
-
 import boto3
+import s3fs
+import yaml
+
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
-import s3fs
-import yaml
+
 from uritools import urisplit
 from typing import Union
 
@@ -20,43 +19,6 @@ from typing import Union
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
-
-
-def read_yml(file_path):
-    """
-    Read a local yaml file and return a python dictionary
-    :param file_path: (string) full path to the yaml file
-    :return: (dict) data loaded
-    """
-
-    if file_path[:2] == "s3":
-        fs = s3fs.S3FileSystem()
-        with fs.open(file_path, 'r') as f:
-            yaml_dict = yaml.safe_load(f)
-    else:
-        with open(file_path) as f:
-            yaml_dict = yaml.safe_load(f)
-
-    return yaml_dict
-
-
-def pretty_print_dict(dict_to_print):
-    """
-    Pretty prints a dictionary
-    :param dict_to_print: python dictionary
-    """
-
-    pprint.pprint(dict_to_print)
-
-
-def get_current_week():
-    """
-    Return current week (international standard ISO 8601 - first day of week
-    is Sunday, with format 'YYYYWW'
-    :return current week (international standard ISO 8601) with format 'YYYYWW'
-    """
-    today = datetime.date.today()
-    return date_to_week_id(today)
 
 
 def date_to_week_id(date):
@@ -80,19 +42,6 @@ def date_to_week_id(date):
         return df['week_id']
 
 
-def is_iso_format(week_id: int) -> bool:
-    """
-    Checks if `week` has conform YYYYWW ISO 8601 format.
-    :param week_id: (int or pd.Series) the week id or pandas column of week ids
-    :return: (bool) wether `week_id` follows the expected format
-    """
-    assert isinstance(week_id, (int, np.int32, np.int64)), "week_id must be of type integer."
-    pattern = "^20[0-9]{2}(0[1-9]|[1-4][0-9]|5[0-3])$"
-    is_iso_format = re.match(pattern, str(week_id))
-
-    return is_iso_format is not None
-
-
 def week_id_to_date(week_id):
     """
     Turn a Decathlon week id to date
@@ -109,6 +58,61 @@ def week_id_to_date(week_id):
         for w in week_id:
             assert is_iso_format(w), f"Week_id {w} doesn't follow conform YYYYWW format"
         return pd.to_datetime(week_id.astype(str) + '-0', format='%G%V-%w') - pd.Timedelta(1, unit='W')
+
+
+def is_iso_format(week_id: int) -> bool:
+    """
+    Checks if `week` has conform YYYYWW ISO 8601 format.
+    :param week_id: (int or pd.Series) the week id or pandas column of week ids
+    :return: (bool) wether `week_id` follows the expected format
+    """
+    assert isinstance(week_id, (int, np.int32, np.int64)), "week_id must be of type integer."
+    pattern = "^20[0-9]{2}(0[1-9]|[1-4][0-9]|5[0-3])$"
+    is_iso_format = re.match(pattern, str(week_id))
+
+    return is_iso_format is not None
+
+
+def to_uri(bucket, key):
+    """
+    Transforms bucket & key strings into S3 URI
+    :param bucket: (string) name of the S3 bucket
+    :param key: (string) S3 key
+    :return: (string) URI format
+    """
+    return f's3://{bucket}/{key}'
+
+
+def from_uri(uri):
+    """
+    Transforms a S3 URI into bucket & key strings
+    :param uri: (string) URI format
+    :return bucket: (string) name of the S3 bucket
+    :return key: (string) S3 key
+    """
+    o = urisplit(uri)
+    bucket = o.authority
+    key = o.path[1:]
+
+    return bucket, key
+
+
+def read_yml(file_path):
+    """
+    Read a local yaml file and return a python dictionary
+    :param file_path: (string) full path to the yaml file
+    :return: (dict) data loaded
+    """
+
+    if file_path[:2] == "s3":
+        fs = s3fs.S3FileSystem()
+        with fs.open(file_path, 'r') as f:
+            yaml_dict = yaml.safe_load(f)
+    else:
+        with open(file_path) as f:
+            yaml_dict = yaml.safe_load(f)
+
+    return yaml_dict
 
 
 def read_csv_s3(bucket, file_path, header='infer', sep=',', parse_dates=False, names=None, usecols=None,
@@ -139,62 +143,6 @@ def read_csv_s3(bucket, file_path, header='infer', sep=',', parse_dates=False, n
                        escapechar=escapechar)
 
     return data
-
-
-def to_uri(bucket, key):
-    """
-    Transforms bucket & key strings into S3 URI
-    :param bucket: (string) name of the S3 bucket
-    :param key: (string) S3 key
-    :return: (string) URI format
-    """
-    return f's3://{bucket}/{key}'
-
-
-def from_uri(uri):
-    """
-    Transforms a S3 URI into bucket & key strings
-    :param uri: (string) URI format
-    :return bucket: (string) name of the S3 bucket
-    :return key: (string) S3 key
-    """
-    o = urisplit(uri)
-    bucket = o.authority
-    key = o.path[1:]
-
-    return bucket, key
-
-
-def write_df_to_csv_on_s3(df, bucket, filename, sep=',', header=True, index=False, compression=None, verbose=False):
-    """
-    Write an in-memory pandas DataFrame to a CSV file on a S3 bucket
-    :param df: (pandas DataFrame) the data to save
-    :param bucket: (string) S3 bucket name
-    :param filename: (string) full path to the CSV file within the given bucket
-    :param sep: (string) separator char to use
-    :param header: (bool or list of str) header value of the underlying 'to_csv' function called
-    :param index: (bool) index value of the underlying 'to_csv' function called
-    :param compression: (string) Optional. Default is None. If set to "gzip" then file is written in a compressed .gz
-    format
-    :param verbose: (bool) Optional. Default is True. If True, will display the writing path.
-    """
-    if verbose:
-        print("Writing {} records to {}".format(len(df), to_uri(bucket, filename)))
-    # Create buffer
-    csv_buffer = io.StringIO()
-    # Write dataframe to buffer
-    df.to_csv(csv_buffer, sep=sep, header=header, index=index)
-    buffer = csv_buffer
-
-    # Handle potential compression
-    if compression == "gzip":
-        gz_buffer = io.BytesIO()
-        with gzip.GzipFile(mode="w", fileobj=gz_buffer) as gz_file:
-            gz_file.write(bytes(csv_buffer.getvalue(), 'utf-8'))
-        buffer = gz_buffer
-
-    # Write buffer to S3 object
-    boto3.resource('s3').Object(bucket, filename).put(Body=buffer.getvalue())
 
 
 def read_multipart_parquet_s3(bucket, dir_path, prefix_filename='part-'):
@@ -229,6 +177,22 @@ def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
         return resp
 
 
+def write_df_to_parquet_on_s3(df, bucket, filename, index=False, verbose=False):
+    """
+    Write an in-memory pandas DataFrame to a parquet file on a S3 bucket
+    :param dataframe: (pandas DataFrame) the data to save
+    :param bucket: (string) S3 bucket name
+    :param filename: (string) full path to the parquet file within the given bucket
+    :param index: (bool) index value of the underlying 'to_parquet' function called
+    """
+    if verbose:
+        print("Writing {} records to {}".format(len(df), to_uri(bucket, filename)))
+    
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=index)
+    boto3.resource('s3').Object(bucket, filename).put(Body=buffer.getvalue())
+    
+
 def import_modeling_parameters(environment: str) -> dict:
     """Handler to import modeling configuration from YML file
 
@@ -251,23 +215,6 @@ def import_modeling_parameters(environment: str) -> dict:
                    }
 
     return data_params
-
-
-def import_raw_config(environment: str) -> dict:
-    """Handler to import full configuration from YML file
-
-    The handler will import all parameters in the config file, regardless of values.
-
-    Args:
-        environment (str): Set of parameters on which to load the parameters
-
-    Returns:
-        A dictionary with all parameters
-    """
-    params_full_path = f"config/{environment}.yml"
-    params = read_yml(params_full_path)
-
-    return params
 
 
 def check_environment(environment: str,
