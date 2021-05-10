@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
 
+SUPPORTED_ALGORITHMS = ['deepar', 'arima']
+CONFIG_PATH = 'config'
+
 
 def generate_df_jobs(list_cutoff: list,
                      run_name: str,
@@ -112,10 +115,11 @@ def import_sagemaker_params(environment: str,
         A dictionary with all parameters for sagemaker training & inference
     """
     assert isinstance(environment, str)
-    assert algorithm in ['deepar', 'arima'] # the list of algorithms currently supported by the refining
+    assert algorithm in SUPPORTED_ALGORITHMS, \
+    f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
 
-    params_full_path = f"config/{environment}.yml"
-    params = read_yml(params_full_path)
+    params_full_path = os.path.join(CONFIG_PATH, f"{environment}.yml")
+    params = ut.read_yml(params_full_path)
 
     # Mandatory params
     sagemaker_params = {
