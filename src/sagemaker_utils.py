@@ -4,20 +4,19 @@ import time
 import boto3
 import logging
 import sagemaker
+
 import numpy as np
 import pandas as pd
 
 from datetime import datetime
 from itertools import product
 from sagemaker.amazon.amazon_estimator import get_image_uri
+from src.utils import (is_iso_format, read_yml, check_run_name)
 
-import src.utils as ut
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
-
-JOB_NAME_REGEX = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
 
 
 def generate_df_jobs(list_cutoff: list,
@@ -46,7 +45,7 @@ def generate_df_jobs(list_cutoff: list,
     assert isinstance(list_cutoff, (list))
     for c in list_cutoff:
         assert isinstance(c, (int))
-        assert ut.is_iso_format(c)
+        assert is_iso_format(c)
     assert isinstance(list_algorithm, (list))
     for a in list_algorithm:
         assert isinstance(a, (str))
@@ -59,7 +58,12 @@ def generate_df_jobs(list_cutoff: list,
         
         dict_job = {}
         base_job_name = f'{run_name}-{algorithm}-{cutoff}'
-        assert bool(re.compile(JOB_NAME_REGEX).match(base_job_name))
+        check_run_name(base_job_name)
+        
+        # Set file extension
+        file_extension = 'parquet' # default
+        if algorithm == 'deepar':
+            file_extension = 'json'
         
         # Global
         dict_job['algorithm'] = algorithm
@@ -67,11 +71,11 @@ def generate_df_jobs(list_cutoff: list,
         dict_job['base_job_name'] = base_job_name
                 
         # Input
-        dict_job['train_path'] = f'{data_path}/{base_job_name}/input/train{data_timestamp}'
+        dict_job['train_path'] = f'{data_path}/{base_job_name}/input/train{data_timestamp}.{file_extension}'
         dict_job['training_job_name'] = np.nan
         dict_job['training_status'] = 'NotStarted'
     
-        dict_job['predict_path'] = f'{data_path}/{base_job_name}/input/predict{data_timestamp}'
+        dict_job['predict_path'] = f'{data_path}/{base_job_name}/input/predict{data_timestamp}.{file_extension}'
         dict_job['transform_job_name'] = np.nan
         dict_job['transform_status'] = 'NotStarted'
     
@@ -97,90 +101,108 @@ def _get_timestamp():
 
 
 def import_sagemaker_params(environment: str,
-                            ) -> dict:
+                            algorithm: str) -> dict:
     """Handler to import sagemaker configuration from YML file
 
     Args:
         environment (str): Set of parameters on which to load the parameters
+        algorithm (str): List of algorithm name
 
     Returns:
         A dictionary with all parameters for sagemaker training & inference
     """
-    params_full_path = os.path.join('config', f"{environment}.yml")
-    assert os.path.isfile(params_full_path), f"Environment {environment} has no associated configuration file"
+    assert isinstance(environment, str)
+    assert algorithm in ['deepar', 'arima'] # the list of algorithms currently supported by the refining
 
-    params = ut.read_yml(params_full_path)
+    params_full_path = f"config/{environment}.yml"
+    params = read_yml(params_full_path)
 
-    sagemaker_params = {'train_instance_type': params['modeling_parameters']['train_instance_type'],
-                        'train_instance_count': params['modeling_parameters']['train_instance_count'],
-                        'train_max_instances': params['modeling_parameters']['train_max_instances'],
-                        'train_use_spot_instances': params['modeling_parameters']['train_use_spot_instances'],
-                        'transform_instance_type': params['modeling_parameters']['transform_instance_type'],
-                        'transform_instance_count': params['modeling_parameters']['transform_instance_count'],
-                        'transform_max_instances': params['modeling_parameters']['transform_max_instances'],
-                        'max_concurrent_transforms': params['modeling_parameters']['max_concurrent_transforms'],
-                        'role': params['modeling_parameters']['role'],
-                        'image_name_label': params['modeling_parameters']['image_name_label'],
-                        'tags': [params['modeling_parameters']['tags']],
-                        'hyperparameters': params['modeling_parameters']['hyperparameters']
-                        }
-
+    # Mandatory params
+    sagemaker_params = {
+        'role': params['modeling_parameters']['role'],
+        'tags': [params['modeling_parameters']['tags']],
+        'train_use_spot_instances': params['modeling_parameters']['train_use_spot_instances'],
+        'image_name': params['modeling_parameters']['algorithm'][algorithm]['image_name'],
+        'hyperparameters': params['modeling_parameters']['algorithm'][algorithm]['hyperparameters'],
+        'train_instance_count': params['modeling_parameters']['algorithm'][algorithm]['train_instance_count'],
+        'train_instance_type': params['modeling_parameters']['algorithm'][algorithm]['train_instance_type'],
+        'train_max_instances': params['modeling_parameters']['algorithm'][algorithm]['train_max_instances']
+    }
+       
+    # Optionnal params
+    if 'transform_instance_count' in params['modeling_parameters']['algorithm'][algorithm]:
+        sagemaker_params['algorithm_params'][algorithm].update({
+            'transform_instance_count': params['modeling_parameters']['algorithm'][algorithm]['transform_instance_count'],
+            'transform_instance_type': params['modeling_parameters']['algorithm'][algorithm]['transform_instance_type'],
+            'transform_max_instances': params['modeling_parameters']['algorithm'][algorithm]['transform_max_instances'],
+            'max_concurrent_transforms': params['modeling_parameters']['algorithm'][algorithm]['max_concurrent_transforms']
+        })
+            
     return sagemaker_params
 
-
+        
 class SagemakerHandler:
     """
     Sagemaker API handler. Allows for training and transform jobs.
     """
 
     def __init__(self,
-                 run_name: str,
-                 df_jobs,
-                 train_instance_type: str,
-                 train_instance_count: int,
-                 train_max_instances: int,
-                 train_use_spot_instances: bool,
-                 transform_instance_type: str,
-                 transform_instance_count: int,
-                 transform_max_instances: int,
-                 max_concurrent_transforms: int,
+                 df_jobs: pd.DataFrame,
                  role: str,
-                 image_name_label: str,
                  tags: dict,
-                 hyperparameters: dict
+                 train_use_spot_instances: bool,
+                 image_name: str,
+                 hyperparameters: dict,
+                 train_instance_count: int,
+                 train_instance_type: str,
+                 train_max_instances: int,
+                 transform_instance_count: int = None,
+                 transform_instance_type: str = None,
+                 transform_max_instances: int = None,
+                 max_concurrent_transforms: int = None,
                  ):
-        # tests
-        assert isinstance(run_name, (str))
+
+        # Tests
         assert isinstance(df_jobs, pd.DataFrame)
+        assert isinstance(role, str)
+        assert isinstance(tags, list)
+        assert isinstance(train_use_spot_instances, bool)
+        assert isinstance(image_name, str)
+        assert isinstance(hyperparameters, dict)
+        assert isinstance(train_instance_count, int)
+        assert isinstance(train_instance_type, str)
+        assert isinstance(train_max_instances, int)
+        
+        if transform_instance_count:
+            assert isinstance(transform_instance_count, int)
+            assert isinstance(transform_instance_type, str)
+            assert isinstance(transform_max_instances, int)
+            assert isinstance(max_concurrent_transforms, int)
 
         # Attributes
-        self.run_name = run_name
         self.df_jobs = df_jobs
-        self.train_instance_type = train_instance_type
-        self.train_instance_count = train_instance_count
-        self.train_max_instances = train_max_instances
-        self.train_use_spot_instances = train_use_spot_instances
-        self.transform_instance_type = transform_instance_type
-        self.transform_instance_count = transform_instance_count
-        self.transform_max_instances = transform_max_instances
-        self.max_concurrent_transforms = max_concurrent_transforms
         self.role = role
-        self.image_name_label = image_name_label
         self.tags = tags
+        self.train_use_spot_instances = train_use_spot_instances
+        self.image_name = image_name
         self.hyperparameters = hyperparameters
-
-        # Timestamp suffix definition
-        self.run_suffix = _get_timestamp()
-
-        if self.train_use_spot_instances:
+        self.train_instance_count = train_instance_count
+        self.train_instance_type = train_instance_type
+        self.train_max_instances = train_max_instances
+        self.sagemaker_session = sagemaker.Session()
+        
+        if transform_instance_count:
+            self.transform_instance_count = transform_instance_count
+            self.transform_instance_type = transform_instance_type
+            self.transform_max_instances = transform_max_instances
+            self.max_concurrent_transforms = max_concurrent_transforms
+    
+        if train_use_spot_instances:
             self.train_max_wait = 3600
             self.train_max_run = 3600
         else:
             self.train_max_wait = None
             self.train_max_run = 3600 * 5
-
-        self.sagemaker_session = sagemaker.Session()
-        self.image_name = get_image_uri(boto3.Session().region_name, self.image_name_label)
 
     def launch_training_jobs(self):
         job_type = 'training'
@@ -189,7 +211,7 @@ class SagemakerHandler:
         while set(self.df_jobs['training_status'].unique()) - {'Failed', 'Completed', 'Stopped'} != set():
 
             # Condition to check if the running instances limit is not capped
-            if self.df_jobs[self.df_jobs['training_status'].isin(['InProgress', 'Stopping'])].shape[0]\
+            if self.df_jobs[self.df_jobs['training_status'].isin(['InProgress', 'Stopping'])].shape[0] \
                     < self.train_max_instances:
 
                 # Waiting for jobs status to propagate to Sagemaker API
@@ -212,7 +234,7 @@ class SagemakerHandler:
                         train_instance_count=self.train_instance_count,
                         train_instance_type=self.train_instance_type,
                         base_job_name=base_job_name,
-                        output_path=model_path,  # the output of the estimator is the serialized model
+                        output_path=model_path, # the output of the estimator is the serialized model
                         train_use_spot_instances=self.train_use_spot_instances,
                         train_max_run=self.train_max_run,
                         train_max_wait=self.train_max_wait
@@ -327,7 +349,7 @@ class SagemakerHandler:
 
     def _update_jobs_status(self, job_type='training'):
         """Updates the Sagemaker jobs monitoring dataframe
-        Will ignore :
+        Will ignore:
         * jobs in a `Completed` status
         * jobs that have not been started yet
         """
