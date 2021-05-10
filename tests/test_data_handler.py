@@ -102,13 +102,8 @@ class ImportRefiningConfigTests():
             pytest.fail("Test failed on nominal case")
 
     def test_wrong_type(self):
-        environment = 202001
-        cutoff = 'test'
-        run_name = {'foo': 'bar'}
-        train_path = ['wrong_path', 1234]
-
         with pytest.raises(AssertionError):
-            import_refining_config(environment=environment,
+            import_refining_config(environment=123456,
                                    algorithm=ALGORITHM,
                                    cutoff=CUTOFF,
                                    train_path=TRAIN_PATH,
@@ -116,14 +111,7 @@ class ImportRefiningConfigTests():
 
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
-                                   algorithm=ALGORITHM,
-                                   cutoff=cutoff,
-                                   train_path=TRAIN_PATH,
-                                   predict_path=PREDICT_PATH)
-
-        with pytest.raises(AssertionError):
-            import_refining_config(environment=ENVIRONMENT,
-                                   algorithm=ALGORITHM,
+                                   algorithm=('algo1', 1234),
                                    cutoff=CUTOFF,
                                    train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
@@ -131,9 +119,23 @@ class ImportRefiningConfigTests():
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
                                    algorithm=ALGORITHM,
-                                   cutoff=CUTOFF,
-                                   train_path=train_path,
+                                   cutoff='202107',
+                                   train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
+
+        with pytest.raises(AssertionError):
+            import_refining_config(environment=ENVIRONMENT,
+                                   algorithm=ALGORITHM,
+                                   cutoff=CUTOFF,
+                                   train_path=['wrong_path', 1234],
+                                   predict_path=PREDICT_PATH)
+
+        with pytest.raises(AssertionError):
+            import_refining_config(environment=ENVIRONMENT,
+                                   algorithm=ALGORITHM,
+                                   cutoff=CUTOFF,
+                                   train_path=TRAIN_PATH,
+                                   predict_path=[int, 'wrong_path', 1234])
 
     def test_not_supported_algorithm(self):
         with pytest.raises(AssertionError):
