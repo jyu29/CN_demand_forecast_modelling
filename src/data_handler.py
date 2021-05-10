@@ -41,7 +41,7 @@ def import_refining_config(environment: str,
     """
     assert isinstance(environment, str)
     assert algorithm in SUPPORTED_ALGORITHMS, \
-    f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
+        f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
     assert isinstance(cutoff, int)
     assert isinstance(train_path, str)
     assert isinstance(predict_path, str)
@@ -68,7 +68,7 @@ class DataHandler:
     Data Handler from refined data global to feature engineering for
     the demand Forecast project.
     """
-    
+
     def __init__(self,
                  algorithm: str,
                  cutoff: int,
@@ -406,10 +406,10 @@ class DataHandler:
             predict_jsonline (str): jsonline DeepAR-compliant string for inference (limited to instance cutoff
                 for target, and with future projection for dynamic features)
             """
-        
+
         # Init df_train
         df_train = df_target.copy()
-            
+
         # Formatting & building `start` & `target` columns
         df_train = df_train \
             .sort_values(['model_id', 'week_id']) \
@@ -417,7 +417,7 @@ class DataHandler:
             .agg(start=('week_id', lambda x: week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                  target=('sales_quantity', lambda x: list(x)))
         logger.debug("Built start & target columns from `df_train`")
-        
+
         # Encoding the labels & adding static features
         if df_static_features is not None:
             df_static_features_train = df_static_features.copy()
@@ -425,31 +425,31 @@ class DataHandler:
                 le = LabelEncoder()
                 df_static_features_train[c] = le.fit_transform(df_static_features_train[c])
             logger.debug("Static features label-encoded.")
-            
+
             df_static_features_train['cat'] = df_static_features_train[self.static_features.keys()].values.tolist()
             df_static_features_train.set_index('model_id', inplace=True)
-            
+
             df_train = df_train.merge(df_static_features_train[['cat']],
                                       left_index=True,
                                       right_index=True,
                                       how='left')
             logger.debug("Added static features to `df_train`")
-        
+
         # Building df_predict from df_train
         df_predict = df_train.copy()
-        
+
         # Formatting & adding dynamic features
         if df_dynamic_features is not None:
-            
+
             l_dynamic_features = [feat for feat in df_dynamic_features.columns if feat not in ['model_id', 'week_id']]
-            
+
             # Exluding feat projection for train
             df_dynamic_features_train = df_dynamic_features \
                 .loc[df_dynamic_features['week_id'] < self.cutoff] \
                 .sort_values(['model_id', 'week_id']) \
                 .groupby('model_id') \
                 .agg({feat: list for feat in l_dynamic_features})
-            
+
             # Including feat projection for predict
             df_dynamic_features_predict = df_dynamic_features \
                 .sort_values(['model_id', 'week_id']) \
@@ -463,21 +463,21 @@ class DataHandler:
                                       left_index=True, 
                                       right_index=True,
                                       how='left')
-            
+
             df_predict = df_predict.merge(df_dynamic_features_predict[['dynamic_feat']], 
                                           left_index=True, 
                                           right_index=True, 
                                           how='left')
-            
+
             logger.debug("Added dynamic features to `df_train` & `df_predict`")
-            
+
         # Shuffling df_train
         df_train = df_train.sample(frac=1)
-        
+
         # Resetting index to retrieve model_id column
         df_train.reset_index(inplace=True)
         df_predict.reset_index(inplace=True)
-        
+
         # Converting to jsonline
         train_jsonline = df_train.to_json(orient='records', lines=True)
         predict_jsonline = df_predict.to_json(orient='records', lines=True)
@@ -490,7 +490,7 @@ class DataHandler:
         logger.debug("All checks on jsonline files passed")
 
         return train_jsonline, predict_jsonline
-    
+
     def arima_formatting(self, df_target, df_dynamic_features):
         """Method formatting datasets to ARIMA-specific scheme.
 
@@ -541,12 +541,12 @@ class DataHandler:
             jsonline (str): Jsonline-compliant string
             future_proj_len (int): future weeks to infer on
         """
-    
+
         df = pd.read_json(jsonline, orient='records', lines=True)
-        
+
         # Calculate target length
         df['target_len'] = df.apply(lambda x: len(x['target']), axis=1)
-        
+
         # Test if target length is consistent
         df['is_len_consistent'] = \
             df.apply(lambda x: date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')
@@ -555,13 +555,13 @@ class DataHandler:
         assert all(df['is_len_consistent']), \
         "Some models have a 'target' length which doesn't match with the 'start' date"
         logger.debug("All target time series have a length matching with start_date and cutoff")
-        
+
         # Test if len(target) >= prediction_length + context_length
         df['is_len_long_enough'] = df['target_len'] >= self.prediction_length + self.context_length
         assert all(df['is_len_long_enough']), \
         'Some models have a `target` less than `prediction_length` + `context_length`'
         logger.debug("All target time series are long enough")
-    
+
         if 'cat' in df.columns:
             # Test if right number of static (cat) features
             nb_cat_feat_expected = len(set(self.df_static_features.columns) - set(['model_id']))
@@ -569,15 +569,15 @@ class DataHandler:
             df['is_nb_cat_ok'] = df['nb_cat_feat'] == nb_cat_feat_expected
             assert all(df['is_nb_cat_ok']), "Some models don't have the right number of static features"
             logger.debug(f"All target time series have the correct number of static features")
-    
+
         if 'dynamic_feat' in df.columns:
             # Test if right number of dynamic features
-            nb_dyn_feat_expected = 1
+            nb_dyn_feat_expected = len(set(self.df_dynamic_features.columns) - set(['model_id', 'week_id']))
             df['nb_dyn_feat'] = df.apply(lambda x: np.array(x['dynamic_feat']).shape[0], axis=1)
             df['is_nb_dyn_ok'] = df['nb_dyn_feat'] == nb_dyn_feat_expected
             assert all(df['is_nb_dyn_ok']), "Some models don't have the right number of dynamic features"
             logger.debug(f"All target time series have the correct number of dynamic features")
-    
+
             # Test if right length of dynamic features
             len_dyn_feat_expected = df['target_len'] + future_proj_len
             df['len_dyn_feat'] = df.apply(lambda x: np.array(x['dynamic_feat']).shape[1], axis=1)
