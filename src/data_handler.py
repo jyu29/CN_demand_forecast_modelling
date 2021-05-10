@@ -40,7 +40,6 @@ def import_refining_config(environment: str,
         A dictionary with all parameters for specific refining process
     """
     assert isinstance(environment, str)
-    # the list of algorithms currently supported by the refining
     assert algorithm in SUPPORTED_ALGORITHMS, \
     f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
     assert isinstance(cutoff, int)
@@ -48,7 +47,7 @@ def import_refining_config(environment: str,
     assert isinstance(predict_path, str)
 
     params_full_path = os.path.join(CONFIG_PATH, f"{environment}.yml")
-    params = ut.read_yml(params_full_path)
+    params = read_yml(params_full_path)
 
     refining_params = {
         'algorithm': algorithm,
