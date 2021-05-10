@@ -1,10 +1,9 @@
 import logging
-
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
-
-import src.utils as ut
+from src.utils import (week_id_to_date, date_to_week_id, from_uri, read_yml, 
+                       write_str_to_file_on_s3, write_df_to_parquet_on_s3)
 from src.refining_specific_functions import (pad_to_cutoff, cold_start_rec, initialize_df_dynamic_features,
                                              is_rec_feature_processing, features_forward_fill, 
                                              apply_first_lockdown_patch)
@@ -41,7 +40,7 @@ def import_refining_config(environment: str,
     assert isinstance(predict_path, str)
 
     params_full_path = f"config/{environment}.yml"
-    params = ut.read_yml(params_full_path)
+    params = read_yml(params_full_path)
 
     refining_params = {
         'algorithm': algorithm,
@@ -112,7 +111,7 @@ class DataHandler:
         self.output_paths = output_paths
         
         # Statistical algorithms ignore static features
-        if algorithm == 'arima' :
+        if algorithm == 'arima':
             static_features=None
             
         # Base data init
@@ -181,9 +180,9 @@ class DataHandler:
     def execute_data_refining_specific(self):
         """Workflow method for data refining pipeline for specific data
 
-        Executes all steps for data refining specific to demand forecasting :
+        Executes all steps for data refining specific to demand forecasting:
         * Input data processing (including check & potential forward fill)
-        * Data refining specific to demand forecasting, including :
+        * Data refining specific to demand forecasting, including:
           * Dataset limitation to instance cutoff & MRP active products
           * Pad to cutoff for missing data (models for which sales stopped before the instance cutoff)
           * Optional lockdown and cold start reconstruction (depending on parameters)
@@ -207,25 +206,25 @@ class DataHandler:
                                                                       self.df_dynamic_features
                                                                       )
             # Saving jsonline files on S3
-            train_bucket, train_path = ut.from_uri(self.output_paths['train_path'])
-            predict_bucket, predict_path = ut.from_uri(self.output_paths['predict_path'])
+            train_bucket, train_path = from_uri(self.output_paths['train_path'])
+            predict_bucket, predict_path = from_uri(self.output_paths['predict_path'])
             
-            ut.write_str_to_file_on_s3(train_jsonline, train_bucket, f"{train_path}.json")
-            logger.info(f"Train jsonline file saved at {self.output_paths['train_path']}.json")
+            write_str_to_file_on_s3(train_jsonline, train_bucket, f"{train_path}")
+            logger.info(f"Train jsonline file saved at {self.output_paths['train_path']}")
             
-            ut.write_str_to_file_on_s3(predict_jsonline, predict_bucket, f"{predict_path}.json")
-            logger.info(f"Predict jsonline file saved at {self.output_paths['predict_path']}.json")
+            write_str_to_file_on_s3(predict_jsonline, predict_bucket, f"{predict_path}")
+            logger.info(f"Predict jsonline file saved at {self.output_paths['predict_path']}")
         
         if self.algorithm == 'arima':
             logger.info("Starting ARIMA formatting...")
-            df_predict = self.arima_formatting(self.df_target,
-                                               df_dynamic_features=None # ARIMAX not tested yet
-                                               )
+            df_train = self.arima_formatting(self.df_target,
+                                             df_dynamic_features=None # ARIMAX not tested yet
+                                             )
             # Saving dataframe on S3
-            predict_bucket, predict_path = ut.from_uri(self.output_paths['predict_path'])
+            train_bucket, train_path = from_uri(self.output_paths['train_path'])
             
-            ut.write_df_to_csv_on_s3(df_predict, predict_bucket, f"{predict_path}.csv")
-            logger.info(f"Predict CSV file saved at {self.output_paths['predict_path']}.csv")
+            write_df_to_parquet_on_s3(df_train, train_bucket, f"{train_path}")
+            logger.info(f"Train parquet file saved at {self.output_paths['train_path']}")
             
 
     def process_input_data(self):
@@ -408,7 +407,7 @@ class DataHandler:
         df_train = df_train \
             .sort_values(['model_id', 'week_id']) \
             .groupby('model_id') \
-            .agg(start=('week_id', lambda x: ut.week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
+            .agg(start=('week_id', lambda x: week_id_to_date(x.min()).strftime('%Y-%m-%d %H:%M:%S')),
                  target=('sales_quantity', lambda x: list(x)))
         logger.debug("Built start & target columns from `df_train`")
         
@@ -493,22 +492,22 @@ class DataHandler:
             df_dynamic_features (pd.DataFrame): Temporal & model-specific dataset with dynamic values
 
         Returns:
-            df_predict (pd.DataFrame): ARIMA-compliant pd.DataFrame for inference
+            df_train (pd.DataFrame): ARIMA-compliant pd.DataFrame for training & inference
             """
 
-        df_predict = df_target.copy()
+        df_train = df_target.copy()
         
         # Optionnaly add dynamic data
         if df_dynamic_features is not None:
             
-            df_predict = df_predict.merge(df_dynamic_features, 
-                                          on=['model_id', 'week_id'], 
-                                          how='outer')
-            logger.debug("Added dynamic features to `df_predict`")
+            df_train = df_train.merge(df_dynamic_features, 
+                                      on=['model_id', 'week_id'], 
+                                      how='outer')
+            logger.debug("Added dynamic features to `df_train`")
             
-        df_predict.sort_values(['model_id', 'week_id'], inplace=True)
+        df_train.sort_values(['model_id', 'week_id'], inplace=True)
         
-        return df_predict
+        return df_train
 
     def _add_feature(self, df_features, df_new_feat, feature_name):
         """Adds unitary new feature to the concatenated df_features
@@ -543,8 +542,8 @@ class DataHandler:
         
         # Test if target length is consistent
         df['is_len_consistent'] = \
-            df.apply(lambda x: ut.date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')
-                                                  ) == self.cutoff, axis=1
+            df.apply(lambda x: date_to_week_id(pd.to_datetime(x['start']) + pd.Timedelta(x['target_len'], 'W')
+                                              ) == self.cutoff, axis=1
                     )
         assert all(df['is_len_consistent']), \
         "Some models have a 'target' length which doesn't match with the 'start' date"
