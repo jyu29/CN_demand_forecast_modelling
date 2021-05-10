@@ -13,7 +13,7 @@ DATA_PATH = os.path.join('tests', 'data')
 ENVIRONMENT = 'testing'
 CUTOFF = 202001
 RUN_NAME = 'testing_run_name'
-ALGORITHM = 'algo_test1'
+ALGORITHM = 'deepar'
 TRAIN_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
 PREDICT_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
 REFINED_TARGET_PATH = os.path.join(DATA_PATH, "refining_target.csv")
@@ -55,26 +55,11 @@ global_dynamic_features = {'store_openings': {'dataset': df_store_openings,
 
 specific_dynamic_features = None
 
-# refining_params = import_refining_config(environment=ENVIRONMENT,
-#                                          algorithm=ALGORITHM,
-#                                          cutoff=CUTOFF,
-#                                          train_path=TRAIN_PATH,
-#                                          predict_path=PREDICT_PATH
-#                                          )
-
-# data_handler = DataHandler(base_data=base_data,
-#                            static_features=static_features,
-#                            global_dynamic_features=global_dynamic_features,
-#                            specific_dynamic_features=specific_dynamic_features,
-#                            **refining_params
-#                            )
-
 
 class ImportRefiningConfigTests():
-    @patch.object(src.data_handler, 'SUPPORTED_ALGORITHMS', ['algo_test1', 'algo_test2'])
     @patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
     def test_nominal(self):
-        expected_config = {'algorithm': 'algo_test1',
+        expected_config = {'algorithm': 'deepar',
                            'cutoff': 202001,
                            'patch_first_lockdown': True,
                            'rec_length': 156,
@@ -147,7 +132,7 @@ class ImportRefiningConfigTests():
                                    )
 
     def test_not_known_environment(self):
-        with pytest.raises(AssertionError):
+        with pytest.raises(FileNotFoundError):
             import_refining_config(environment='my_unknown_environment',
                                    algorithm=ALGORITHM,
                                    cutoff=CUTOFF,
@@ -156,25 +141,45 @@ class ImportRefiningConfigTests():
                                    )
 
 
+@pytest.fixture()
+@patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
+def default_datahandler():
+    refining_params = import_refining_config(environment=ENVIRONMENT,
+                                             algorithm=ALGORITHM,
+                                             cutoff=CUTOFF,
+                                             train_path=TRAIN_PATH,
+                                             predict_path=PREDICT_PATH
+                                             )
+
+    data_handler = DataHandler(base_data=base_data,
+                               static_features=static_features,
+                               global_dynamic_features=global_dynamic_features,
+                               specific_dynamic_features=specific_dynamic_features,
+                               **refining_params
+                               )
+
+    return data_handler
+
+
 class DataHandlerImportBaseDataTests:
-    def test_date_parsing(self):
-        data_handler.import_base_data()
+    def test_date_parsing(self, default_datahandler):
+        default_datahandler.process_input_data()
 
         try:
-            assert ptypes.is_datetime64_ns_dtype(data_handler.base_data['model_week_sales']['date'])
+            assert ptypes.is_datetime64_ns_dtype(default_datahandler.base_data['model_week_sales']['date'])
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
 
 class DataHandlerRefiningSpecificTests:
-    def test_nominal(self):
-        data_handler.import_base_data()
+    def test_nominal(self, default_datahandler):
+        default_datahandler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
 
-        target, static_data, dynamic_data = data_handler.refining_specific()
+        target, static_data, dynamic_data = default_datahandler.refining_specific()
 
         try:
             assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))

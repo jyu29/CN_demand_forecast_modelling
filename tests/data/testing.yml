@@ -18,7 +18,7 @@ modeling_parameters:
     Value: demand-forecast
   deepar_arima_stacking: True
   algorithm:
-    algo_test1:
+    deepar:
       image_name_label: forecasting-deepar
       hyperparameters:
         prediction_length: 16
