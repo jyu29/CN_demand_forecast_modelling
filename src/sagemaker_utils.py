@@ -64,31 +64,31 @@ def generate_df_jobs(list_cutoff: list,
         file_extension = 'parquet' # default
         if algorithm == 'deepar':
             file_extension = 'json'
-        
+
         # Global
         dict_job['algorithm'] = algorithm
         dict_job['cutoff'] = cutoff
         dict_job['base_job_name'] = base_job_name
-                
+
         # Input
         dict_job['train_path'] = f'{data_path}/{base_job_name}/input/train{data_timestamp}.{file_extension}'
         dict_job['training_job_name'] = np.nan
         dict_job['training_status'] = 'NotStarted'
-    
+
         dict_job['predict_path'] = f'{data_path}/{base_job_name}/input/predict{data_timestamp}.{file_extension}'
         dict_job['transform_job_name'] = np.nan
         dict_job['transform_status'] = 'NotStarted'
-    
+
         # Model
         dict_job['model_path'] = f'{data_path}/{base_job_name}/model/'
-    
+
         # Output
         dict_job['output_path'] = f'{data_path}/{base_job_name}/output/'
-        
+
         l_dict_job.append(dict_job)
-    
+
     df_jobs = pd.DataFrame.from_dict(l_dict_job)
-    
+
     logger.debug(f"df_job created for algorithm {list_algorithm} and cutoffs {list_cutoff}")
 
     return df_jobs

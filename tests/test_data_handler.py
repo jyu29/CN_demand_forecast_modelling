@@ -1,9 +1,11 @@
 import os
+from unittest.mock import patch
+
 import pandas as pd
 import pandas.api.types as ptypes
 import pytest
-from pytest import mark
 
+import src.data_handler
 from src.data_handler import DataHandler, import_refining_config
 
 
@@ -11,6 +13,7 @@ DATA_PATH = os.path.join('tests', 'data')
 ENVIRONMENT = 'testing'
 CUTOFF = 202001
 RUN_NAME = 'testing_run_name'
+ALGORITHM = 'algo_test1'
 TRAIN_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
 PREDICT_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
 REFINED_TARGET_PATH = os.path.join(DATA_PATH, "refining_target.csv")
@@ -52,40 +55,46 @@ global_dynamic_features = {'store_openings': {'dataset': df_store_openings,
 
 specific_dynamic_features = None
 
-refining_params = import_refining_config(environment=ENVIRONMENT,
-                                         cutoff=CUTOFF,
-                                         run_name=RUN_NAME,
-                                         train_path=TRAIN_PATH,
-                                         predict_path=PREDICT_PATH
-                                         )
+# refining_params = import_refining_config(environment=ENVIRONMENT,
+#                                          algorithm=ALGORITHM,
+#                                          cutoff=CUTOFF,
+#                                          train_path=TRAIN_PATH,
+#                                          predict_path=PREDICT_PATH
+#                                          )
 
-data_handler = DataHandler(base_data=base_data,
-                           static_features=static_features,
-                           global_dynamic_features=global_dynamic_features,
-                           specific_dynamic_features=specific_dynamic_features,
-                           **refining_params
-                           )
+# data_handler = DataHandler(base_data=base_data,
+#                            static_features=static_features,
+#                            global_dynamic_features=global_dynamic_features,
+#                            specific_dynamic_features=specific_dynamic_features,
+#                            **refining_params
+#                            )
 
 
-@mark.data_handler
 class ImportRefiningConfigTests():
+    @patch.object(src.data_handler, 'SUPPORTED_ALGORITHMS', ['algo_test1', 'algo_test2'])
+    @patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
     def test_nominal(self):
-        expected_config = {'cutoff': 202001,
+        expected_config = {'algorithm': 'algo_test1',
+                           'cutoff': 202001,
                            'patch_first_lockdown': True,
-                           'rec_cold_start': True,
                            'rec_length': 156,
+                           'rec_cold_start': True,
                            'rec_cold_start_group': ['family_id'],
-                           'prediction_length': 52,
-                           'refined_global_bucket': 'fcst-refined-demand-forecast-dev',
-                           'refined_specific_bucket': 'fcst-refined-demand-forecast-dev',
-                           'output_paths': {'train_path': TRAIN_PATH, 'predict_path': PREDICT_PATH}
+                           'prediction_length': 16,
+                           'context_length': 52,
+                           'output_paths': {'train_path':\
+                's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json',
+                                            'predict_path':\
+                's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
+                                            }
                            }
 
         config = import_refining_config(environment=ENVIRONMENT,
+                                        algorithm=ALGORITHM,
                                         cutoff=CUTOFF,
-                                        run_name=RUN_NAME,
                                         train_path=TRAIN_PATH,
-                                        predict_path=PREDICT_PATH)
+                                        predict_path=PREDICT_PATH
+                                        )
 
         try:
             assert expected_config == config
@@ -93,38 +102,58 @@ class ImportRefiningConfigTests():
             pytest.fail("Test failed on nominal case")
 
     def test_wrong_type(self):
-        environment = 202001
-        cutoff = 'test'
-        run_name = {'foo': 'bar'}
-        train_path = ['wrong_path', 1234]
-
         with pytest.raises(AssertionError):
-            import_refining_config(environment=environment,
+            import_refining_config(environment=123456,
+                                   algorithm=ALGORITHM,
                                    cutoff=CUTOFF,
-                                   run_name=RUN_NAME,
                                    train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
 
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
-                                   cutoff=cutoff,
-                                   run_name=RUN_NAME,
+                                   algorithm=('algo1', 1234),
+                                   cutoff=CUTOFF,
                                    train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
 
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
-                                   cutoff=CUTOFF,
-                                   run_name=run_name,
+                                   algorithm=ALGORITHM,
+                                   cutoff='202107',
                                    train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
 
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
+                                   algorithm=ALGORITHM,
                                    cutoff=CUTOFF,
-                                   run_name=RUN_NAME,
-                                   train_path=train_path,
+                                   train_path=['wrong_path', 1234],
                                    predict_path=PREDICT_PATH)
+
+        with pytest.raises(AssertionError):
+            import_refining_config(environment=ENVIRONMENT,
+                                   algorithm=ALGORITHM,
+                                   cutoff=CUTOFF,
+                                   train_path=TRAIN_PATH,
+                                   predict_path=[int, 'wrong_path', 1234])
+
+    def test_not_supported_algorithm(self):
+        with pytest.raises(AssertionError):
+            import_refining_config(environment=ENVIRONMENT,
+                                   algorithm='my_unknown_algorithm',
+                                   cutoff=CUTOFF,
+                                   train_path=TRAIN_PATH,
+                                   predict_path=PREDICT_PATH
+                                   )
+
+    def test_not_known_environment(self):
+        with pytest.raises(AssertionError):
+            import_refining_config(environment='my_unknown_environment',
+                                   algorithm=ALGORITHM,
+                                   cutoff=CUTOFF,
+                                   train_path=TRAIN_PATH,
+                                   predict_path=PREDICT_PATH
+                                   )
 
 
 class DataHandlerImportBaseDataTests:
