@@ -11,7 +11,7 @@ from src.sagemaker_utils import generate_df_jobs, _get_timestamp, import_sagemak
 
 LIST_CUTOFF = [201905, 202004]
 RUN_NAME = 'test'
-ALGORITHM = 'test_algorithm'
+LIST_ALGORITHM = ['deepar']
 DF_JOBS_PATH = 'tests/data/nominal_df_jobs.csv'
 REFINED_DATA_SPECIFIC_PATH = 's3://fcst-refined-demand-forecast-dev/specific/'
 
@@ -28,7 +28,7 @@ class generateDfJobTests():
         expected_df_jobs = pd.read_csv(DF_JOBS_PATH, sep=';')
         df_jobs = generate_df_jobs(list_cutoff=LIST_CUTOFF,
                                    run_name=RUN_NAME,
-                                   algorithm=ALGORITHM,
+                                   list_algorithm=LIST_ALGORITHM,
                                    refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
                                    )
 
