@@ -3,7 +3,6 @@ import json
 import io
 import re
 import os
-import logging
 import boto3
 import s3fs
 import yaml
@@ -14,11 +13,6 @@ import pyarrow.parquet as pq
 
 from uritools import urisplit
 from typing import Union
-
-
-logger = logging.getLogger(__name__)
-logging.basicConfig()
-logger.setLevel(logging.INFO)
 
 
 def date_to_week_id(date):
