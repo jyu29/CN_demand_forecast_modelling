@@ -282,3 +282,37 @@ def check_run_name(run_name: str) -> None:
     rule = re.compile(job_name_regex)
 
     assert rule.match(run_name), f"Run name {run_name} doesn't match Sagemaker Regex {job_name_regex}"
+
+def check_dataframe_equality(df1, df2):
+    """Checks dataframes equality
+
+    Checks if two dataframes `df1` & `df2` on the following criterias :
+    - columns name (ignoring order)
+    - number of lines
+    - line values (ignoring order, and tentatively trying to reconcile data types)
+
+    """
+
+    # Ensuring that DTypes are consistent between the two dataframes
+    try:
+        df2 = df2.astype(df1.dtypes)
+    except TypeError:
+        try:
+            df1 = df1.astype(df2.dtypes)
+        except AssertionError as e:
+            e.args += ('Dataframes formats are incompatible, comparison is not possible',)
+            raise
+
+    # Columns order handling
+    df1 = df1[list(set(df1.columns))]
+    df2 = df2[list(set(df2.columns))]
+
+    # Overall order
+    df1 = df1.transform(np.sort)
+    df2 = df2.transform(np.sort)
+
+    # Resetting index
+    df1.reset_index(drop=True, inplace=True)
+    df2.reset_index(drop=True, inplace=True)
+
+    return df1.equals(df2)

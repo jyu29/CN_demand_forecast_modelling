@@ -18,10 +18,11 @@ modeling_parameters:
     Value: demand-forecast
   deepar_arima_stacking: True
   algorithm:
-    algo_test1:
+    deepar:
       image_name_label: forecasting-deepar
       hyperparameters:
-        prediction_length: 16
+        time_freq : W
+        prediction_length: 52
         context_length: 52
       train_max_instances: 20
       train_instance_type: ml.p3.2xlarge
