@@ -238,6 +238,16 @@ def check_environment(environment: str,
                                              "any configuration files available")
 
 
+def get_current_week():
+    """
+    Return current week (international standard ISO 8601 - first day of week
+    is Sunday, with format 'YYYYWW'
+    :return current week (international standard ISO 8601) with format 'YYYYWW'
+    """
+    today = datetime.date.today()
+    return date_to_week_id(today)
+
+
 def check_list_cutoff(list_cutoff: Union[str, int, list]) -> list:
     """
     Check if `list_cutoff` is conform.
