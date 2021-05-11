@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # Config params
     parser.add_argument("--input_file_name", type=str)
     parser.add_argument("--s3_ouput_path", type=str)
-    parser.add_argument("--cutoff", type=str)
+    parser.add_argument("--cutoff", type=int)
     
     # Model params
     parser.add_argument("--prediction_length", type=int, default=104)
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     parser.add_argument("--fourier_order", type=int, default=None)
     parser.add_argument("--arima_differencing_order", type=int, default=None)
     parser.add_argument("--arima_criterion", type=str, default='aic')
-    parser.add_argument("--arima_optimizer", type=int, default='lbfgs')
+    parser.add_argument("--arima_optimizer", type=str, default='lbfgs')
     
     params = parser.parse_args()
 
