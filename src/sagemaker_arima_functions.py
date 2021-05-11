@@ -1,7 +1,10 @@
 import pandas as pd
 
 from joblib import Parallel, delayed
-from utils import (week_id_to_date, date_to_week_id, from_uri)
+from pmdarima import AutoARIMA
+from pmdarima.pipeline import Pipeline
+from pmdarima.preprocessing import FourierFeaturizer
+from src.utils import (week_id_to_date, date_to_week_id, from_uri, write_df_to_parquet_on_s3)
 
 
 def _fit_predict_ts(df_ts, cutoff, prediction_length, fourier_seasonal_period, fourier_order, 
@@ -51,7 +54,7 @@ def _fit_predict_ts(df_ts, cutoff, prediction_length, fourier_seasonal_period, f
     # Format
     df_forecast = pd.DataFrame()
     df_forecast['forecast'] = forecast
-    df_forecast['forecast'] = df_forecast['qt50'].astype('float').round().astype(int).clip(lower=0)
+    df_forecast['forecast'] = df_forecast['forecast'].astype('float').round().astype(int).clip(lower=0)
     df_forecast['model_id'] = model_id
     df_forecast['cutoff'] = cutoff
     future_date_range = pd.date_range(start=week_id_to_date(cutoff), periods=prediction_length, freq='W')
@@ -74,12 +77,17 @@ def fit_predict_all_ts(df_predict, params, num_cpus):
         df_forecast (pd.DataFrame): The output forecast DataFrame
     """
 
-    nb_ts = df_predict['model_id'].nunique()
-    print(f"Number of time series to forecast for cutoff {params['cutoff']}: {nb_ts}")
+    # Drop useless params for fit-predict
+    fit_predict_params = params.copy()
+    fit_predict_params.pop('input_file_name')
+    fit_predict_params.pop('s3_ouput_path')
+    fit_predict_params.pop('context_length')
     
+    print(f"Number of time series to forecast for cutoff {params['cutoff']}: {df_predict['model_id'].nunique()}")
     print(f"Launch of parallel forecasts over {num_cpus} cpus.")
     l_df_forecast = Parallel(n_jobs=num_cpus, verbose=1) \
-                            (delayed(_fit_predict_ts)(ts, **params) for _, df_ts in df_predict.groupby(['model_id']))
+                            (delayed(_fit_predict_ts)(df_ts, **fit_predict_params) \
+                             for _, df_ts in df_predict.groupby(['model_id']))
 
     df_forecast = pd.concat(l_df_forecast).sort_values(['model_id', 'week_id']).reset_index(drop=True)
 

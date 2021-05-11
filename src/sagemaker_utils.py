@@ -119,7 +119,7 @@ def import_sagemaker_params(environment: str,
     f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
 
     params_full_path = os.path.join(CONFIG_PATH, f"{environment}.yml")
-    params = ut.read_yml(params_full_path)
+    params = read_yml(params_full_path)
 
     # Mandatory params
     sagemaker_params = {
@@ -225,9 +225,7 @@ class SagemakerHandler:
                 df_jobs_to_start = self._identify_jobs_to_start(self.train_max_instances, job_type)
 
                 # Starting jobs
-                for i, row in df_jobs_to_start.iterrows():
-                    base_job_name = row['base_job_name']
-                    model_path = row['model_path']
+                for i, job in df_jobs_to_start.iterrows():
 
                     # Creating the estimator
                     estimator = sagemaker.estimator.Estimator(
@@ -237,19 +235,26 @@ class SagemakerHandler:
                         tags=self.tags,
                         train_instance_count=self.train_instance_count,
                         train_instance_type=self.train_instance_type,
-                        base_job_name=base_job_name,
-                        output_path=model_path, # the output of the estimator is the serialized model
+                        base_job_name=job['base_job_name'],
+                        output_path=job['model_path'], # the output of the estimator is the serialized model
                         train_use_spot_instances=self.train_use_spot_instances,
                         train_max_run=self.train_max_run,
                         train_max_wait=self.train_max_wait
                     )
 
                     # Setting the hyperparameters
-                    estimator.set_hyperparameters(**self.hyperparameters)
-
+                    job_hyperparameters = self.hyperparameters.copy()
+                    
+                    if job['algorithm'] == 'arima':
+                        job_hyperparameters['input_file_name'] = os.path.basename(job['train_path'])
+                        job_hyperparameters['s3_ouput_path'] = job['output_path']
+                        job_hyperparameters['cutoff'] = job['cutoff']
+                        
+                    estimator.set_hyperparameters(**job_hyperparameters)
+                    
                     # Launching the fit
-                    logger.debug(f"Starting fit for job {base_job_name}")
-                    estimator.fit(inputs={'train': row['train_path']}, wait=False)
+                    logger.debug(f"Starting fit for job {job['base_job_name']}")
+                    estimator.fit(inputs={'train': job['train_path']}, wait=False)
 
                     # fill job name
                     self.df_jobs.loc[i, 'training_job_name'] = estimator.latest_training_job.job_name
@@ -284,43 +289,39 @@ class SagemakerHandler:
                 df_jobs_to_start = self._identify_jobs_to_start(self.transform_max_instances, job_type)
 
                 # Starting jobs
-                for i, row in df_jobs_to_start.iterrows():
-
-                    base_job_name = row['base_job_name']
-                    training_job_name = row['training_job_name']
-                    output_path = row['output_path']
+                for i, job in df_jobs_to_start.iterrows():
 
                     # Delete old model version if exists
                     try:
-                        self.sagemaker_session.delete_model(base_job_name)
+                        self.sagemaker_session.delete_model(job['base_job_name'])
                     except:  # noqa: E722
                         pass
 
                     # Create new one
                     model = self.sagemaker_session.create_model_from_job(  # noqa: F841
-                        training_job_name=training_job_name,
-                        name=base_job_name,
+                        training_job_name=job['training_job_name'],
+                        name=job['base_job_name'],
                         role=self.role,
                         tags=self.tags
                     )
 
                     # Define transformer
                     transformer = sagemaker.transformer.Transformer(
-                        model_name=base_job_name,
+                        model_name=job['base_job_name'],
                         instance_count=self.transform_instance_count,
                         instance_type=self.transform_instance_type,
                         strategy='SingleRecord',
                         assemble_with='Line',
                         max_concurrent_transforms=self.max_concurrent_transforms,
-                        base_transform_job_name=base_job_name,
-                        output_path=output_path,
+                        base_transform_job_name=job['base_job_name'],
+                        output_path=job['output_path'],
                         sagemaker_session=self.sagemaker_session,
                         tags=self.tags
                     )
 
                     # Forecast
-                    logger.debug(f"Launching inference job {training_job_name}")
-                    transformer.transform(data=row['predict_path'], split_type='Line')
+                    logger.debug(f"Launching inference job {job['training_job_name']}")
+                    transformer.transform(data=job['predict_path'], split_type='Line')
 
                     # Fill job name
                     self.df_jobs.loc[i, 'transform_job_name'] = transformer.latest_transform_job.name
@@ -361,16 +362,16 @@ class SagemakerHandler:
         status_col = f'{job_type}_status'
 
         # For each job in df_jobs
-        for i, row in self.df_jobs.iterrows():
+        for i, job in self.df_jobs.iterrows():
             # If the job has already started
-            if not (pd.isna(row[job_name_col]) or row[status_col] == 'Completed'):
+            if not (pd.isna(job[job_name_col]) or job[status_col] == 'Completed'):
                 # Get current status
                 if job_type == 'training':
-                    status = self.sagemaker_session.describe_training_job(row[job_name_col])['TrainingJobStatus']
+                    status = self.sagemaker_session.describe_training_job(job[job_name_col])['TrainingJobStatus']
                 if job_type == 'transform':
-                    status = self.sagemaker_session.describe_transform_job(row[job_name_col])['TransformJobStatus']
+                    status = self.sagemaker_session.describe_transform_job(job[job_name_col])['TransformJobStatus']
                 if job_type == 'tuning':
-                    analytics = sagemaker.HyperparameterTuningJobAnalytics(row[job_name_col])
+                    analytics = sagemaker.HyperparameterTuningJobAnalytics(job[job_name_col])
                     status = analytics.description()['HyperParameterTuningJobStatus']
                 # Update status
                 self.df_jobs.loc[i, status_col] = status

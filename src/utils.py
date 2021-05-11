@@ -3,7 +3,6 @@ import json
 import io
 import re
 import os
-import logging
 import boto3
 import s3fs
 import yaml
@@ -14,11 +13,6 @@ import pyarrow.parquet as pq
 
 from uritools import urisplit
 from typing import Union
-
-
-logger = logging.getLogger(__name__)
-logging.basicConfig()
-logger.setLevel(logging.INFO)
 
 
 def date_to_week_id(date):
@@ -242,6 +236,16 @@ def check_environment(environment: str,
 
     assert environment in available_config, (f"Environment {environment} doesn't match with "
                                              "any configuration files available")
+
+
+def get_current_week():
+    """
+    Return current week (international standard ISO 8601 - first day of week
+    is Sunday, with format 'YYYYWW'
+    :return current week (international standard ISO 8601) with format 'YYYYWW'
+    """
+    today = datetime.date.today()
+    return date_to_week_id(today)
 
 
 def check_list_cutoff(list_cutoff: Union[str, int, list]) -> list:
