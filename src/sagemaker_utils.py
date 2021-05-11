@@ -11,7 +11,7 @@ import pandas as pd
 from datetime import datetime
 from itertools import product
 from sagemaker.amazon.amazon_estimator import get_image_uri
-from src.utils import (is_iso_format, read_yml, check_run_name)
+from src.utils import (is_iso_format, read_yml, check_run_name, check_environment)
 
 
 logger = logging.getLogger(__name__)
@@ -52,17 +52,17 @@ def generate_df_jobs(list_cutoff: list,
     assert isinstance(list_algorithm, (list))
     for a in list_algorithm:
         assert isinstance(a, (str))
-    
+
     l_dict_job = []
     data_timestamp = _get_timestamp()
     data_path = f'{refined_data_specific_path}{run_name}'
-    
+
     for algorithm, cutoff in product(list_algorithm, list_cutoff):
-        
+
         dict_job = {}
         base_job_name = f'{run_name}-{algorithm}-{cutoff}'
         check_run_name(base_job_name)
-        
+
         # Set file extension
         file_extension = 'parquet' # default
         if algorithm == 'deepar':
@@ -115,6 +115,7 @@ def import_sagemaker_params(environment: str,
         A dictionary with all parameters for sagemaker training & inference
     """
     assert isinstance(environment, str)
+    check_environment(environment)
     assert algorithm in SUPPORTED_ALGORITHMS, \
     f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
 
@@ -135,7 +136,7 @@ def import_sagemaker_params(environment: str,
        
     # Optionnal params
     if 'transform_instance_count' in params['modeling_parameters']['algorithm'][algorithm]:
-        sagemaker_params['algorithm_params'][algorithm].update({
+        sagemaker_params.update({
             'transform_instance_count': params['modeling_parameters']['algorithm'][algorithm]['transform_instance_count'],
             'transform_instance_type': params['modeling_parameters']['algorithm'][algorithm]['transform_instance_type'],
             'transform_max_instances': params['modeling_parameters']['algorithm'][algorithm]['transform_max_instances'],
