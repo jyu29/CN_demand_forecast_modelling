@@ -1,7 +1,5 @@
-import os
 import logging
-
-import pandas as pd
+import os
 
 import src.data_handler as dh
 import src.sagemaker_utils as su
@@ -45,7 +43,7 @@ if __name__ == "__main__":
     MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
     IMPUTED_SALES_LOCKDOWN_1_PATH = f"{REFINED_DATA_GLOBAL_PATH}imputed_sales_lockdown_1.parquet"
     LIST_ALGORITHM = list(main_params['algorithm'].keys())
-    
+
     # Data loading
     df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
     df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_TREE_PATH)
@@ -55,10 +53,10 @@ if __name__ == "__main__":
 
     # Initialize df_jobs
     df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
-                              run_name=RUN_NAME,
-                              list_algorithm=LIST_ALGORITHM,
-                              refined_data_specific_path=REFINED_DATA_SPECIFIC_URI
-                              )
+                                  run_name=RUN_NAME,
+                                  list_algorithm=LIST_ALGORITHM,
+                                  refined_data_specific_path=REFINED_DATA_SPECIFIC_URI
+                                  )
 
     for _, job in df_jobs.iterrows():
 
@@ -67,14 +65,14 @@ if __name__ == "__main__":
         cutoff = job['cutoff']
         train_path = job['train_path']
         predict_path = job['predict_path']
-        
+
         refining_params = dh.import_refining_config(environment=ENVIRONMENT,
                                                     algorithm=algorithm,
                                                     cutoff=cutoff,
                                                     train_path=train_path,
                                                     predict_path=predict_path
                                                     )
-    
+
         # Data/Features init
         base_data = {
             'model_week_sales': df_model_week_sales,
@@ -82,9 +80,9 @@ if __name__ == "__main__":
             'model_week_mrp': df_model_week_mrp,
             'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
         }
-    
+
         df_static_tree = df_model_week_tree[df_model_week_tree['week_id'] == cutoff].copy()
-        
+
         static_features = {
             'family_id': df_static_tree[['model_id', 'family_id']],
             'sub_department_id': df_static_tree[['model_id', 'sub_department_id']],
@@ -92,11 +90,11 @@ if __name__ == "__main__":
             'univers_id': df_static_tree[['model_id', 'univers_id']],
             'product_nature_id': df_static_tree[['model_id', 'product_nature_id']]
         }
-    
+
         global_dynamic_features = None
-    
+
         specific_dynamic_features = None
-    
+
         # Execute data refining
         refining_handler = dh.DataHandler(base_data=base_data,
                                           static_features=static_features,
@@ -104,17 +102,17 @@ if __name__ == "__main__":
                                           specific_dynamic_features=specific_dynamic_features,
                                           **refining_params
                                           )
-    
+
         refining_handler.execute_data_refining_specific()
 
     # WIP
-    ## Launch parallel Fit & Transform
-    #sagemaker_params = su.import_sagemaker_params(environment=ENVIRONMENT)
+    # # Launch parallel Fit & Transform
+    # sagemaker_params = su.import_sagemaker_params(environment=ENVIRONMENT)
     #
-    #modeling_handler = su.SagemakerHandler(run_name=RUN_NAME,
-    #                                       df_jobs=df_jobs,
-    #                                       **sagemaker_params)
+    # modeling_handler = su.SagemakerHandler(run_name=RUN_NAME,
+    #                                        df_jobs=df_jobs,
+    #                                        **sagemaker_params)
     #
-    #modeling_handler.launch_training_jobs()
+    # modeling_handler.launch_training_jobs()
     #
-    #modeling_handler.launch_transform_jobs()
+    # modeling_handler.launch_transform_jobs()

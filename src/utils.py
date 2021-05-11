@@ -181,11 +181,11 @@ def write_df_to_parquet_on_s3(df, bucket, filename, index=False, verbose=False):
     """
     if verbose:
         print("Writing {} records to {}".format(len(df), to_uri(bucket, filename)))
-    
+
     buffer = io.BytesIO()
     df.to_parquet(buffer, index=index)
     boto3.resource('s3').Object(bucket, filename).put(Body=buffer.getvalue())
-    
+
 
 def import_modeling_parameters(environment: str) -> dict:
     """Handler to import modeling configuration from YML file
@@ -292,6 +292,7 @@ def check_run_name(run_name: str) -> None:
     rule = re.compile(job_name_regex)
 
     assert rule.match(run_name), f"Run name {run_name} doesn't match Sagemaker Regex {job_name_regex}"
+
 
 def check_dataframe_equality(df1, df2):
     """Checks dataframes equality

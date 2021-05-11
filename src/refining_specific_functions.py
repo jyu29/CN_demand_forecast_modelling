@@ -65,12 +65,12 @@ def cold_start_rec(df,
     Create a fake sales history for models that started too recently.
 
     Args:
-        df (pd.DataFrame): The sales of the time series pool on which we want to apply a cold-start 
+        df (pd.DataFrame): The sales of the time series pool on which we want to apply a cold-start
             reconstruction
         df_model_week_sales (pd.DataFrame): Sales of all available time series
         df_model_week_tree (pd.DataFrame): Tree structure information of all available time series
-        rec_length (int): The minimum expected size of each time series after reconstruction 
-        rec_cold_start_group (list): The list of aggregation keys (of the tree structure) on which 
+        rec_length (int): The minimum expected size of each time series after reconstruction
+        rec_cold_start_group (list): The list of aggregation keys (of the tree structure) on which
             to calculate the reconstruction properties
 
     Returns:
@@ -171,20 +171,20 @@ def cold_start_rec(df,
 def initialize_df_dynamic_features(df, cutoff, prediction_length):
     """
     Initialize the dynamic features dataframe on which all dynamic features will be joined.
-    
-    Dynamic features must be available in the future, therefore the expected size of the dataframe 
+
+    Dynamic features must be available in the future, therefore the expected size of the dataframe
     must correspond to the observed sales for each model plus its projection over the forecast horizon.
 
     Args:
         df (pd.DataFrame): The sales dataframe
-        cutoff (int): The week_id of the cutoff, which corresponds to the first forecast step 
+        cutoff (int): The week_id of the cutoff, which corresponds to the first forecast step
         prediction_length (int): The forecast horizon
 
     Returns:
         df_dynamic_features (pd.DataFrame): The initialized dynamic features dataframe
     """
     model_ids = df['model_id'].unique()
-    
+
     future_date_range = pd.date_range(start=week_id_to_date(cutoff), periods=prediction_length, freq='W')
     future_date_range_weeks = [date_to_week_id(w) for w in future_date_range]
 
@@ -194,27 +194,27 @@ def initialize_df_dynamic_features(df, cutoff, prediction_length):
 
     df_dynamic_features = df[['model_id', 'week_id']].append(future_model_week)
     df_dynamic_features.sort_values(['model_id', 'week_id'], inplace=True)
-        
+
     return df_dynamic_features
 
 
 def is_rec_feature_processing(df, cutoff, prediction_length):
     """
     Process the dynamic features `is_rec` based on `cold_start_rec` output.
-    
-    Dynamic features must be available in the future, therefore the feature 
+
+    Dynamic features must be available in the future, therefore the feature
     is projected on the horizon with a value of 0.
-    
+
     Args:
         df (pd.DataFrame): The sales dataframe which includes the reconstructed weeks information
-        cutoff (int): The week_id of the cutoff, which corresponds to the first forecast step 
+        cutoff (int): The week_id of the cutoff, which corresponds to the first forecast step
         prediction_length (int): The forecast horizon
 
     Returns:
         df_is_rec (pd.DataFrame): The 'is_rec' dynamic feature dataframe
     """
     model_ids = df['model_id'].unique()
-    
+
     future_date_range = pd.date_range(start=week_id_to_date(cutoff), periods=prediction_length, freq='W')
     future_date_range_weeks = [date_to_week_id(w) for w in future_date_range]
 
@@ -222,7 +222,7 @@ def is_rec_feature_processing(df, cutoff, prediction_length):
 
     df_is_rec_future = pd.DataFrame({'model_id': m, 'week_id': w})
     df_is_rec_future['is_rec'] = 0
-    
+
     df_is_rec = df[['model_id', 'week_id', 'is_rec']].append(df_is_rec_future)
 
     return df_is_rec
@@ -261,13 +261,13 @@ def features_forward_fill(df, cutoff, projection_length):
 def apply_first_lockdown_patch(df_sales, df_sales_imputed):
     """
     Replaces the lockdown weeks of `df_sales` with the imputed ones of `df_sales_imputed`.
-    
+
     Args:
         df_sales (pd.DataFrame): The initial sales dataframe
         df_sales_imputed (pd.DataFrame): The imputed sales dataframe
-        
+
     Returns:
-        pd.DataFrame with the same structure as `df_sales`, whose lockdown weeks have been 
+        pd.DataFrame with the same structure as `df_sales`, whose lockdown weeks have been
         replaced by the ones in `df_sales_imputed`
     """
     df_sales = pd.merge(df_sales, df_sales_imputed, how='left')

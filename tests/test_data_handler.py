@@ -60,6 +60,10 @@ specific_dynamic_features = None
 class ImportRefiningConfigTests():
     @patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
     def test_nominal(self):
+        config_train_path = \
+            's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
+        config_predict_path = \
+            's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
         expected_config = {'algorithm': 'deepar',
                            'cutoff': 202001,
                            'patch_first_lockdown': True,
@@ -68,10 +72,8 @@ class ImportRefiningConfigTests():
                            'rec_cold_start_group': ['family_id'],
                            'prediction_length': 52,
                            'context_length': 52,
-                           'output_paths': {'train_path':\
-                's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json',
-                                            'predict_path':\
-                's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
+                           'output_paths': {'train_path': config_train_path,
+                                            'prediction_length': config_predict_path
                                             }
                            }
 
@@ -548,7 +550,10 @@ class DataHandlerDeepArFormatingTests:
         df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
 
         # Actual
-        df_model_week_sales_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_sales_long.csv"), sep=';', parse_dates=['date'])
+        df_model_week_sales_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_sales_long.csv"),
+                                               sep=';',
+                                               parse_dates=['date']
+                                               )
         df_model_week_tree_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_tree_long.csv"), sep=';')
         df_model_week_mrp_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_mrp_long.csv"), sep=';')
 

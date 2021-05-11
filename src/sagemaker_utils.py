@@ -1,7 +1,5 @@
 import os
-import re
 import time
-import boto3
 import logging
 import sagemaker
 
@@ -10,7 +8,6 @@ import pandas as pd
 
 from datetime import datetime
 from itertools import product
-from sagemaker.amazon.amazon_estimator import get_image_uri
 from src.utils import (is_iso_format, read_yml, check_run_name, check_environment)
 
 
@@ -64,7 +61,7 @@ def generate_df_jobs(list_cutoff: list,
         check_run_name(base_job_name)
 
         # Set file extension
-        file_extension = 'parquet' # default
+        file_extension = 'parquet'  # default
         if algorithm == 'deepar':
             file_extension = 'json'
 
@@ -115,9 +112,9 @@ def import_sagemaker_params(environment: str,
         A dictionary with all parameters for sagemaker training & inference
     """
     assert isinstance(environment, str)
-    check_environment(environment)
+    check_environment(environment, CONFIG_PATH)
     assert algorithm in SUPPORTED_ALGORITHMS, \
-    f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
+        f"Algorithm {algorithm} not in list of supported algorithms {SUPPORTED_ALGORITHMS}"
 
     params_full_path = os.path.join(CONFIG_PATH, f"{environment}.yml")
     params = read_yml(params_full_path)
@@ -133,7 +130,7 @@ def import_sagemaker_params(environment: str,
         'train_instance_type': params['modeling_parameters']['algorithm'][algorithm]['train_instance_type'],
         'train_max_instances': params['modeling_parameters']['algorithm'][algorithm]['train_max_instances']
     }
-       
+
     # Optionnal params
     if 'transform_instance_count' in params['modeling_parameters']['algorithm'][algorithm]:
         sagemaker_params.update({
@@ -142,10 +139,10 @@ def import_sagemaker_params(environment: str,
             'transform_max_instances': params['modeling_parameters']['algorithm'][algorithm]['transform_max_instances'],
             'max_concurrent_transforms': params['modeling_parameters']['algorithm'][algorithm]['max_concurrent_transforms']
         })
-            
+
     return sagemaker_params
 
-        
+
 class SagemakerHandler:
     """
     Sagemaker API handler. Allows for training and transform jobs.
@@ -177,7 +174,7 @@ class SagemakerHandler:
         assert isinstance(train_instance_count, int)
         assert isinstance(train_instance_type, str)
         assert isinstance(train_max_instances, int)
-        
+
         if transform_instance_count:
             assert isinstance(transform_instance_count, int)
             assert isinstance(transform_instance_type, str)
@@ -195,13 +192,13 @@ class SagemakerHandler:
         self.train_instance_type = train_instance_type
         self.train_max_instances = train_max_instances
         self.sagemaker_session = sagemaker.Session()
-        
+
         if transform_instance_count:
             self.transform_instance_count = transform_instance_count
             self.transform_instance_type = transform_instance_type
             self.transform_max_instances = transform_max_instances
             self.max_concurrent_transforms = max_concurrent_transforms
-    
+
         if train_use_spot_instances:
             self.train_max_wait = 3600
             self.train_max_run = 3600
@@ -237,7 +234,7 @@ class SagemakerHandler:
                         train_instance_count=self.train_instance_count,
                         train_instance_type=self.train_instance_type,
                         base_job_name=job['base_job_name'],
-                        output_path=job['model_path'], # the output of the estimator is the serialized model
+                        output_path=job['model_path'],  # the output of the estimator is the serialized model
                         train_use_spot_instances=self.train_use_spot_instances,
                         train_max_run=self.train_max_run,
                         train_max_wait=self.train_max_wait
@@ -245,14 +242,14 @@ class SagemakerHandler:
 
                     # Setting the hyperparameters
                     job_hyperparameters = self.hyperparameters.copy()
-                    
+
                     if job['algorithm'] == 'arima':
                         job_hyperparameters['input_file_name'] = os.path.basename(job['train_path'])
                         job_hyperparameters['s3_ouput_path'] = job['output_path']
                         job_hyperparameters['cutoff'] = job['cutoff']
-                        
+
                     estimator.set_hyperparameters(**job_hyperparameters)
-                    
+
                     # Launching the fit
                     logger.debug(f"Starting fit for job {job['base_job_name']}")
                     estimator.fit(inputs={'train': job['train_path']}, wait=False)
