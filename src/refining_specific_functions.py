@@ -183,6 +183,9 @@ def initialize_df_dynamic_features(df, cutoff, prediction_length):
     Returns:
         df_dynamic_features (pd.DataFrame): The initialized dynamic features dataframe
     """
+    assert df['week_id'].max() < cutoff, \
+    "The sales dataframe must be cut before the cutoff for this function to work properly"
+    
     model_ids = df['model_id'].unique()
     
     future_date_range = pd.date_range(start=week_id_to_date(cutoff), periods=prediction_length, freq='W')
