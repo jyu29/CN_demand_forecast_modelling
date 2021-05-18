@@ -73,7 +73,7 @@ class ImportRefiningConfigTests():
                            'prediction_length': 52,
                            'context_length': 52,
                            'output_paths': {'train_path': config_train_path,
-                                            'prediction_length': config_predict_path
+                                            'predict_path': config_predict_path
                                             }
                            }
 
