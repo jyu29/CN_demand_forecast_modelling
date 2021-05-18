@@ -12,7 +12,7 @@ logging.basicConfig()
 logger.setLevel(logging.INFO)
 
 if __name__ == "__main__":
-    
+
     # Modeling arguments handling
     ENVIRONMENT = os.environ['run_env']
     LIST_CUTOFF = os.environ['list_cutoff']
@@ -107,7 +107,6 @@ if __name__ == "__main__":
                                           )
 
         refining_handler.execute_data_refining_specific()
-
 
     # Launch Fit & Transform
     for algorithm in LIST_ALGORITHM:

@@ -113,7 +113,6 @@ class ImportSagemakerParamsTests:
 class SagemakerHandlerTests:
     @patch.object(src.sagemaker_utils, 'CONFIG_PATH', os.path.join('tests', 'data'))
     @patch('src.sagemaker_utils.time.sleep')
-    @patch('src.sagemaker_utils.get_image_uri')
     @patch('src.sagemaker_utils.sagemaker.estimator.Estimator')
     @patch.object(src.sagemaker_utils.sagemaker.estimator.Estimator, 'fit')
     @patch('src.sagemaker_utils.sagemaker.Session')
@@ -121,16 +120,16 @@ class SagemakerHandlerTests:
                      session_mocker,
                      fit_estimator_mocker,
                      estimator_mocker,
-                     get_image_uri_mocker,
                      time_sleep_mocker
                      ):
 
-        d = {'TrainingJobStatus': 'Completed'}
-        session_mocker.return_value.describe_training_job.return_value.__getitem__.side_effect = d.__getitem__
+        training_dict = {'TrainingJobStatus': 'Completed'}
+        transform_dict = {'TransformJobStatus': 'Completed'}
+        session_mocker.return_value.describe_training_job.return_value.__getitem__.side_effect = training_dict.__getitem__
+        session_mocker.return_value.describe_transform_job.return_value.__getitem__.side_effect = transform_dict.__getitem__
         estimator_mocker.return_value.latest_training_job.job_name = 'foo'
-        get_image_uri_mocker.return_value = '224300973850.dkr.ecr.eu-west-1.amazonaws.com/forecasting-deepar:1'
 
-        params = {'run_name': 'test-sm'}
+        params = {}
         params['df_jobs'] = generate_df_jobs(list_cutoff=LIST_CUTOFF,
                                              run_name=RUN_NAME,
                                              list_algorithm=LIST_ALGORITHM,
@@ -143,5 +142,6 @@ class SagemakerHandlerTests:
 
         try:
             sh.launch_training_jobs()
+            sh.launch_transform_jobs()
         except Exception:
             pytest.fail("Test failed on nominal case.")

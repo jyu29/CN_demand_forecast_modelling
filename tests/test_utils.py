@@ -1,5 +1,6 @@
 from datetime import date
 
+import os
 import json
 import numpy as np
 import pandas as pd
@@ -228,7 +229,7 @@ class CheckEnvironmentTests:
         environment = 'testing'
 
         try:
-            environment = check_environment(environment)
+            environment = check_environment(environment, config_path=os.path.join('tests', 'data'))
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
