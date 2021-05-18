@@ -60,6 +60,10 @@ specific_dynamic_features = None
 class ImportRefiningConfigTests():
     @patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
     def test_nominal(self):
+        config_train_path = \
+            's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
+        config_predict_path = \
+            's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
         expected_config = {'algorithm': 'deepar',
                            'cutoff': 202001,
                            'patch_first_lockdown': True,
@@ -68,10 +72,8 @@ class ImportRefiningConfigTests():
                            'rec_cold_start_group': ['family_id'],
                            'prediction_length': 52,
                            'context_length': 52,
-                           'output_paths': {'train_path':\
-                's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json',
-                                            'predict_path':\
-                's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
+                           'output_paths': {'train_path': config_train_path,
+                                            'prediction_length': config_predict_path
                                             }
                            }
 
@@ -526,3 +528,72 @@ class DataHandlerDeepArFormatingTests:
                                                                               data_handler.df_static_features,
                                                                               data_handler.df_dynamic_features
                                                                               )
+
+    def test_no_rec_nominal(self, default_refiningparams):
+        default_refiningparams['rec_cold_start'] = False
+        # Expected
+        with open(os.path.join(DATA_PATH, 'train_jsonline_norec_nominal'), 'r') as f:
+            expected_train_jsonline = f.read()
+        df_expected_train_jsonline = pd.read_json(expected_train_jsonline,
+                                                  orient='records',
+                                                  lines=True
+                                                  )
+        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
+        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
+        with open(os.path.join(DATA_PATH, 'predict_jsonline_norec_nominal'), 'r') as f:
+            expected_predict_jsonline = f.read()
+        df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
+                                                    orient='records',
+                                                    lines=True
+                                                    )
+        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
+        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
+
+        # Actual
+        df_model_week_sales_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_sales_long.csv"),
+                                               sep=';',
+                                               parse_dates=['date']
+                                               )
+        df_model_week_tree_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_tree_long.csv"), sep=';')
+        df_model_week_mrp_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_mrp_long.csv"), sep=';')
+
+        base_data_long = {'model_week_sales': df_model_week_sales_long,
+                          'model_week_tree': df_model_week_tree_long,
+                          'model_week_mrp': df_model_week_mrp_long,
+                          'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
+                          }
+
+        df_static_tree_long = df_model_week_tree_long[df_model_week_tree_long['week_id'] == CUTOFF].copy()
+
+        static_features_long = {'model_identifier': pd.DataFrame({'model_id': df_static_tree_long['model_id'],
+                                                                  'model_identifier': df_static_tree_long['model_id']}),
+                                'family_id': df_static_tree_long[['model_id', 'family_id']],
+                                'sub_department_id': df_static_tree_long[['model_id', 'sub_department_id']],
+                                'department_id': df_static_tree_long[['model_id', 'department_id']],
+                                'product_nature_id': df_static_tree_long[['model_id', 'product_nature_id']],
+                                'univers_id': df_static_tree_long[['model_id', 'univers_id']],
+                                }
+
+        data_handler_long = DataHandler(base_data=base_data_long,
+                                        static_features=static_features_long,
+                                        global_dynamic_features=global_dynamic_features,
+                                        specific_dynamic_features=specific_dynamic_features,
+                                        **default_refiningparams
+                                        )
+
+        data_handler_long.process_input_data()
+        data_handler_long.df_target, data_handler_long.df_static_features, data_handler_long.df_dynamic_features = \
+            data_handler_long.refining_specific()
+
+        train_jsonline, predict_jsonline = data_handler_long.deepar_formatting(data_handler_long.df_target,
+                                                                               data_handler_long.df_static_features,
+                                                                               data_handler_long.df_dynamic_features
+                                                                               )
+        df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
+        df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
+
+        try:
+            assert check_dataframe_equality(df_expected_train_jsonline, df_train_jsonline)
+            assert check_dataframe_equality(df_expected_predict_jsonline, df_predict_jsonline)
+        except AssertionError:
+            pytest.fail("Test failed on nominal case.")

@@ -19,14 +19,13 @@ def import_parameters(hps_file_path):
         config_params (dict): Dict of config parameters
         hyperparameters (dict): Dict of model hyperparameters
     """
-    
     params = read_json(hps_file_path)
-    
+
     config_params = {
         'input_file_name': params['input_file_name'],
         's3_output_path': params['s3_output_path']
     }
-    
+
     hyperparameters = {
         'prediction_length': int(params['prediction_length']),
         'fourier_seasonal_period': int(params['fourier_seasonal_period']),
@@ -35,7 +34,7 @@ def import_parameters(hps_file_path):
         'arima_criterion': params['arima_criterion'],
         'arima_optimizer': params['arima_optimizer']
     }
-    
+
     return config_params, hyperparameters
 
 
@@ -52,19 +51,18 @@ def _fit_predict_ts(df_ts, prediction_length, fourier_seasonal_period, fourier_o
         arima_differencing_order (int): The ARIMA differentiation parameter (d)
         arima_criterion (str): The information criterion used for auto-ARIMA
         arima_optimizer (str): the optimization method used for auto-ARIMA
-        
+
     Returns:
         df_forecast (pd.DataFrame): The output forecast DataFrame
     """
-    
     warnings.filterwarnings("ignore")
-    
+
     df_ts = df_ts.sort_values(['week_id'])
     model_id = df_ts['model_id'].iloc[0]
-    
+
     # Define model pipeline
     pipe = Pipeline([
-        ("fourier", FourierFeaturizer(m=fourier_seasonal_period, 
+        ("fourier", FourierFeaturizer(m=fourier_seasonal_period,
                                       k=fourier_order)),
         ("arima", AutoARIMA(d=arima_differencing_order,
                             seasonal=False, # because we use Fourier
@@ -74,17 +72,17 @@ def _fit_predict_ts(df_ts, prediction_length, fourier_seasonal_period, fourier_o
                             trace=False,
                             error_action="ignore"))
     ])
-    
+
     try:
         # Fit
         pipe.fit(df_ts['sales_quantity'])
-        
+
         # Predict
         forecast = pipe.predict(prediction_length)
-        
+
     except ValueError:
         raise ValueError(f'Crash on model {model_id}!')
-    
+
     # Format
     df_forecast = pd.DataFrame()
     df_forecast['forecast'] = forecast
@@ -92,7 +90,7 @@ def _fit_predict_ts(df_ts, prediction_length, fourier_seasonal_period, fourier_o
     df_forecast['model_id'] = model_id
     df_forecast['forecast_step'] = list(range(1, prediction_length + 1))
     df_forecast = df_forecast[['model_id', 'forecast_step', 'forecast']]
-    
+
     return df_forecast
     
     
@@ -107,9 +105,8 @@ def fit_predict_all_ts(df_predict, hyperparameters):
     Returns:
         df_forecast (pd.DataFrame): The output forecast DataFrame
     """
-    
     print(f"Launching the fit-predict method in parallel on {df_predict['model_id'].nunique()} time series...")
-    
+
     l_df_forecast = Parallel(n_jobs=-1, verbose=1) \
                     (delayed(_fit_predict_ts)(df_ts, **hyperparameters) \
                      for _, df_ts in df_predict.groupby(['model_id']))
@@ -127,9 +124,7 @@ def write_forecast_df_on_s3(df_forecast, s3_output_path, input_file_name):
         df_forecast (pd.DataFrame): The output forecast DataFrame
         s3_output_path (str): The output path
         input_file_name (str): The input file name used to create the output one
-
     """
-
     bucket, dir_path = from_uri(s3_output_path)
     output_file_name = input_file_name.replace('train', 'predict') + '.out' # to match the output format of Sagemaker DeepAR
     file_path = os.path.join(dir_path, output_file_name)

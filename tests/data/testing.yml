@@ -16,10 +16,11 @@ modeling_parameters:
   tags:
     Key: project
     Value: demand-forecast
+  train_use_spot_instances: false
   deepar_arima_stacking: True
   algorithm:
     deepar:
-      image_name_label: forecasting-deepar
+      image_name: forecasting-deepar
       hyperparameters:
         time_freq : W
         prediction_length: 52
@@ -29,7 +30,6 @@ modeling_parameters:
       train_instance_count: 1
       train_max_run: 3600
       train_max_wait: 3600
-      train_use_spot_instances: false
       transform_max_instances: 20
       transform_instance_type: ml.c5.9xlarge
       transform_instance_count: 1

@@ -4,14 +4,13 @@ import os
 import pytest
 from unittest.mock import patch
 from pytest import mark
-from shutil import copyfile
 import src
 
 from src.sagemaker_utils import generate_df_jobs, _get_timestamp, import_sagemaker_params, SagemakerHandler
 
 LIST_CUTOFF = [201905, 202004]
 RUN_NAME = 'test'
-ALGORITHM = 'test_algorithm'
+LIST_ALGORITHM = ['deepar']
 DF_JOBS_PATH = 'tests/data/nominal_df_jobs.csv'
 REFINED_DATA_SPECIFIC_PATH = 's3://fcst-refined-demand-forecast-dev/specific/'
 
@@ -28,7 +27,7 @@ class generateDfJobTests():
         expected_df_jobs = pd.read_csv(DF_JOBS_PATH, sep=';')
         df_jobs = generate_df_jobs(list_cutoff=LIST_CUTOFF,
                                    run_name=RUN_NAME,
-                                   algorithm=ALGORITHM,
+                                   list_algorithm=LIST_ALGORITHM,
                                    refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
                                    )
 
@@ -43,7 +42,7 @@ class generateDfJobTests():
         with pytest.raises(AssertionError):
             generate_df_jobs(list_cutoff=list_cutoff,
                              run_name=RUN_NAME,
-                             algorithm=ALGORITHM,
+                             list_algorithm=LIST_ALGORITHM,
                              refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
                              )
 
@@ -53,7 +52,7 @@ class generateDfJobTests():
         with pytest.raises(AssertionError):
             generate_df_jobs(list_cutoff=list_cutoff,
                              run_name=RUN_NAME,
-                             algorithm=ALGORITHM,
+                             list_algorithm=LIST_ALGORITHM,
                              refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
                              )
 
@@ -63,7 +62,7 @@ class generateDfJobTests():
         with pytest.raises(AssertionError):
             generate_df_jobs(list_cutoff=list_cutoff,
                              run_name=RUN_NAME,
-                             algorithm=ALGORITHM,
+                             list_algorithm=LIST_ALGORITHM,
                              refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
                              )
 
@@ -73,7 +72,7 @@ class generateDfJobTests():
         with pytest.raises(AssertionError):
             generate_df_jobs(list_cutoff=LIST_CUTOFF,
                              run_name=run_name,
-                             algorithm=ALGORITHM,
+                             list_algorithm=LIST_ALGORITHM,
                              refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
                              )
 
@@ -93,28 +92,26 @@ class GetTimestampTests:
 
 @mark.sagemaker_utils
 class ImportSagemakerParamsTests:
+    @patch.object(src.sagemaker_utils, 'CONFIG_PATH', os.path.join('tests', 'data'))
     def test_nominal(self):
-        assert os.path.isfile(os.path.join('tests', 'data', 'test_config.yml')), \
-            "Test configuration file missing in tests/data/"
-        copyfile(os.path.join('tests', 'data', 'test_config.yml'), os.path.join('config', 'test_config.yml'))
+        params = import_sagemaker_params('testing', LIST_ALGORITHM[0])
 
-        params = import_sagemaker_params('test_config')
         try:
             assert isinstance(params, (dict))
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-        os.remove(os.path.join('config', 'test_config.yml'))
-
     def test_missing_env(self):
         env = 'missing_env'
-        assert not os.path.isfile(os.path.join('config', f'{env}.yml'))
+        assert not os.path.isfile(os.path.join('config', f'{env}.yml')), \
+            "Test cannot be processed as environment exists (and should not !)"
 
         with pytest.raises(AssertionError):
-            import_sagemaker_params(env)
+            import_sagemaker_params(env, LIST_ALGORITHM[0])
 
 
 class SagemakerHandlerTests:
+    @patch.object(src.sagemaker_utils, 'CONFIG_PATH', os.path.join('tests', 'data'))
     @patch('src.sagemaker_utils.time.sleep')
     @patch('src.sagemaker_utils.get_image_uri')
     @patch('src.sagemaker_utils.sagemaker.estimator.Estimator')
@@ -136,10 +133,11 @@ class SagemakerHandlerTests:
         params = {'run_name': 'test-sm'}
         params['df_jobs'] = generate_df_jobs(list_cutoff=LIST_CUTOFF,
                                              run_name=RUN_NAME,
-                                             algorithm=ALGORITHM,
+                                             list_algorithm=LIST_ALGORITHM,
                                              refined_data_specific_path=REFINED_DATA_SPECIFIC_PATH
                                              )
-        params.update(import_sagemaker_params('testing'))
+
+        params.update(import_sagemaker_params('testing', LIST_ALGORITHM[0]))
 
         sh = SagemakerHandler(**params)
 

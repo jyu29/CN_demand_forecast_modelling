@@ -1,7 +1,5 @@
-import os
 import logging
-
-import pandas as pd
+import os
 
 import src.data_handler as dh
 import src.sagemaker_utils as su

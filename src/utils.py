@@ -211,7 +211,7 @@ def write_df_to_parquet_on_s3(df, bucket, filename, index=False, verbose=False, 
     buffer = io.BytesIO()
     df.to_parquet(buffer, index=index)
     boto3.resource('s3', region_name=region_name).Object(bucket, filename).put(Body=buffer.getvalue())
-    
+
 
 def import_modeling_parameters(environment: str) -> dict:
     """Handler to import modeling configuration from YML file
