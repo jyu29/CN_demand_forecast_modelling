@@ -123,8 +123,10 @@ class SagemakerHandlerTests:
                      time_sleep_mocker
                      ):
 
-        d = {'TrainingJobStatus': 'Completed'}
-        session_mocker.return_value.describe_training_job.return_value.__getitem__.side_effect = d.__getitem__
+        training_dict = {'TrainingJobStatus': 'Completed'}
+        transform_dict = {'TransformJobStatus': 'Completed'}
+        session_mocker.return_value.describe_training_job.return_value.__getitem__.side_effect = training_dict.__getitem__
+        session_mocker.return_value.describe_transform_job.return_value.__getitem__.side_effect = transform_dict.__getitem__
         estimator_mocker.return_value.latest_training_job.job_name = 'foo'
 
         params = {}
@@ -140,5 +142,6 @@ class SagemakerHandlerTests:
 
         try:
             sh.launch_training_jobs()
+            sh.launch_transform_jobs()
         except Exception:
             pytest.fail("Test failed on nominal case.")
