@@ -1,35 +1,18 @@
-import argparse
 import os
-
 import pandas as pd
 
-from arima_functions import fit_predict_all_ts, write_forecast_df_on_s3
+from sagemaker_arima_functions import (import_parameters, fit_predict_all_ts, write_forecast_df_on_s3)
 
 if __name__ == "__main__":
     
-    parser = argparse.ArgumentParser()
+    # Get parameters
+    config_params, hyperparameters = import_parameters(os.environ['HPS_FILE_PATH'])
     
-    # Config params
-    parser.add_argument("--input_file_name", type=str)
-    parser.add_argument("--s3_ouput_path", type=str)
-    parser.add_argument("--cutoff", type=int)
-    
-    # Model params
-    parser.add_argument("--prediction_length", type=int, default=104)
-    parser.add_argument("--context_length", type=int, default=156)
-    parser.add_argument("--fourier_seasonal_period", type=int, default=52)
-    parser.add_argument("--fourier_order", type=int, default=None)
-    parser.add_argument("--arima_differencing_order", type=int, default=None)
-    parser.add_argument("--arima_criterion", type=str, default='aic')
-    parser.add_argument("--arima_optimizer", type=str, default='lbfgs')
-    
-    params = parser.parse_args()
-
     # Load input df
-    df_predict = pd.read_parquet(os.path.join(os.environ["SM_CHANNEL_TRAINING"], params['input_file_name']))
-    
-    # Get forecasts
-    df_forecast = fit_predict_all_ts(df_predict, params, num_cpus=os.environ['SM_NUM_CPUS'])
+    df_predict = pd.read_parquet(os.path.join(os.environ['INPUT_DATA_DIR'], config_params['input_file_name']))
+
+    # Calculate forecasts
+    df_forecast = fit_predict_all_ts(df_predict, hyperparameters)
     
     # Write forecasts on s3
-    write_forecast_df_on_s3(df_forecast, params)
+    write_forecast_df_on_s3(df_forecast, config_params['s3_output_path'], config_params['input_file_name'])

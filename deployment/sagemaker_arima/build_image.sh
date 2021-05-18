@@ -20,7 +20,7 @@ fi
 $(aws ecr get-login --region ${region} --registry-ids ${account} --no-include-email)
 
 # Build the docker image locally with the image name and then push it to ECR with the full name
-docker build --no-cache --force-rm --pull --file 'deployment/arima/Dockerfile' -t ${image_name} .
+docker build --no-cache --force-rm --pull --file 'deployment/sagemaker_arima/Dockerfile' -t ${image_name} .
 docker tag ${image_name} ${fullname}
 docker push ${fullname}
 
