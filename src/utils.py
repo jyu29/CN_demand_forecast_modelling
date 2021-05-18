@@ -109,6 +109,32 @@ def read_yml(file_path):
     return yaml_dict
 
 
+def read_json(file_path):
+    """
+    Read a local JSON file and return a python dictionnary
+    :param file_path: (string) full path to the JSON file
+    :return: (dict) data loaded
+    """
+    with open(file_path) as f:
+        return json.load(f)
+
+
+def read_jsonline_s3(bucket, file_path):
+    """
+    Read a JSONLINE file hosted on a S3 bucket, load and return as pandas dataframe
+    :param bucket: (string) S3 source bucket
+    :param file_path: (string) full path to the JSONLINE within this S3 bucket
+    :return: (pandas DataFrame) data loaded
+    """
+    fs = s3fs.S3FileSystem()
+    s3_uri = to_uri(bucket, file_path)
+
+    with fs.open(s3_uri, 'r', encoding='utf-8') as f:
+        data = pd.read_json(f, orient='records', lines=True)
+        
+    return data
+
+
 def read_csv_s3(bucket, file_path, header='infer', sep=',', parse_dates=False, names=None, usecols=None,
                 compression='infer', escapechar=None):
     """
@@ -171,7 +197,7 @@ def write_str_to_file_on_s3(string, bucket, dir_path, verbose=False):
         return resp
 
 
-def write_df_to_parquet_on_s3(df, bucket, filename, index=False, verbose=False):
+def write_df_to_parquet_on_s3(df, bucket, filename, index=False, verbose=False, region_name='eu-west-1'):
     """
     Write an in-memory pandas DataFrame to a parquet file on a S3 bucket
     :param dataframe: (pandas DataFrame) the data to save
@@ -181,10 +207,10 @@ def write_df_to_parquet_on_s3(df, bucket, filename, index=False, verbose=False):
     """
     if verbose:
         print("Writing {} records to {}".format(len(df), to_uri(bucket, filename)))
-    
+
     buffer = io.BytesIO()
     df.to_parquet(buffer, index=index)
-    boto3.resource('s3').Object(bucket, filename).put(Body=buffer.getvalue())
+    boto3.resource('s3', region_name=region_name).Object(bucket, filename).put(Body=buffer.getvalue())
     
 
 def import_modeling_parameters(environment: str) -> dict:
@@ -201,12 +227,14 @@ def import_modeling_parameters(environment: str) -> dict:
 
     params = read_yml(params_full_path)
 
-    data_params = {'refined_data_global_bucket': params['buckets']['refined_data_global'],
-                   'refined_data_specific_bucket': params['buckets']['refined_data_specific'],
-                   'refined_global_path': params['paths']['refined_global_path'],
-                   'refined_specific_path': params['paths']['refined_specific_path'],
-                   'algorithm': params['modeling_parameters']['algorithm']
-                   }
+    data_params = {
+        'refined_data_global_bucket': params['buckets']['refined_data_global'],
+        'refined_data_specific_bucket': params['buckets']['refined_data_specific'],
+        'refined_global_path': params['paths']['refined_global_path'],
+        'refined_specific_path': params['paths']['refined_specific_path'],
+        'algorithm': params['modeling_parameters']['algorithm'],
+        'deepar_arima_stacking': params['modeling_parameters']['deepar_arima_stacking']
+    }
 
     return data_params
 
@@ -280,18 +308,24 @@ def check_list_cutoff(list_cutoff: Union[str, int, list]) -> list:
     return list_cutoff
 
 
-def check_run_name(run_name: str) -> None:
+def check_run_name(run_name, check_reserved_words=True):
     """
-    Checks if `run_name` matches Sagemaker's regex on job_name.
+    Checks if `run_name` matches Sagemaker's regex on job_name and not contain a reserved word.
 
     Args:
         run_name (str): Name to check the regez on.
+        check_reserved_words (bool): check or not if run_name contains reserved words
     """
     assert isinstance(run_name, (str)), "Run_name should be a string"
+
     job_name_regex = "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
     rule = re.compile(job_name_regex)
-
     assert rule.match(run_name), f"Run name {run_name} doesn't match Sagemaker Regex {job_name_regex}"
+
+    if check_reserved_words:
+        assert all(s not in run_name for s in ['deepar', 'arima', 'input', 'output', 'model']), \
+        "Run name must not contain any reserved words: ['deepar', 'arima', 'input', 'output', 'model']"
+
 
 def check_dataframe_equality(df1, df2):
     """Checks dataframes equality
