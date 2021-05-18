@@ -61,7 +61,7 @@ def generate_df_jobs(list_cutoff: list,
         
         dict_job = {}
         base_job_name = f'{run_name}-{algorithm}-{cutoff}'
-        check_run_name(base_job_name)
+        check_run_name(base_job_name, check_reserved_words=False)
         
         # Set file extension
         file_extension = 'parquet' # default
@@ -135,16 +135,16 @@ def import_sagemaker_params(environment: str,
        
     # Optionnal params
     if 'transform_instance_count' in params['modeling_parameters']['algorithm'][algorithm]:
-        sagemaker_params['algorithm_params'][algorithm].update({
+        sagemaker_params.update({
             'transform_instance_count': params['modeling_parameters']['algorithm'][algorithm]['transform_instance_count'],
             'transform_instance_type': params['modeling_parameters']['algorithm'][algorithm]['transform_instance_type'],
             'transform_max_instances': params['modeling_parameters']['algorithm'][algorithm]['transform_max_instances'],
             'max_concurrent_transforms': params['modeling_parameters']['algorithm'][algorithm]['max_concurrent_transforms']
         })
-            
+
     return sagemaker_params
 
-        
+
 class SagemakerHandler:
     """
     Sagemaker API handler. Allows for training and transform jobs.
@@ -194,13 +194,13 @@ class SagemakerHandler:
         self.train_instance_type = train_instance_type
         self.train_max_instances = train_max_instances
         self.sagemaker_session = sagemaker.Session()
-        
+
         if transform_instance_count:
             self.transform_instance_count = transform_instance_count
             self.transform_instance_type = transform_instance_type
             self.transform_max_instances = transform_max_instances
             self.max_concurrent_transforms = max_concurrent_transforms
-    
+
         if train_use_spot_instances:
             self.train_max_wait = 3600
             self.train_max_run = 3600
@@ -247,8 +247,7 @@ class SagemakerHandler:
                     
                     if job['algorithm'] == 'arima':
                         job_hyperparameters['input_file_name'] = os.path.basename(job['train_path'])
-                        job_hyperparameters['s3_ouput_path'] = job['output_path']
-                        job_hyperparameters['cutoff'] = job['cutoff']
+                        job_hyperparameters['s3_output_path'] = job['output_path']
                         
                     estimator.set_hyperparameters(**job_hyperparameters)
                     
