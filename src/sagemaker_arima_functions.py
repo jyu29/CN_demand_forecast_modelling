@@ -29,8 +29,9 @@ def import_parameters(hps_file_path):
     hyperparameters = {
         'prediction_length': int(params['prediction_length']),
         'fourier_seasonal_period': int(params['fourier_seasonal_period']),
-        'fourier_order': int(params['fourier_order']),
-        'arima_differencing_order': int(params['arima_differencing_order']),
+        'fourier_order': int(params['fourier_order']) if params['fourier_order'] != 'None' else None,
+        'arima_differencing_order': int(params['arima_differencing_order']) \
+                                    if params['arima_differencing_order'] != 'None' else None,
         'arima_criterion': params['arima_criterion'],
         'arima_optimizer': params['arima_optimizer']
     }
