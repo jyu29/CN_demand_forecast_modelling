@@ -142,22 +142,9 @@ def cold_start_rec(df,
     complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) - pd.to_datetime(complete_ts['date'])
                               ) / np.timedelta64(1, 'W')).astype(int) + 1
 
-    # Estimate the implementation period: while fake sales quantity > sales quantity
-    complete_ts['is_sales_quantity_sup'] = complete_ts['sales_quantity'] > complete_ts['fake_sales_quantity']
+    # Update sales quantity from 'rec_length' weeks ago to the end of the implementation period: age 8
+    cond = (complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 8)
 
-    end_impl_period = complete_ts[complete_ts['is_sales_quantity_sup']] \
-        .groupby('model_id') \
-        .agg(end_impl_period=('age', 'min')) \
-        .reset_index()
-
-    complete_ts = pd.merge(complete_ts, end_impl_period, how='left')
-
-    # Update sales quantity from 'rec_length' weeks ago to the end of the implementation period
-    cond = ((complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 0)
-            ) | ((complete_ts['length'] <= rec_length
-                  ) & (complete_ts['age'] > 0
-                       ) & (complete_ts['age'] < complete_ts['end_impl_period'])
-                 )
     complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
     complete_ts['is_rec'] = np.where(cond, 1, 0)
 
