@@ -156,45 +156,39 @@ def default_refiningparams():
     return refining_params
 
 
-@pytest.fixture()
-@patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
-def default_datahandler():
-    refining_params = import_refining_config(environment=ENVIRONMENT,
-                                             algorithm=ALGORITHM,
-                                             cutoff=CUTOFF,
-                                             train_path=TRAIN_PATH,
-                                             predict_path=PREDICT_PATH
-                                             )
-
-    data_handler = DataHandler(base_data=base_data,
-                               static_features=static_features,
-                               global_dynamic_features=global_dynamic_features,
-                               specific_dynamic_features=specific_dynamic_features,
-                               **refining_params
-                               )
-
-    return data_handler
-
-
 class DataHandlerImportBaseDataTests:
-    def test_date_parsing(self, default_datahandler):
-        default_datahandler.process_input_data()
+    def test_date_parsing(self, default_refiningparams):
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=static_features,
+                                   global_dynamic_features=global_dynamic_features,
+                                   specific_dynamic_features=specific_dynamic_features,
+                                   **default_refiningparams
+                                   )
+
+        data_handler.process_input_data()
 
         try:
-            assert ptypes.is_datetime64_ns_dtype(default_datahandler.base_data['model_week_sales']['date'])
+            assert ptypes.is_datetime64_ns_dtype(data_handler.base_data['model_week_sales']['date'])
         except AssertionError:
             pytest.fail("Test failed on nominal case")
 
 
 class DataHandlerRefiningSpecificTests:
-    def test_nominal(self, default_datahandler):
-        default_datahandler.process_input_data()
+    def test_nominal(self, default_refiningparams):
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=static_features,
+                                   global_dynamic_features=global_dynamic_features,
+                                   specific_dynamic_features=specific_dynamic_features,
+                                   **default_refiningparams
+                                   )
+
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
 
-        target, static_data, dynamic_data = default_datahandler.refining_specific()
+        target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
             assert check_dataframe_equality(target, expected_target)
@@ -274,13 +268,14 @@ class DataHandlerRefiningSpecificTests:
             pytest.fail("Test failed on nominal case.")
 
     def test_nominal_norec_no_feat(self, default_refiningparams):
-        default_refiningparams['rec_cold_start'] = False
+        refining_params = default_refiningparams.copy()
+        refining_params['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **default_refiningparams
+                                   **refining_params
                                    )
 
         data_handler.process_input_data()
@@ -297,18 +292,20 @@ class DataHandlerRefiningSpecificTests:
             pytest.fail("Test failed on nominal case.")
 
     def test_nominal_norec_only_specific_dyn_feat(self, default_refiningparams):
-        default_refiningparams['rec_cold_start'] = False
+        refining_params = default_refiningparams.copy()
+        refining_params['rec_cold_start'] = False
 
         pass
 
     def test_nominal_norec_only_global_dyn_feat(self, default_refiningparams):
-        default_refiningparams['rec_cold_start'] = False
+        refining_params = default_refiningparams.copy()
+        refining_params['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=global_dynamic_features,
                                    specific_dynamic_features=None,
-                                   **default_refiningparams
+                                   **refining_params
                                    )
 
         data_handler.process_input_data()
@@ -333,13 +330,14 @@ class DataHandlerRefiningSpecificTests:
             pytest.fail("Test failed on nominal case.")
 
     def test_nominal_norec_only_static_feat(self, default_refiningparams):
-        default_refiningparams['rec_cold_start'] = False
+        refining_params = default_refiningparams.copy()
+        refining_params['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
                                    static_features=static_features,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **default_refiningparams
+                                   **refining_params
                                    )
 
         data_handler.process_input_data()
