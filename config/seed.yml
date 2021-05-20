@@ -6,8 +6,8 @@ paths:
   refined_specific_path: specific/
 refining_specific_parameters:
   patch_first_lockdown: True
+  rec_cold_start: True
   rec_length: 156
-  rec_cold_start: true 
   rec_cold_start_group:
   - family_id
 modeling_parameters:
@@ -60,7 +60,7 @@ modeling_parameters:
         context_length: 156
         fourier_seasonal_period: 52
         fourier_order: 10
-        arima_differencing_order: 1
+        arima_differencing_order: None
         arima_criterion: aicc
         arima_optimizer: nm
       train_instance_count: 1
