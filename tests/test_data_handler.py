@@ -183,12 +183,11 @@ class DataHandlerRefiningSpecificTests:
                                    )
 
         data_handler.process_input_data()
+        target, static_data, dynamic_data = data_handler.refining_specific()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
-
-        target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
             assert check_dataframe_equality(target, expected_target)
@@ -364,16 +363,12 @@ class DataHandlerDeepArFormatingTests:
                                                   orient='records',
                                                   lines=True
                                                   )
-        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
         with open(os.path.join(DATA_PATH, 'predict_jsonline'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
                                                     lines=True
                                                     )
-        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
 
         # Actual
         data_handler = DataHandler(base_data=base_data,
@@ -395,12 +390,9 @@ class DataHandlerDeepArFormatingTests:
                                                                           data_handler.df_static_features,
                                                                           data_handler.df_dynamic_features
                                                                           )
+
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
         df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
 
         try:
             assert check_dataframe_equality(df_expected_train_jsonline, df_train_jsonline)
@@ -416,16 +408,12 @@ class DataHandlerDeepArFormatingTests:
                                                   orient='records',
                                                   lines=True
                                                   )
-        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
         with open(os.path.join(DATA_PATH, 'predict_jsonline_isrec_no_dynamic_feat'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
                                                     lines=True
                                                     )
-        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
 
         # Actual
         data_handler = DataHandler(base_data=base_data,
@@ -445,15 +433,11 @@ class DataHandlerDeepArFormatingTests:
                                                                           data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
         df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
 
         try:
-            assert df_expected_train_jsonline.equals(df_train_jsonline)
-            assert df_expected_predict_jsonline.equals(df_predict_jsonline)
+            assert check_dataframe_equality(df_expected_train_jsonline, df_train_jsonline)
+            assert check_dataframe_equality(df_expected_predict_jsonline, df_predict_jsonline)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
