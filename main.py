@@ -1,60 +1,127 @@
-"""
-Python script to orchestrate demand forecast modeling:
-- Engineers features & prepares data in DeepAR format
-- Creates Training Docker Image
-- Pops instance to  preprocess train a DeepAR model, then output predictions
-@author: benbouillet ( Benjamin Bouillet )
-"""
-import argparse
-import json
+import logging
+import os
 
+import src.data_handler as dh
 import src.sagemaker_utils as su
+import src.model_stacking as ms
 import src.utils as ut
 
 
-if __name__ == '__main__':
-    
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--environment', choices=['dev', 'prod', 'dev_old'], default="dev",
-                        help="'dev' or 'prod', to set the right configurations")
-    parser.add_argument('--list_cutoff', default=str('today'), help="List of cutoffs in format YYYYWW between brackets or 'today'")
-    parser.add_argument('--run_name', help="Run Name for file hierarchy purpose")
-    args = parser.parse_args()
+logger = logging.getLogger(__name__)
+logging.basicConfig()
+logger.setLevel(logging.INFO)
 
-    # Defining variables
-    environment = args.environment
-    if args.list_cutoff == 'today':
-        list_cutoff = [ut.get_current_week()]
-    else:
-        list_cutoff = json.loads(args.list_cutoff)
+if __name__ == "__main__":
 
-    for cutoff in list_cutoff:
-        assert type(cutoff) == int
-    
-    assert type(args.run_name) == str
-    run_name = args.run_name
+    # Modeling arguments handling
+    ENVIRONMENT = os.environ['run_env']
+    LIST_CUTOFF = os.environ['list_cutoff']
+    RUN_NAME = os.environ['run_name']
 
-    # import parameters
-    params_full_path = f"config/{environment}.yml"
-    params = ut.read_yml(params_full_path)
+    ut.check_environment(ENVIRONMENT)
+    list_cutoff = ut.check_list_cutoff(LIST_CUTOFF)
+    ut.check_run_name(RUN_NAME)
 
-    # Getting variables for code readability below
-    algo = params['functional_parameters']['algorithm']
+    # Logging level
+    try:
+        LOGGING_LVL = os.environ['logging_lvl']
+        assert LOGGING_LVL in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], 'Wrong logging level'
+    except KeyError:
+        LOGGING_LVL = 'INFO'
+        logger.info("Logging level set to INFO")
 
-    # Building custom full paths
-    refined_specific_path = params['paths']['refined_specific_path']
-    params['paths']['refined_specific_path_full'] = f"{refined_specific_path}{run_name}/{algo}/"
+    for module in [dh, su, ms]:
+        module.logger.setLevel(LOGGING_LVL)
 
-    print(f"Starting modeling run '{run_name}' for cutoff {list_cutoff} in {environment} environment with parameters:")
-    ut.pretty_print_dict(params)
+    # Constants
+    main_params = ut.import_modeling_parameters(ENVIRONMENT)
+    REFINED_DATA_GLOBAL_BUCKET = main_params['refined_data_global_bucket']
+    REFINED_DATA_SPECIFIC_BUCKET = main_params['refined_data_specific_bucket']
+    REFINED_DATA_GLOBAL_PATH = main_params['refined_global_path']
+    REFINED_DATA_SPECIFIC_PATH = main_params['refined_specific_path']
+    REFINED_DATA_SPECIFIC_URI = ut.to_uri(REFINED_DATA_SPECIFIC_BUCKET, REFINED_DATA_SPECIFIC_PATH)
+    MODEL_WEEK_SALES_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_sales"
+    MODEL_WEEK_TREE_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_tree"
+    MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
+    IMPUTED_SALES_LOCKDOWN_1_PATH = f"{REFINED_DATA_GLOBAL_PATH}imputed_sales_lockdown_1.parquet"
+    LIST_ALGORITHM = list(main_params['algorithm'])
+    DEEPAR_ARIMA_STACKING = main_params['deepar_arima_stacking']
 
-    # SAGEMAKER #
-    sm_handler = su.SagemakerHandler(run_name, list_cutoff, params)
-    # Generating df_jobs
-    sm_handler.generate_df_jobs()
-    # Feature generation
-    sm_handler.generate_input_data_all_cutoffs()
-    # Training Job
-    sm_handler.launch_training_jobs()
-    # Transform job
-    sm_handler.launch_transform_jobs()
+    # Data loading
+    df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
+    df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_TREE_PATH)
+    df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_MRP_PATH)
+    df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, IMPUTED_SALES_LOCKDOWN_1_PATH)
+
+    # Initialize df_jobs
+    df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
+                                  run_name=RUN_NAME,
+                                  list_algorithm=LIST_ALGORITHM,
+                                  refined_data_specific_path=REFINED_DATA_SPECIFIC_URI
+                                  )
+
+    # Generate modeling specific data
+    for _, job in df_jobs.iterrows():
+
+        # Parameters init
+        algorithm = job['algorithm']
+        cutoff = job['cutoff']
+        train_path = job['train_path']
+        predict_path = job['predict_path']
+
+        refining_params = dh.import_refining_config(environment=ENVIRONMENT,
+                                                    algorithm=algorithm,
+                                                    cutoff=cutoff,
+                                                    train_path=train_path,
+                                                    predict_path=predict_path
+                                                    )
+
+        # Data/Features init
+        base_data = {
+            'model_week_sales': df_model_week_sales,
+            'model_week_tree': df_model_week_tree,
+            'model_week_mrp': df_model_week_mrp,
+            'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
+        }
+
+        df_static_tree = df_model_week_tree[df_model_week_tree['week_id'] == cutoff].copy()
+
+        static_features = {
+            'family_id': df_static_tree[['model_id', 'family_id']],
+            'sub_department_id': df_static_tree[['model_id', 'sub_department_id']],
+            'department_id': df_static_tree[['model_id', 'department_id']],
+            'univers_id': df_static_tree[['model_id', 'univers_id']],
+            'product_nature_id': df_static_tree[['model_id', 'product_nature_id']]
+        }
+
+        global_dynamic_features = None
+
+        specific_dynamic_features = None
+
+        # Execute data refining
+        refining_handler = dh.DataHandler(base_data=base_data,
+                                          static_features=static_features,
+                                          global_dynamic_features=global_dynamic_features,
+                                          specific_dynamic_features=specific_dynamic_features,
+                                          **refining_params
+                                          )
+
+        refining_handler.execute_data_refining_specific()
+
+    # Launch Fit & Transform
+    for algorithm in LIST_ALGORITHM:
+
+        df_jobs_algo = df_jobs[df_jobs['algorithm'] == algorithm].copy()
+
+        sagemaker_params = su.import_sagemaker_params(environment=ENVIRONMENT, algorithm=algorithm)
+
+        modeling_handler = su.SagemakerHandler(df_jobs=df_jobs_algo, **sagemaker_params)
+
+        modeling_handler.launch_training_jobs()
+
+        if algorithm == 'deepar':
+            modeling_handler.launch_transform_jobs()
+
+    # Calculate model stacking
+    if DEEPAR_ARIMA_STACKING:
+        ms.calculate_deepar_arima_stacking(df_jobs)
