@@ -1,16 +1,20 @@
 import os
+from unittest.mock import patch
+
 import pandas as pd
 import pandas.api.types as ptypes
 import pytest
-from pytest import mark
 
+import src.data_handler
 from src.data_handler import DataHandler, import_refining_config
+from src.utils import check_dataframe_equality
 
 
 DATA_PATH = os.path.join('tests', 'data')
 ENVIRONMENT = 'testing'
 CUTOFF = 202001
 RUN_NAME = 'testing_run_name'
+ALGORITHM = 'deepar'
 TRAIN_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
 PREDICT_PATH = 's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
 REFINED_TARGET_PATH = os.path.join(DATA_PATH, "refining_target.csv")
@@ -52,40 +56,33 @@ global_dynamic_features = {'store_openings': {'dataset': df_store_openings,
 
 specific_dynamic_features = None
 
-refining_params = import_refining_config(environment=ENVIRONMENT,
-                                         cutoff=CUTOFF,
-                                         run_name=RUN_NAME,
-                                         train_path=TRAIN_PATH,
-                                         predict_path=PREDICT_PATH
-                                         )
 
-data_handler = DataHandler(base_data=base_data,
-                           static_features=static_features,
-                           global_dynamic_features=global_dynamic_features,
-                           specific_dynamic_features=specific_dynamic_features,
-                           **refining_params
-                           )
-
-
-@mark.data_handler
 class ImportRefiningConfigTests():
+    @patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
     def test_nominal(self):
-        expected_config = {'cutoff': 202001,
+        config_train_path = \
+            's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-20201/input/train_202001.json'
+        config_predict_path = \
+            's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
+        expected_config = {'algorithm': 'deepar',
+                           'cutoff': 202001,
                            'patch_first_lockdown': True,
-                           'rec_cold_start': True,
                            'rec_length': 156,
+                           'rec_cold_start': True,
                            'rec_cold_start_group': ['family_id'],
                            'prediction_length': 52,
-                           'refined_global_bucket': 'fcst-refined-demand-forecast-dev',
-                           'refined_specific_bucket': 'fcst-refined-demand-forecast-dev',
-                           'output_paths': {'train_path': TRAIN_PATH, 'predict_path': PREDICT_PATH}
+                           'context_length': 52,
+                           'output_paths': {'train_path': config_train_path,
+                                            'predict_path': config_predict_path
+                                            }
                            }
 
         config = import_refining_config(environment=ENVIRONMENT,
+                                        algorithm=ALGORITHM,
                                         cutoff=CUTOFF,
-                                        run_name=RUN_NAME,
                                         train_path=TRAIN_PATH,
-                                        predict_path=PREDICT_PATH)
+                                        predict_path=PREDICT_PATH
+                                        )
 
         try:
             assert expected_config == config
@@ -93,43 +90,82 @@ class ImportRefiningConfigTests():
             pytest.fail("Test failed on nominal case")
 
     def test_wrong_type(self):
-        environment = 202001
-        cutoff = 'test'
-        run_name = {'foo': 'bar'}
-        train_path = ['wrong_path', 1234]
-
         with pytest.raises(AssertionError):
-            import_refining_config(environment=environment,
+            import_refining_config(environment=123456,
+                                   algorithm=ALGORITHM,
                                    cutoff=CUTOFF,
-                                   run_name=RUN_NAME,
                                    train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
 
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
-                                   cutoff=cutoff,
-                                   run_name=RUN_NAME,
+                                   algorithm=('algo1', 1234),
+                                   cutoff=CUTOFF,
                                    train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
 
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
-                                   cutoff=CUTOFF,
-                                   run_name=run_name,
+                                   algorithm=ALGORITHM,
+                                   cutoff='202107',
                                    train_path=TRAIN_PATH,
                                    predict_path=PREDICT_PATH)
 
         with pytest.raises(AssertionError):
             import_refining_config(environment=ENVIRONMENT,
+                                   algorithm=ALGORITHM,
                                    cutoff=CUTOFF,
-                                   run_name=RUN_NAME,
-                                   train_path=train_path,
+                                   train_path=['wrong_path', 1234],
                                    predict_path=PREDICT_PATH)
+
+        with pytest.raises(AssertionError):
+            import_refining_config(environment=ENVIRONMENT,
+                                   algorithm=ALGORITHM,
+                                   cutoff=CUTOFF,
+                                   train_path=TRAIN_PATH,
+                                   predict_path=[int, 'wrong_path', 1234])
+
+    def test_not_supported_algorithm(self):
+        with pytest.raises(AssertionError):
+            import_refining_config(environment=ENVIRONMENT,
+                                   algorithm='my_unknown_algorithm',
+                                   cutoff=CUTOFF,
+                                   train_path=TRAIN_PATH,
+                                   predict_path=PREDICT_PATH
+                                   )
+
+    def test_not_known_environment(self):
+        with pytest.raises(FileNotFoundError):
+            import_refining_config(environment='my_unknown_environment',
+                                   algorithm=ALGORITHM,
+                                   cutoff=CUTOFF,
+                                   train_path=TRAIN_PATH,
+                                   predict_path=PREDICT_PATH
+                                   )
+
+
+@pytest.fixture()
+@patch.object(src.data_handler, 'CONFIG_PATH', os.path.join('tests', 'data'))
+def default_refiningparams():
+    refining_params = import_refining_config(environment=ENVIRONMENT,
+                                             algorithm=ALGORITHM,
+                                             cutoff=CUTOFF,
+                                             train_path=TRAIN_PATH,
+                                             predict_path=PREDICT_PATH
+                                             )
+    return refining_params
 
 
 class DataHandlerImportBaseDataTests:
-    def test_date_parsing(self):
-        data_handler.import_base_data()
+    def test_date_parsing(self, default_refiningparams):
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=static_features,
+                                   global_dynamic_features=global_dynamic_features,
+                                   specific_dynamic_features=specific_dynamic_features,
+                                   **default_refiningparams
+                                   )
+
+        data_handler.process_input_data()
 
         try:
             assert ptypes.is_datetime64_ns_dtype(data_handler.base_data['model_week_sales']['date'])
@@ -138,31 +174,37 @@ class DataHandlerImportBaseDataTests:
 
 
 class DataHandlerRefiningSpecificTests:
-    def test_nominal(self):
-        data_handler.import_base_data()
+    def test_nominal(self, default_refiningparams):
+        data_handler = DataHandler(base_data=base_data,
+                                   static_features=static_features,
+                                   global_dynamic_features=global_dynamic_features,
+                                   specific_dynamic_features=specific_dynamic_features,
+                                   **default_refiningparams
+                                   )
+
+        data_handler.process_input_data()
+        target, static_data, dynamic_data = data_handler.refining_specific()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
 
-        target, static_data, dynamic_data = data_handler.refining_specific()
-
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
-            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
+            assert check_dataframe_equality(static_data, expected_static_data)
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_isrec_no_feat(self):
+    def test_nominal_isrec_no_feat(self, default_refiningparams):
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id', 'model_id', 'is_rec']]
@@ -170,24 +212,24 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
     def test_nominal_isrec_only_specific_dyn_feat(self):
         pass
 
-    def test_nominal_isrec_only_global_dyn_feat(self):
+    def test_nominal_isrec_only_global_dyn_feat(self, default_refiningparams):
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=global_dynamic_features,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
@@ -195,21 +237,21 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_isrec_only_static_feat(self):
+    def test_nominal_isrec_only_static_feat(self, default_refiningparams):
         data_handler = DataHandler(base_data=base_data,
                                    static_features=static_features,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
         expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
@@ -218,13 +260,14 @@ class DataHandlerRefiningSpecificTests:
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
-            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
-            assert dynamic_data.reset_index(drop=True).equals(expected_dynamic_data.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
+            assert check_dataframe_equality(static_data, expected_static_data)
+            assert check_dataframe_equality(dynamic_data, expected_dynamic_data)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_norec_no_feat(self):
+    def test_nominal_norec_no_feat(self, default_refiningparams):
+        refining_params = default_refiningparams.copy()
         refining_params['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
@@ -234,25 +277,27 @@ class DataHandlerRefiningSpecificTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
-        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_target = pd.read_csv(os.path.join(DATA_PATH, 'refining_target_no_rec.csv'), sep=';')
 
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
             assert dynamic_data is None
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_norec_only_specific_dyn_feat(self):
+    def test_nominal_norec_only_specific_dyn_feat(self, default_refiningparams):
+        refining_params = default_refiningparams.copy()
         refining_params['rec_cold_start'] = False
 
         pass
 
-    def test_nominal_norec_only_global_dyn_feat(self):
+    def test_nominal_norec_only_global_dyn_feat(self, default_refiningparams):
+        refining_params = default_refiningparams.copy()
         refining_params['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
@@ -262,9 +307,9 @@ class DataHandlerRefiningSpecificTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
-        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_target = pd.read_csv(os.path.join(DATA_PATH, 'refining_target_no_rec.csv'), sep=';')
         expected_dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')[['week_id',
                                                                             'model_id',
                                                                             'perc_store_open',
@@ -276,14 +321,15 @@ class DataHandlerRefiningSpecificTests:
         test_dynamic_data = dynamic_data.merge(expected_dynamic_data, on=['week_id', 'model_id'])
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
             assert static_data is None
             assert (test_dynamic_data['perc_store_open_x'] == test_dynamic_data['perc_store_open_y']).all()
             assert (test_dynamic_data['holidays_x'] == test_dynamic_data['holidays_y']).all()
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_norec_only_static_feat(self):
+    def test_nominal_norec_only_static_feat(self, default_refiningparams):
+        refining_params = default_refiningparams.copy()
         refining_params['rec_cold_start'] = False
 
         data_handler = DataHandler(base_data=base_data,
@@ -293,23 +339,23 @@ class DataHandlerRefiningSpecificTests:
                                    **refining_params
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
-        expected_target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
+        expected_target = pd.read_csv(os.path.join(DATA_PATH, 'refining_target_no_rec.csv'), sep=';')
         expected_static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
 
         target, static_data, dynamic_data = data_handler.refining_specific()
 
         try:
-            assert target.reset_index(drop=True).equals(expected_target.reset_index(drop=True))
-            assert static_data.reset_index(drop=True).equals(expected_static_data.reset_index(drop=True))
+            assert check_dataframe_equality(target, expected_target)
+            assert check_dataframe_equality(static_data, expected_static_data)
             assert dynamic_data is None
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
 
 class DataHandlerDeepArFormatingTests:
-    def test_nominal(self):
+    def test_nominal(self, default_refiningparams):
         # Expected
         with open(os.path.join(DATA_PATH, 'train_jsonline'), 'r') as f:
             expected_train_jsonline = f.read()
@@ -317,52 +363,44 @@ class DataHandlerDeepArFormatingTests:
                                                   orient='records',
                                                   lines=True
                                                   )
-        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
         with open(os.path.join(DATA_PATH, 'predict_jsonline'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
                                                     lines=True
                                                     )
-        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
 
         # Actual
-        refining_params['rec_cold_start'] = True
         data_handler = DataHandler(base_data=base_data,
                                    static_features=static_features,
                                    global_dynamic_features=global_dynamic_features,
                                    specific_dynamic_features=specific_dynamic_features,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_all_data()
+        data_handler.process_input_data()
         target = pd.read_csv(REFINED_TARGET_PATH, sep=';')
         static_data = pd.read_csv(REFINED_STATIC_PATH, sep=';')
         dynamic_data = pd.read_csv(REFINED_DYNAMIC_PATH, sep=';')
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             target, static_data, dynamic_data
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
+
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
         df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
 
         try:
-            assert df_expected_train_jsonline.equals(df_train_jsonline)
-            assert df_expected_predict_jsonline.equals(df_predict_jsonline)
+            assert check_dataframe_equality(df_expected_train_jsonline, df_train_jsonline)
+            assert check_dataframe_equality(df_expected_predict_jsonline, df_predict_jsonline)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_isrec_no_dynamic_feat(self):
+    def test_nominal_isrec_no_dynamic_feat(self, default_refiningparams):
         # Expected
         with open(os.path.join(DATA_PATH, 'train_jsonline_isrec_no_dynamic_feat'), 'r') as f:
             expected_train_jsonline = f.read()
@@ -370,49 +408,40 @@ class DataHandlerDeepArFormatingTests:
                                                   orient='records',
                                                   lines=True
                                                   )
-        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
         with open(os.path.join(DATA_PATH, 'predict_jsonline_isrec_no_dynamic_feat'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
                                                     lines=True
                                                     )
-        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
 
         # Actual
-        refining_params['rec_cold_start'] = True
         data_handler = DataHandler(base_data=base_data,
                                    static_features=static_features,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
         df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
 
         try:
-            assert df_expected_train_jsonline.equals(df_train_jsonline)
-            assert df_expected_predict_jsonline.equals(df_predict_jsonline)
+            assert check_dataframe_equality(df_expected_train_jsonline, df_train_jsonline)
+            assert check_dataframe_equality(df_expected_predict_jsonline, df_predict_jsonline)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_isrec_no_static_dynamic_feat(self):
+    def test_nominal_isrec_no_static_dynamic_feat(self, default_refiningparams):
         # Expected
         with open(os.path.join(DATA_PATH, 'train_jsonline_isrec_no_static_dynamic_feat'), 'r') as f:
             expected_train_jsonline = f.read()
@@ -420,101 +449,64 @@ class DataHandlerDeepArFormatingTests:
                                                   orient='records',
                                                   lines=True
                                                   )
-        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
         with open(os.path.join(DATA_PATH, 'predict_jsonline_isrec_no_static_dynamic_feat'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
                                                     lines=True
                                                     )
-        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
 
         # Actual
-        refining_params['rec_cold_start'] = True
         data_handler = DataHandler(base_data=base_data,
                                    static_features=None,
                                    global_dynamic_features=None,
                                    specific_dynamic_features=None,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_base_data()
+        data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
         train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
+                                                                          data_handler.df_static_features,
+                                                                          data_handler.df_dynamic_features
                                                                           )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
         df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
 
         try:
-            assert df_expected_train_jsonline.equals(df_train_jsonline)
-            assert df_expected_predict_jsonline.equals(df_predict_jsonline)
+            assert check_dataframe_equality(df_expected_train_jsonline, df_train_jsonline)
+            assert check_dataframe_equality(df_expected_predict_jsonline, df_predict_jsonline)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
 
-    def test_nominal_norec(self):
-        # Expected
-        with open(os.path.join(DATA_PATH, 'train_jsonline_norec'), 'r') as f:
-            expected_train_jsonline = f.read()
-        df_expected_train_jsonline = pd.read_json(expected_train_jsonline,
-                                                  orient='records',
-                                                  lines=True
-                                                  )
-        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
-        with open(os.path.join(DATA_PATH, 'predict_jsonline_norec'), 'r') as f:
-            expected_predict_jsonline = f.read()
-        df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
-                                                    orient='records',
-                                                    lines=True
-                                                    )
-        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
-
+    def test_norec_timeseries_too_short(self, default_refiningparams):
         # Actual
-        refining_params['rec_cold_start'] = False
+        default_refiningparams['rec_cold_start'] = False
         data_handler = DataHandler(base_data=base_data,
                                    static_features=static_features,
                                    global_dynamic_features=global_dynamic_features,
                                    specific_dynamic_features=specific_dynamic_features,
-                                   **refining_params
+                                   **default_refiningparams
                                    )
 
-        data_handler.import_all_data()
+        data_handler.process_input_data()
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
+        data_handler.df_target, data_handler.df_static_features, data_handler.df_dynamic_features = \
             data_handler.refining_specific()
 
-        train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
-                                                                          )
-        df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
-        df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
+        with pytest.raises(AssertionError):
+            train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
+                                                                              data_handler.df_static_features,
+                                                                              data_handler.df_dynamic_features
+                                                                              )
 
-        try:
-            assert df_expected_train_jsonline.equals(df_train_jsonline)
-            assert df_expected_predict_jsonline.equals(df_predict_jsonline)
-        except AssertionError:
-            pytest.fail("Test failed on nominal case.")
-
-    def test_nominal_norec_no_dynamic_feat(self):
+    def test_no_rec_nominal(self, default_refiningparams):
+        default_refiningparams['rec_cold_start'] = False
         # Expected
-        with open(os.path.join(DATA_PATH, 'train_jsonline_norec_no_dynamic_feat'), 'r') as f:
+        with open(os.path.join(DATA_PATH, 'train_jsonline_norec_nominal'), 'r') as f:
             expected_train_jsonline = f.read()
         df_expected_train_jsonline = pd.read_json(expected_train_jsonline,
                                                   orient='records',
@@ -522,7 +514,7 @@ class DataHandlerDeepArFormatingTests:
                                                   )
         df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
         df_expected_train_jsonline.reset_index(drop=True, inplace=True)
-        with open(os.path.join(DATA_PATH, 'predict_jsonline_norec_no_dynamic_feat'), 'r') as f:
+        with open(os.path.join(DATA_PATH, 'predict_jsonline_norec_nominal'), 'r') as f:
             expected_predict_jsonline = f.read()
         df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
                                                     orient='records',
@@ -532,82 +524,50 @@ class DataHandlerDeepArFormatingTests:
         df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
 
         # Actual
-        refining_params['rec_cold_start'] = False
-        data_handler = DataHandler(base_data=base_data,
-                                   static_features=static_features,
-                                   global_dynamic_features=None,
-                                   specific_dynamic_features=None,
-                                   **refining_params
-                                   )
+        df_model_week_sales_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_sales_long.csv"),
+                                               sep=';',
+                                               parse_dates=['date']
+                                               )
+        df_model_week_tree_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_tree_long.csv"), sep=';')
+        df_model_week_mrp_long = pd.read_csv(os.path.join(DATA_PATH, "model_week_mrp_long.csv"), sep=';')
 
-        data_handler.import_base_data()
+        base_data_long = {'model_week_sales': df_model_week_sales_long,
+                          'model_week_tree': df_model_week_tree_long,
+                          'model_week_mrp': df_model_week_mrp_long,
+                          'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
+                          }
 
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
-            data_handler.refining_specific()
+        df_static_tree_long = df_model_week_tree_long[df_model_week_tree_long['week_id'] == CUTOFF].copy()
 
-        train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
-                                                                          )
+        static_features_long = {'model_identifier': pd.DataFrame({'model_id': df_static_tree_long['model_id'],
+                                                                  'model_identifier': df_static_tree_long['model_id']}),
+                                'family_id': df_static_tree_long[['model_id', 'family_id']],
+                                'sub_department_id': df_static_tree_long[['model_id', 'sub_department_id']],
+                                'department_id': df_static_tree_long[['model_id', 'department_id']],
+                                'product_nature_id': df_static_tree_long[['model_id', 'product_nature_id']],
+                                'univers_id': df_static_tree_long[['model_id', 'univers_id']],
+                                }
+
+        data_handler_long = DataHandler(base_data=base_data_long,
+                                        static_features=static_features_long,
+                                        global_dynamic_features=global_dynamic_features,
+                                        specific_dynamic_features=specific_dynamic_features,
+                                        **default_refiningparams
+                                        )
+
+        data_handler_long.process_input_data()
+        data_handler_long.df_target, data_handler_long.df_static_features, data_handler_long.df_dynamic_features = \
+            data_handler_long.refining_specific()
+
+        train_jsonline, predict_jsonline = data_handler_long.deepar_formatting(data_handler_long.df_target,
+                                                                               data_handler_long.df_static_features,
+                                                                               data_handler_long.df_dynamic_features
+                                                                               )
         df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
         df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
 
         try:
-            assert df_expected_train_jsonline.equals(df_train_jsonline)
-            assert df_expected_predict_jsonline.equals(df_predict_jsonline)
-        except AssertionError:
-            pytest.fail("Test failed on nominal case.")
-
-    def test_nominal_norec_no_static_dynamic_feat(self):
-        # Expected
-        with open(os.path.join(DATA_PATH, 'train_jsonline_norec_no_static_dynamic_feat'), 'r') as f:
-            expected_train_jsonline = f.read()
-        df_expected_train_jsonline = pd.read_json(expected_train_jsonline,
-                                                  orient='records',
-                                                  lines=True
-                                                  )
-        df_expected_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_train_jsonline.reset_index(drop=True, inplace=True)
-        with open(os.path.join(DATA_PATH, 'predict_jsonline_norec_no_static_dynamic_feat'), 'r') as f:
-            expected_predict_jsonline = f.read()
-        df_expected_predict_jsonline = pd.read_json(expected_predict_jsonline,
-                                                    orient='records',
-                                                    lines=True
-                                                    )
-        df_expected_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_expected_predict_jsonline.reset_index(drop=True, inplace=True)
-
-        # Actual
-        refining_params['rec_cold_start'] = False
-        data_handler = DataHandler(base_data=base_data,
-                                   static_features=None,
-                                   global_dynamic_features=None,
-                                   specific_dynamic_features=None,
-                                   **refining_params
-                                   )
-
-        data_handler.import_base_data()
-
-        data_handler.df_target, data_handler.df_static_data, data_handler.df_dynamic_data = \
-            data_handler.refining_specific()
-
-        train_jsonline, predict_jsonline = data_handler.deepar_formatting(data_handler.df_target,
-                                                                          data_handler.df_static_data,
-                                                                          data_handler.df_dynamic_data
-                                                                          )
-        df_train_jsonline = pd.read_json(train_jsonline, orient='records', lines=True)
-        df_train_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_train_jsonline.reset_index(drop=True, inplace=True)
-        df_predict_jsonline = pd.read_json(predict_jsonline, orient='records', lines=True)
-        df_predict_jsonline.sort_values(by=['model_id'], inplace=True)
-        df_predict_jsonline.reset_index(drop=True, inplace=True)
-
-        try:
-            assert df_expected_train_jsonline.equals(df_train_jsonline)
-            assert df_expected_predict_jsonline.equals(df_predict_jsonline)
+            assert check_dataframe_equality(df_expected_train_jsonline, df_train_jsonline)
+            assert check_dataframe_equality(df_expected_predict_jsonline, df_predict_jsonline)
         except AssertionError:
             pytest.fail("Test failed on nominal case.")
