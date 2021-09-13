@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
 
-SUPPORTED_ALGORITHMS = ['deepar', 'arima']
+SUPPORTED_ALGORITHMS = ['deepar', 'arima', 'hw']
 CONFIG_PATH = 'config'
 
 
@@ -121,7 +121,7 @@ class DataHandler:
         self.output_paths = output_paths
 
         # Statistical algorithms ignore static features
-        if algorithm == 'arima':
+        if algorithm in ['arima', 'hw']:
             static_features = None
 
         # Base data init
@@ -230,6 +230,16 @@ class DataHandler:
             df_train = self.arima_formatting(self.df_target,
                                              df_dynamic_features=None  # ARIMAX not tested yet
                                              )
+            # Saving dataframe on S3
+            train_bucket, train_path = from_uri(self.output_paths['train_path'])
+
+            write_df_to_parquet_on_s3(df_train, train_bucket, f"{train_path}")
+            logger.info(f"Train parquet file saved at {self.output_paths['train_path']}")
+            
+        if self.algorithm == 'hw':
+            logger.info("Starting Holt-Winters formatting...")
+            df_train = self.hw_formatting(self.df_target)
+            
             # Saving dataframe on S3
             train_bucket, train_path = from_uri(self.output_paths['train_path'])
 
@@ -517,6 +527,22 @@ class DataHandler:
             logger.debug("Added dynamic features to `df_train`")
 
         df_train.sort_values(['model_id', 'week_id'], inplace=True)
+
+        return df_train
+    
+    def hw_formatting(self, df_target):
+        """Method formatting datasets to Holt-Winters-specific scheme.
+
+        Args:
+            df_target (pd.DataFrame): Temporal & model-specific dataset including target values up to instance cutoff
+
+        Returns:
+            df_train (pd.DataFrame): Holt-Winters-compliant pd.DataFrame for training & inference
+            """
+
+        df_train = df_target.copy()
+        df_train['date'] = week_id_to_date(df_train['week_id'])
+        df_train = df_train[['model_id', 'week_id', 'date', 'sales_quantity']].sort_values(['model_id', 'week_id'])
 
         return df_train
 
