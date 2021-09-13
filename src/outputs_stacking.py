@@ -17,10 +17,10 @@ def read_format_stacking_data(df_jobs_cutoff):
     deepar_input = df_jobs_cutoff[df_jobs_cutoff['algorithm'] == 'deepar']['predict_path'].values[0]
     deepar_output = deepar_input.replace('input', 'output') + '.out'
 
-    arima_input = df_jobs_cutoff.loc[df_jobs_cutoff['algorithm'] == 'arima']['predict_path'].values[0]
-    arima_output = arima_input.replace('input', 'output') + '.out'
+    hw_input = df_jobs_cutoff.loc[df_jobs_cutoff['algorithm'] == 'hw']['predict_path'].values[0]
+    hw_output = hw_input.replace('input', 'output') + '.out'
 
-    deepar_arima_output = arima_output.replace('arima', 'deepar-arima')
+    deepar_hw_output = hw_output.replace('hw', 'deepar-hw')
 
     # Load & format deepar forecast
     logger.debug("Load & format Deepar forecasts...")
@@ -40,43 +40,43 @@ def read_format_stacking_data(df_jobs_cutoff):
     deepar.rename(columns={'0.5': 'forecast_deepar'}, inplace=True)
     deepar = deepar[['model_id', 'forecast_step', 'forecast_deepar']]
 
-    # Load & format arima forecast
-    logger.debug("Load & format Arima forecasts...")
+    # Load & format hw forecast
+    logger.debug("Load & format hw forecasts...")
 
-    arima = read_multipart_parquet_s3(*from_uri(arima_output))
-    arima.rename(columns={'forecast': 'forecast_arima'}, inplace=True)
+    hw = read_multipart_parquet_s3(*from_uri(hw_output))
+    hw.rename(columns={'forecast': 'forecast_hw'}, inplace=True)
 
-    return deepar, arima, deepar_arima_output
+    return deepar, hw, deepar_hw_output
 
 
-def compute_stacking(deepar, arima, stacking_start, stacking_stop, nb_stacking_weeks):
-    # Calculate deepar_arima forecast with a smooth stacking
-    deepar_arima = arima.merge(deepar, how='left')
+def compute_stacking(deepar, hw, stacking_start, stacking_stop, nb_stacking_weeks):
+    # Calculate deepar_hw forecast with a smooth stacking
+    deepar_hw = hw.merge(deepar, how='left')
 
-    deepar_arima['smooth_weight'] = (deepar_arima['forecast_step'] - nb_stacking_weeks) / nb_stacking_weeks
+    deepar_hw['smooth_weight'] = (deepar_hw['forecast_step'] - stacking_start) / nb_stacking_weeks
 
-    deepar_arima['forecast'] = np.where(
-        deepar_arima['forecast_step'] <= stacking_start,
-        deepar_arima['forecast_deepar'],
+    deepar_hw['forecast'] = np.where(
+        deepar_hw['forecast_step'] <= stacking_start,
+        deepar_hw['forecast_deepar'],
         np.where(
-            deepar_arima['forecast_step'] <= stacking_stop,
-            deepar_arima['forecast_deepar'] * (1 - deepar_arima['smooth_weight']) + \
-            deepar_arima['forecast_arima'] * deepar_arima['smooth_weight'],
-            deepar_arima['forecast_arima']
+            deepar_hw['forecast_step'] <= stacking_stop,
+            deepar_hw['forecast_deepar'] * (1 - deepar_hw['smooth_weight']) + \
+            deepar_hw['forecast_hw'] * deepar_hw['smooth_weight'],
+            deepar_hw['forecast_hw']
         )
     ).round().astype(int)
 
-    # Format deepar_arima
-    deepar_arima = deepar_arima[['model_id', 'forecast_step', 'forecast']]
+    # Format deepar_hw
+    deepar_hw = deepar_hw[['model_id', 'forecast_step', 'forecast']]
 
-    return deepar_arima
+    return deepar_hw
 
 
-def calculate_deepar_arima_stacking(df_jobs, smooth_stacking_range=(8, 16)):
+def calculate_outputs_stacking(df_jobs, smooth_stacking_range=(10, 16)):
     """
     """
-    assert all(a in df_jobs['algorithm'].unique() for a in ['deepar', 'arima']), \
-        "Deepar & arima must be included in the algorithms launched in the previous steps."
+    assert all(a in df_jobs['algorithm'].unique() for a in ['deepar', 'hw']), \
+        "Deepar & hw must be included in the algorithms launched in the previous steps."
 
     assert (all(isinstance(v, int) for v in smooth_stacking_range)) & \
            (smooth_stacking_range[0] > 1) & \
@@ -90,19 +90,19 @@ def calculate_deepar_arima_stacking(df_jobs, smooth_stacking_range=(8, 16)):
 
     for cutoff in list_cutoff:
 
-        logger.info(f"Calculate deepar_arima for cutoff {cutoff}...")
+        logger.info(f"Calculate deepar_hw for cutoff {cutoff}...")
 
         # Set needed path
         df_jobs_cutoff = df_jobs[df_jobs['cutoff'] == cutoff].copy()
 
-        deepar, arima, deepar_arima_output = read_format_stacking_data(df_jobs_cutoff)
+        deepar, hw, deepar_hw_output = read_format_stacking_data(df_jobs_cutoff)
 
         assert deepar['forecast_step'].max() >= stacking_stop, \
             f"Deepar's forecast horizon is too short to apply stacking. Minimum horizon required: {stacking_stop}"
 
-        assert arima['forecast_step'].max() >= stacking_stop, \
-            f"Arima's forecast horizon is too short to apply stacking. Minimum horizon required: {stacking_stop}"
+        assert hw['forecast_step'].max() >= stacking_stop, \
+            f"hw's forecast horizon is too short to apply stacking. Minimum horizon required: {stacking_stop}"
 
-        deepar_arima = compute_stacking(deepar, arima, stacking_start, stacking_stop, nb_stacking_weeks)
+        deepar_hw = compute_stacking(deepar, hw, stacking_start, stacking_stop, nb_stacking_weeks)
 
-        write_df_to_parquet_on_s3(deepar_arima, *from_uri(deepar_arima_output), verbose=True)
+        write_df_to_parquet_on_s3(deepar_hw, *from_uri(deepar_hw_output), verbose=True)
