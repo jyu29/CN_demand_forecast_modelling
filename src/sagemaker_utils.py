@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig()
 logger.setLevel(logging.INFO)
 
-SUPPORTED_ALGORITHMS = ['deepar', 'arima']
+SUPPORTED_ALGORITHMS = ['deepar', 'arima', 'hw']
 CONFIG_PATH = 'config'
 
 
@@ -243,7 +243,7 @@ class SagemakerHandler:
                     # Setting the hyperparameters
                     job_hyperparameters = self.hyperparameters.copy()
 
-                    if job['algorithm'] == 'arima':
+                    if job['algorithm'] in ['arima', 'hw']:
                         job_hyperparameters['input_file_name'] = os.path.basename(job['train_path'])
                         job_hyperparameters['s3_output_path'] = job['output_path']
 
