@@ -176,5 +176,4 @@ def calculate_outputs_stacking(df_jobs,
 
         stacked_forecast = compute_stacking(st_forecast, lt_forecast, stacking_start, stacking_stop)
 
-        #write_df_to_parquet_on_s3(stacked_forecast, *from_uri(stacking_output_path), verbose=True)
-        return stacked_forecast
+        write_df_to_parquet_on_s3(stacked_forecast, *from_uri(stacking_output_path), verbose=True)
