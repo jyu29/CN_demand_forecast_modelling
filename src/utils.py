@@ -14,6 +14,7 @@ import pyarrow.parquet as pq
 from uritools import urisplit
 from typing import Union
 
+SUPPORTED_ALGORITHMS = ['deepar', 'arima', 'hw']
 
 def date_to_week_id(date):
     """
@@ -233,7 +234,10 @@ def import_modeling_parameters(environment: str) -> dict:
         'refined_global_path': params['paths']['refined_global_path'],
         'refined_specific_path': params['paths']['refined_specific_path'],
         'algorithm': params['modeling_parameters']['algorithm'],
-        'outputs_stacking': params['modeling_parameters']['outputs_stacking']
+        'outputs_stacking': params['modeling_parameters']['outputs_stacking'],
+        'short_term_algorithm': params['modeling_parameters']['short_term_algorithm'],
+        'long_term_algorithm': params['modeling_parameters']['long_term_algorithm'],
+        'smooth_stacking_range': eval(params['modeling_parameters']['smooth_stacking_range'])
     }
 
     return data_params
@@ -323,9 +327,8 @@ def check_run_name(run_name, check_reserved_words=True):
     assert rule.match(run_name), f"Run name {run_name} doesn't match Sagemaker Regex {job_name_regex}"
 
     if check_reserved_words:
-        assert all(s not in run_name for s in ['deepar', 'arima', 'hw', 'holt-winters', 
-                                               'input', 'output', 'model']), \
-        "Run name must not contain any reserved words: ['deepar', 'arima', 'hw', 'holt-winters', 'input', 'output', 'model']"
+        assert all(s not in run_name for s in SUPPORTED_ALGORITHMS + ['input', 'output', 'model']), \
+        f"Run name must not contain any reserved words: {SUPPORTED_ALGORITHMS + ['input', 'output', 'model']}"
 
 
 def check_dataframe_equality(df1, df2):
