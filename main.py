@@ -90,15 +90,18 @@ if __name__ == "__main__":
             'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
         }
 
-        df_static_tree = df_model_week_tree[df_model_week_tree['week_id'] == cutoff].copy()
+        if algorithm == 'deepar':
+            df_static_tree = df_model_week_tree[df_model_week_tree['week_id'] == cutoff].copy()
 
-        static_features = {
-            'family_id': df_static_tree[['model_id', 'family_id']],
-            'sub_department_id': df_static_tree[['model_id', 'sub_department_id']],
-            'department_id': df_static_tree[['model_id', 'department_id']],
-            'univers_id': df_static_tree[['model_id', 'univers_id']],
-            'product_nature_id': df_static_tree[['model_id', 'product_nature_id']]
-        }
+            static_features = {
+                'family_id': df_static_tree[['model_id', 'family_id']],
+                'sub_department_id': df_static_tree[['model_id', 'sub_department_id']],
+                'department_id': df_static_tree[['model_id', 'department_id']],
+                'univers_id': df_static_tree[['model_id', 'univers_id']],
+                'product_nature_id': df_static_tree[['model_id', 'product_nature_id']]
+            }
+        else:
+            static_features = None
 
         global_dynamic_features = None
 
