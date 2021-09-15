@@ -3,7 +3,7 @@ import os
 
 import src.data_handler as dh
 import src.sagemaker_utils as su
-import src.model_stacking as ms
+import src.model_stacking as os
 import src.utils as ut
 
 
@@ -30,22 +30,28 @@ if __name__ == "__main__":
         LOGGING_LVL = 'INFO'
         logger.info("Logging level set to INFO")
 
-    for module in [dh, su, ms]:
+    for module in [dh, su, os]:
         module.logger.setLevel(LOGGING_LVL)
 
     # Constants
     main_params = ut.import_modeling_parameters(ENVIRONMENT)
+    
     REFINED_DATA_GLOBAL_BUCKET = main_params['refined_data_global_bucket']
     REFINED_DATA_SPECIFIC_BUCKET = main_params['refined_data_specific_bucket']
     REFINED_DATA_GLOBAL_PATH = main_params['refined_global_path']
     REFINED_DATA_SPECIFIC_PATH = main_params['refined_specific_path']
     REFINED_DATA_SPECIFIC_URI = ut.to_uri(REFINED_DATA_SPECIFIC_BUCKET, REFINED_DATA_SPECIFIC_PATH)
+
     MODEL_WEEK_SALES_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_sales"
     MODEL_WEEK_TREE_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_tree"
     MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
     IMPUTED_SALES_LOCKDOWN_1_PATH = f"{REFINED_DATA_GLOBAL_PATH}imputed_sales_lockdown_1.parquet"
+
     LIST_ALGORITHM = list(main_params['algorithm'])
-    DEEPAR_ARIMA_STACKING = main_params['deepar_arima_stacking']
+    OUTPUTS_STACKING = main_params['outputs_stacking']
+    SHORT_TERM_ALGORITHM = main_params['short_term_algorithm']
+    LONG_TERM_ALGORITHM = main_params['long_term_algorithm']
+    SMOOTH_STACKING_RANGE = main_params['smooth_stacking_range']
 
     # Data loading
     df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
@@ -123,5 +129,10 @@ if __name__ == "__main__":
             modeling_handler.launch_transform_jobs()
 
     # Calculate model stacking
-    if DEEPAR_ARIMA_STACKING:
-        ms.calculate_deepar_arima_stacking(df_jobs)
+    if OUTPUTS_STACKING:
+        os.calculate_outputs_stacking(
+            df_jobs,
+            short_term_algorithm=SHORT_TERM_ALGORITHM,
+            long_term_algorithm=LONG_TERM_ALGORITHM,
+            smooth_stacking_range=SMOOTH_STACKING_RANGE
+        )
