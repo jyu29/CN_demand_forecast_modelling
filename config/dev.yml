@@ -57,7 +57,7 @@ modeling_parameters:
       transform_max_instances: 20
       max_concurrent_transforms: 36
     hw:
-      image_name: 150258775384.dkr.ecr.eu-west-1.amazonaws.com/statsmodels_sagemaker
+      image_name: 150258775384.dkr.ecr.eu-west-1.amazonaws.com/statsmodels_sagemaker:latest
       hyperparameters:
         prediction_length: 104
         context_length: 156
