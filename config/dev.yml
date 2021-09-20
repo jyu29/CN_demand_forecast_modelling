@@ -15,7 +15,7 @@ modeling_parameters:
   tags:
     Key: project
     Value: demand-forecast
-  train_use_spot_instances: True
+  train_use_spot_instances: False
   outputs_stacking: True
   short_term_algorithm: deepar
   long_term_algorithm: hw
