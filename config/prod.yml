@@ -16,7 +16,7 @@ modeling_parameters:
     Key: project
     Value: demand-forecast
   train_use_spot_instances: False
-  deepar_arima_stacking: True
+  outputs_stacking: True
   short_term_algorithm: deepar
   long_term_algorithm: hw
   smooth_stacking_range: (10, 16)
