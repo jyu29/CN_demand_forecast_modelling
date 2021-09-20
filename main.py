@@ -3,7 +3,7 @@ import os
 
 import src.data_handler as dh
 import src.sagemaker_utils as su
-import src.model_stacking as os
+import src.outputs_stacking as os
 import src.utils as ut
 
 
