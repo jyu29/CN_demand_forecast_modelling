@@ -3,7 +3,7 @@ import os
 
 import src.data_handler as dh
 import src.sagemaker_utils as su
-import src.outputs_stacking as os
+import src.outputs_stacking as osk
 import src.utils as ut
 
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         LOGGING_LVL = 'INFO'
         logger.info("Logging level set to INFO")
 
-    for module in [dh, su, os]:
+    for module in [dh, su, osk]:
         module.logger.setLevel(LOGGING_LVL)
 
     # Constants
@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
     # Calculate model stacking
     if OUTPUTS_STACKING:
-        os.calculate_outputs_stacking(
+        osk.calculate_outputs_stacking(
             df_jobs,
             short_term_algorithm=SHORT_TERM_ALGORITHM,
             long_term_algorithm=LONG_TERM_ALGORITHM,
