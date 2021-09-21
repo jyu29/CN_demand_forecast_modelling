@@ -99,7 +99,6 @@ class ComputeDeeparArimaStackingTests:
         lt_forecast = arima
         stacking_start = 8
         stacking_stop = 16
-        nb_stacking_weeks = 8
 
         deepar_arima = compute_stacking(st_forecast, lt_forecast, stacking_start, stacking_stop)
                        
