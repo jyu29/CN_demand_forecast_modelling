@@ -15,8 +15,11 @@ modeling_parameters:
   tags:
     Key: project
     Value: demand-forecast
-  train_use_spot_instances: True
-  deepar_arima_stacking: True
+  train_use_spot_instances: False
+  outputs_stacking: True
+  short_term_algorithm: deepar
+  long_term_algorithm: hw
+  smooth_stacking_range: (10, 16)
   algorithm:
     deepar:
       image_name: 224300973850.dkr.ecr.eu-west-1.amazonaws.com/forecasting-deepar:1
@@ -53,16 +56,19 @@ modeling_parameters:
       transform_instance_type: ml.c5.9xlarge
       transform_max_instances: 20
       max_concurrent_transforms: 36
-    arima:
-      image_name: 150258775384.dkr.ecr.eu-west-1.amazonaws.com/pmdarima_sagemaker:latest
+    hw:
+      image_name: 150258775384.dkr.ecr.eu-west-1.amazonaws.com/statsmodels_sagemaker:latest
       hyperparameters:
         prediction_length: 104
         context_length: 156
-        fourier_seasonal_period: 52
-        fourier_order: 10
-        arima_differencing_order: None
-        arima_criterion: aicc
-        arima_optimizer: nm
+        trend: None
+        damped_trend: False
+        seasonal: mul
+        seasonal_periods: 52
+        smoothing_level: 0.02
+        smoothing_trend: 0
+        smoothing_seasonal: 0.5
+        damping_trend: 0
       train_instance_count: 1
       train_instance_type: ml.c5.18xlarge
       train_max_instances: 20
