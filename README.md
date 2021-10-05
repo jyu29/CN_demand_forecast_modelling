@@ -43,6 +43,11 @@ conda env create -f environment.yml
 conda activate forecast-modeling-demand
 ```
 
+* IAM Authentication : as per this [wiki](https://wiki.decathlon.net/pages/viewpage.action?spaceKey=DATA&title=IAM+Security+Strategies), you need to authenticate to AWS and assume a role before using AWS resources (Sagemaker, S3...). You need to use `saml2aws` (check the link provided just above) to get your temporary token and assume a role (if you're using the `modeling` repository, we can assume you can get the `FCST-DATA-SCIENTIST` role) :
+```sh
+saml2aws login --force
+```
+
 * Assuming all your datasets from [Decathlon Demand Forecast - Forecast United Refining](https://github.com/dktunited/forecast-data-refining-demand/), you can execute the training & inference
 ```sh
 python main.py --environment {env} --list_cutoff {list_cutoff}
