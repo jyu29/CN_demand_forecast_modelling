@@ -55,12 +55,13 @@ def pad_to_cutoff(df_ts: pd.DataFrame,
     return df
 
 
-def cold_start_rec(df,
-                   df_model_week_sales,
-                   df_model_week_tree,
-                   rec_length,
-                   rec_cold_start_group=['family_label']
-                   ):
+def apply_cold_start_reconstruction(df,
+                                    df_model_week_sales,
+                                    df_model_week_tree,
+                                    rec_cold_start_length,
+                                    rec_cold_start_group,
+                                    avg_impl_period_duration=8
+                                    ):
     """
     Create a fake sales history for models that started too recently.
 
@@ -69,9 +70,10 @@ def cold_start_rec(df,
             reconstruction
         df_model_week_sales (pd.DataFrame): Sales of all available time series
         df_model_week_tree (pd.DataFrame): Tree structure information of all available time series
-        rec_length (int): The minimum expected size of each time series after reconstruction
+        rec_cold_start_length (int): The minimum expected size of each time series after reconstruction
         rec_cold_start_group (list): The list of aggregation keys (of the tree structure) on which
             to calculate the reconstruction properties
+        avg_impl_period_duration (int): The average implementation period duration for Decathlon products
 
     Returns:
         complete_ts (pd.DataFrame): The sales of the time series pool including the reconstruction
@@ -142,8 +144,8 @@ def cold_start_rec(df,
     complete_ts['length'] = ((pd.to_datetime(complete_ts['end_date']) - pd.to_datetime(complete_ts['date'])
                               ) / np.timedelta64(1, 'W')).astype(int) + 1
 
-    # Update sales quantity from 'rec_length' weeks ago to the end of the implementation period: age 8
-    cond = (complete_ts['length'] <= rec_length) & (complete_ts['age'] <= 8)
+    # Update sales quantity from 'rec_cold_start_length' weeks ago to the end of the average implementation period duration
+    cond = (complete_ts['length'] <= rec_cold_start_length) & (complete_ts['age'] <= avg_impl_period_duration)
 
     complete_ts['sales_quantity'] = np.where(cond, complete_ts['fake_sales_quantity'], complete_ts['sales_quantity'])
     complete_ts['is_rec'] = np.where(cond, 1, 0)
@@ -248,21 +250,21 @@ def features_forward_fill(df, cutoff, projection_length):
     return df
 
 
-def apply_first_lockdown_patch(df_sales, df_sales_imputed):
+def apply_lockdowns_reconstruction(df_sales, df_sales_reconstructed):
     """
-    Replaces the lockdown weeks of `df_sales` with the imputed ones of `df_sales_imputed`.
+    Replaces the lockdown weeks of `df_sales` with the reconstructed ones of `df_sales_reconstructed`.
 
     Args:
         df_sales (pd.DataFrame): The initial sales dataframe
-        df_sales_imputed (pd.DataFrame): The imputed sales dataframe
+        df_sales_reconstructed (pd.DataFrame): The reconstructed sales dataframe
 
     Returns:
         pd.DataFrame with the same structure as `df_sales`, whose lockdown weeks have been
-        replaced by the ones in `df_sales_imputed`
+        replaced by the ones in `df_sales_reconstructed`
     """
-    df_sales = pd.merge(df_sales, df_sales_imputed, how='left')
-    df_sales['sales_quantity'] = np.where(df_sales['sales_quantity_imputed'].notnull(),
-                                          df_sales['sales_quantity_imputed'],
+    df_sales = pd.merge(df_sales, df_sales_reconstructed, how='left')
+    df_sales['sales_quantity'] = np.where(df_sales['sales_quantity_reconstructed'].notnull(),
+                                          df_sales['sales_quantity_reconstructed'],
                                           df_sales['sales_quantity'])
-    df_sales.drop(columns='sales_quantity_imputed', inplace=True)
+    df_sales.drop(columns='sales_quantity_reconstructed', inplace=True)
     return df_sales
