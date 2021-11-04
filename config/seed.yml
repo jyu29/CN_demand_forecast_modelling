@@ -29,7 +29,6 @@ modeling_parameters:
         context_length: 52
         epochs: 100
         likelihood: student-T
-        early_stopping_patience: 100
         learning_rate: 1e-3
         mini_batch_size: 512
         num_layers: 2
