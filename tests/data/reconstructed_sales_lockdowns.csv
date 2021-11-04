@@ -1,4 +1,4 @@
-model_id;week_id;date;sales_quantity_imputed
+model_id;week_id;date;sales_quantity_reconstructed
 862238;202011;2020-03-08;7
 862238;202012;2020-03-15;7
 862238;202013;2020-03-22;7

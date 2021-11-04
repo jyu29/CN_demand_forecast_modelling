@@ -1,4 +1,3 @@
-
 buckets:
   refined_data_global: fcst-refined-demand-forecast-dev
   refined_data_specific: fcst-refined-demand-forecast-dev
@@ -6,9 +5,9 @@ paths:
   refined_global_path: global/
   refined_specific_path: specific/
 refining_specific_parameters:
-  patch_first_lockdown: true
-  rec_length: 156
-  rec_cold_start: true
+  rec_lockdowns: True
+  rec_cold_start: True
+  rec_cold_start_length: 156
   rec_cold_start_group:
   - family_id
 modeling_parameters:
