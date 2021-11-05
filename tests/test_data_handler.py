@@ -26,7 +26,7 @@ df_model_week_tree = pd.read_csv(os.path.join(DATA_PATH, "model_week_tree.csv"),
 df_model_week_mrp = pd.read_csv(os.path.join(DATA_PATH, "model_week_mrp.csv"), sep=';')
 df_store_openings = pd.read_csv(os.path.join(DATA_PATH, "store_openings.csv"), sep=';')
 df_holidays = pd.read_csv(os.path.join(DATA_PATH, "holidays.csv"), sep=';')
-df_imputed_sales_lockdown_1 = pd.read_csv(os.path.join(DATA_PATH, "model_week_imputed_lockdown_1.csv"),
+df_reconstructed_sales_lockdowns = pd.read_csv(os.path.join(DATA_PATH, "reconstructed_sales_lockdowns.csv"),
                                           sep=';',
                                           parse_dates=['date']
                                           )
@@ -34,7 +34,7 @@ df_imputed_sales_lockdown_1 = pd.read_csv(os.path.join(DATA_PATH, "model_week_im
 base_data = {'model_week_sales': df_model_week_sales,
              'model_week_tree': df_model_week_tree,
              'model_week_mrp': df_model_week_mrp,
-             'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
+             'reconstructed_sales_lockdowns': df_reconstructed_sales_lockdowns
              }
 
 df_static_tree = df_model_week_tree[df_model_week_tree['week_id'] == CUTOFF].copy()
@@ -66,9 +66,9 @@ class ImportRefiningConfigTests():
             's3://fcst-refined-demand-forecast-dev/specific/testing/deepAR/testrun-202021/input/predict_202001.json'
         expected_config = {'algorithm': 'deepar',
                            'cutoff': 202001,
-                           'patch_first_lockdown': True,
-                           'rec_length': 156,
+                           'rec_lockdowns': True,
                            'rec_cold_start': True,
+                           'rec_cold_start_length': 156,
                            'rec_cold_start_group': ['family_id'],
                            'prediction_length': 52,
                            'context_length': 52,
@@ -534,7 +534,7 @@ class DataHandlerDeepArFormatingTests:
         base_data_long = {'model_week_sales': df_model_week_sales_long,
                           'model_week_tree': df_model_week_tree_long,
                           'model_week_mrp': df_model_week_mrp_long,
-                          'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
+                          'reconstructed_sales_lockdowns': df_reconstructed_sales_lockdowns
                           }
 
         df_static_tree_long = df_model_week_tree_long[df_model_week_tree_long['week_id'] == CUTOFF].copy()

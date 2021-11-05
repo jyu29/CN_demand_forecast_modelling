@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-from src.refining_specific_functions import (apply_first_lockdown_patch,
-                                             cold_start_rec,
+from src.refining_specific_functions import (apply_lockdowns_reconstruction,
+                                             apply_cold_start_reconstruction,
                                              features_forward_fill,
                                              initialize_df_dynamic_features,
                                              is_rec_feature_processing,
@@ -55,8 +55,8 @@ def import_refining_config(environment: str,
     refining_params = {
         'algorithm': algorithm,
         'cutoff': cutoff,
-        'patch_first_lockdown': params['refining_specific_parameters']['patch_first_lockdown'],
-        'rec_length': params['refining_specific_parameters']['rec_length'],
+        'rec_lockdowns': params['refining_specific_parameters']['rec_lockdowns'],
+        'rec_cold_start_length': params['refining_specific_parameters']['rec_cold_start_length'],
         'rec_cold_start': params['refining_specific_parameters']['rec_cold_start'],
         'rec_cold_start_group': params['refining_specific_parameters']['rec_cold_start_group'],
         'prediction_length': params['modeling_parameters']['algorithm'][algorithm]['hyperparameters']['prediction_length'],
@@ -75,8 +75,8 @@ class DataHandler:
     def __init__(self,
                  algorithm: str,
                  cutoff: int,
-                 patch_first_lockdown: bool,
-                 rec_length: int,
+                 rec_lockdowns: bool,
+                 rec_cold_start_length: int,
                  rec_cold_start: bool,
                  rec_cold_start_group: list,
                  prediction_length: int,
@@ -95,9 +95,9 @@ class DataHandler:
         Args:
             algorithm (str): Algorithm name
             cutoff (int): Cutoff week in format YYYYWW (ISO 8601)
-            patch_first_lockdown (bool): if true, replace the actual sales of the first lockdown with a
+            rec_lockdowns (bool): if true, replace the actual sales of the first lockdown with a
                 reconstructed version
-            rec_length (int): Minimum weeks expected in each input time series
+            rec_cold_start_length (int): Minimum weeks expected in each input time series
             rec_cold_start (bool): if true, apply a cold-start reconstruction
             rec_cold_start_group (list): for the cold start reconstruction, columns to use in model_week_tree
             prediction_length (int): Number of forecasted weeks in the future
@@ -112,8 +112,8 @@ class DataHandler:
 
         self.algorithm = algorithm
         self.cutoff = cutoff
-        self.patch_first_lockdown = patch_first_lockdown
-        self.rec_length = rec_length
+        self.rec_lockdowns = rec_lockdowns
+        self.rec_cold_start_length = rec_cold_start_length
         self.rec_cold_start = rec_cold_start
         self.rec_cold_start_group = rec_cold_start_group
         self.prediction_length = prediction_length
@@ -125,9 +125,9 @@ class DataHandler:
             static_features = None
 
         # Base data init
-        if patch_first_lockdown:
-            assert 'imputed_sales_lockdown_1' in base_data.keys(), \
-                "Patching first lockdown requested, but imputation dataset not provided in base_data"
+        if rec_lockdowns:
+            assert 'reconstructed_sales_lockdowns' in base_data.keys(), \
+                "Lockdowns reconstruction requested, but imputation dataset not provided in base_data"
         for key, df in base_data.items():
             assert isinstance(df, pd.DataFrame), f"Value of `{key}` must be a pd.DataFrame"
         self.base_data = base_data
@@ -176,11 +176,11 @@ class DataHandler:
         logger.info(f"Data refining specific for Demand Forecast initialized for algorithm {self.algorithm} "
                     f"and cutoff {self.cutoff}")
 
-        if self.patch_first_lockdown:
-            logger.info("Patch first lockdown of 2020 requested")
+        if self.rec_lockdowns:
+            logger.info("Lockdowns reconstruction requested")
 
         if self.rec_cold_start:
-            logger.info(f"Cold Start Reconstruction requested with {self.rec_length} minimum "
+            logger.info(f"Cold Start Reconstruction requested with {self.rec_cold_start_length} minimum "
                         f"weeks and average on values {self.rec_cold_start_group}")
         else:
             logger.info("Cold Start Reconstruction not requested, a simple zero padding will be applied")
@@ -322,8 +322,8 @@ class DataHandler:
         # Sales refining
         df_sales = self.base_data['model_week_sales']
         df_sales = df_sales[df_sales['week_id'] < self.cutoff]
-        if self.patch_first_lockdown:
-            df_sales = apply_first_lockdown_patch(df_sales, self.base_data['imputed_sales_lockdown_1'])
+        if self.rec_lockdowns:
+            df_sales = apply_lockdowns_reconstruction(df_sales, self.base_data['reconstructed_sales_lockdowns'])
         self.base_data['model_week_sales'] = df_sales
         logger.debug(f"Limited sales data up to cutoff {self.cutoff}")
 
@@ -351,11 +351,11 @@ class DataHandler:
         # Cold start reconstruction
         if self.rec_cold_start:
             logger.debug("Cold start reconstruction requested. Starting reconstruction...")
-            df_sales = cold_start_rec(df_sales,
-                                      self.base_data['model_week_sales'],
-                                      self.base_data['model_week_tree'],
-                                      self.rec_length,
-                                      self.rec_cold_start_group)
+            df_sales = apply_cold_start_reconstruction(df_sales,
+                                                       self.base_data['model_week_sales'],
+                                                       self.base_data['model_week_tree'],
+                                                       self.rec_cold_start_length,
+                                                       self.rec_cold_start_group)
             logger.debug("Cold start reconstruction done.")
 
         # Creating df_target
