@@ -4,7 +4,7 @@ import pytest
 from pytest import mark
 from src.utils import week_id_to_date
 
-from src.refining_specific_functions import pad_to_cutoff, cold_start_rec
+from src.refining_specific_functions import pad_to_cutoff, apply_cold_start_reconstruction
 
 DATA_PATH = os.path.join('tests', 'data')
 PAD_TO_CUTOFF_DATAPATH = os.path.join(DATA_PATH, 'pad_to_cutoff_nominal.csv')
@@ -69,11 +69,11 @@ class ColdStartRecTests:
         df_sales = pd.read_csv(COLD_START_REC_DF, sep=';', parse_dates=['date'])
         df_model_week_sales = pd.read_csv(COLD_START_REC_SALES, sep=';', parse_dates=['date'])
         df_model_week_tree = pd.read_csv(COLD_START_REC_TREE, sep=';')
-        df_cold_start = cold_start_rec(df_sales,
-                                       df_model_week_sales,
-                                       df_model_week_tree,
-                                       REC_LENGTH,
-                                       REC_COLD_START_GROUP)
+        df_cold_start = apply_cold_start_reconstruction(df_sales,
+                                             df_model_week_sales,
+                                             df_model_week_tree,
+                                             REC_LENGTH,
+                                             REC_COLD_START_GROUP)
 
         # Checking if all expected reconstruction occured
         try:
