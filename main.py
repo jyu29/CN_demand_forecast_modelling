@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     # Constants
     main_params = ut.import_modeling_parameters(ENVIRONMENT)
-    
+
     REFINED_DATA_GLOBAL_BUCKET = main_params['refined_data_global_bucket']
     REFINED_DATA_SPECIFIC_BUCKET = main_params['refined_data_specific_bucket']
     REFINED_DATA_GLOBAL_PATH = main_params['refined_global_path']
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     MODEL_WEEK_SALES_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_sales"
     MODEL_WEEK_TREE_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_tree"
     MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
-    IMPUTED_SALES_LOCKDOWN_1_PATH = f"{REFINED_DATA_GLOBAL_PATH}imputed_sales_lockdown_1.parquet"
+    RECONSTRUCTED_SALES_LOCKDOWNS_PATH = f"{REFINED_DATA_GLOBAL_PATH}reconstructed_sales_lockdowns.parquet"
 
     LIST_ALGORITHM = list(main_params['algorithm'])
     OUTPUTS_STACKING = main_params['outputs_stacking']
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
     df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_TREE_PATH)
     df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_MRP_PATH)
-    df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, IMPUTED_SALES_LOCKDOWN_1_PATH)
+    df_reconstructed_sales_lockdowns = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, RECONSTRUCTED_SALES_LOCKDOWNS_PATH)
 
     # Initialize df_jobs
     df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
@@ -91,7 +91,7 @@ if __name__ == "__main__":
             'model_week_sales': df_model_week_sales,
             'model_week_tree': df_model_week_tree,
             'model_week_mrp': df_model_week_mrp,
-            'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
+            'reconstructed_sales_lockdowns': df_reconstructed_sales_lockdowns
         }
 
         if algorithm == 'deepar':
