@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import src.data_handler as dh
 import src.sagemaker_utils as su
@@ -14,9 +15,12 @@ logger.setLevel(logging.INFO)
 if __name__ == "__main__":
 
     # Modeling arguments handling
-    ENVIRONMENT = os.environ['run_env']
-    LIST_CUTOFF = os.environ['list_cutoff']
-    RUN_NAME = os.environ['run_name']
+    #ENVIRONMENT = os.environ['run_env']
+    #LIST_CUTOFF = os.environ['list_cutoff']
+    #RUN_NAME = os.environ['run_name']
+    ENVIRONMENT = sys.argv[1]
+    LIST_CUTOFF = sys.argv[2]
+    RUN_NAME = sys.argv[3]
 
     ut.check_environment(ENVIRONMENT)
     list_cutoff = ut.check_list_cutoff(LIST_CUTOFF)
@@ -35,7 +39,7 @@ if __name__ == "__main__":
 
     # Constants
     main_params = ut.import_modeling_parameters(ENVIRONMENT)
-
+    
     REFINED_DATA_GLOBAL_BUCKET = main_params['refined_data_global_bucket']
     REFINED_DATA_SPECIFIC_BUCKET = main_params['refined_data_specific_bucket']
     REFINED_DATA_GLOBAL_PATH = main_params['refined_global_path']
@@ -45,7 +49,7 @@ if __name__ == "__main__":
     MODEL_WEEK_SALES_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_sales"
     MODEL_WEEK_TREE_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_tree"
     MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
-    RECONSTRUCTED_SALES_LOCKDOWNS_PATH = f"{REFINED_DATA_GLOBAL_PATH}reconstructed_sales_lockdowns.parquet"
+    IMPUTED_SALES_LOCKDOWN_1_PATH = f"{REFINED_DATA_GLOBAL_PATH}imputed_sales_lockdown_1.parquet"
 
     LIST_ALGORITHM = list(main_params['algorithm'])
     OUTPUTS_STACKING = main_params['outputs_stacking']
@@ -57,7 +61,7 @@ if __name__ == "__main__":
     df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
     df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_TREE_PATH)
     df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_MRP_PATH)
-    df_reconstructed_sales_lockdowns = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, RECONSTRUCTED_SALES_LOCKDOWNS_PATH)
+    df_imputed_sales_lockdown_1 = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, IMPUTED_SALES_LOCKDOWN_1_PATH)
 
     # Initialize df_jobs
     df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
@@ -87,7 +91,7 @@ if __name__ == "__main__":
             'model_week_sales': df_model_week_sales,
             'model_week_tree': df_model_week_tree,
             'model_week_mrp': df_model_week_mrp,
-            'reconstructed_sales_lockdowns': df_reconstructed_sales_lockdowns
+            'imputed_sales_lockdown_1': df_imputed_sales_lockdown_1
         }
 
         if algorithm == 'deepar':

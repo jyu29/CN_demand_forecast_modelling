@@ -228,7 +228,7 @@ class SagemakerHandler:
                     # Creating the estimator
                     estimator = sagemaker.estimator.Estimator(
                         sagemaker_session=self.sagemaker_session,
-                        image_name=self.image_name,
+                        image_uri=self.image_name,
                         role=self.role,
                         tags=self.tags,
                         train_instance_count=self.train_instance_count,
