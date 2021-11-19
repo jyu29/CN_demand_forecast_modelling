@@ -120,6 +120,8 @@ def apply_cold_start_reconstruction(df,
         .reset_index()
 
     complete_ts = pd.merge(complete_ts, model_scale_factor, how='left')
+    
+    complete_ts.model_scale_factor = complete_ts.model_scale_factor.fillna(0)
 
     # have each model a scale factor?
     assert complete_ts[complete_ts.model_scale_factor.isnull()].shape[0] == 0
@@ -155,7 +157,7 @@ def apply_cold_start_reconstruction(df,
     complete_ts['sales_quantity'] = complete_ts['sales_quantity'].astype(int)
 
     return complete_ts
-
+    
 
 def initialize_df_dynamic_features(df, cutoff, prediction_length):
     """
