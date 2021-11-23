@@ -14,7 +14,7 @@ modeling_parameters:
   role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
   tags:
     Key: PROJECT
-    Value: demandforecastEU
+    Value: demandforecastCN
   train_use_spot_instances: False
   outputs_stacking: True
   short_term_algorithm: deepar
@@ -27,11 +27,11 @@ modeling_parameters:
         time_freq: W
         prediction_length: 16
         context_length: 52
-        epochs: 100
-        likelihood: student-T
-        learning_rate: 1e-3
+        epochs: 200
+        likelihood: negative-binomial
+        learning_rate: 3.5e-4
         mini_batch_size: 512
-        num_layers: 2
+        num_layers: 3
         num_cells: 40
         dropout_rate: 0.1
         cardinality: auto

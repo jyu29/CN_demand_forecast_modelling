@@ -14,7 +14,7 @@ modeling_parameters:
   role: arn:aws:iam::150258775384:role/FORECAST-SAGEMAKER-DEV
   tags:
     Key: PROJECT
-    Value: demandforecastEU
+    Value: demandforecastCN
   train_use_spot_instances: False
   outputs_stacking: True
   short_term_algorithm: deepar
