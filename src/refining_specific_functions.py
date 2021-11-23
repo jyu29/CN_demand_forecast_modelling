@@ -64,7 +64,6 @@ def apply_cold_start_reconstruction(df,
                                     ):
     """
     Create a fake sales history for models that started too recently.
-
     Args:
         df (pd.DataFrame): The sales of the time series pool on which we want to apply a cold-start
             reconstruction
@@ -74,7 +73,6 @@ def apply_cold_start_reconstruction(df,
         rec_cold_start_group (list): The list of aggregation keys (of the tree structure) on which
             to calculate the reconstruction properties
         avg_impl_period_duration (int): The average implementation period duration for Decathlon products
-
     Returns:
         complete_ts (pd.DataFrame): The sales of the time series pool including the reconstruction
     """
@@ -120,8 +118,6 @@ def apply_cold_start_reconstruction(df,
         .reset_index()
 
     complete_ts = pd.merge(complete_ts, model_scale_factor, how='left')
-    
-    complete_ts.model_scale_factor = complete_ts.model_scale_factor.fillna(0)
 
     # have each model a scale factor?
     assert complete_ts[complete_ts.model_scale_factor.isnull()].shape[0] == 0

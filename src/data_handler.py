@@ -352,8 +352,7 @@ class DataHandler:
         if self.rec_cold_start:
             logger.debug("Cold start reconstruction requested. Starting reconstruction...")
             df_sales = apply_cold_start_reconstruction(df_sales,
-                                                       df_sales,
-                                                       #self.base_data['model_week_sales'],
+                                                       self.base_data['model_week_sales'],
                                                        self.base_data['model_week_tree'],
                                                        self.rec_cold_start_length,
                                                        self.rec_cold_start_group)
