@@ -82,19 +82,3 @@ Please refer to the [Architecture wiki page](https://github.com/dktunited/foreca
 
 Please check the [**Contributing Guidelines**](https://github.com/dktunited/forecast-modeling-demand/blob/master/.github/markdown/CONTRIBUTING.md) before contributing.
 
-Thanks goes to these wonderful people :
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tr>
-    <td align="center"><a href="https://github.com/benbouillet"><img src="https://avatars2.githubusercontent.com/u/15980664?s=460&u=b546f8d2dd933638bfb73a76a3e7849d98bc0745&v=4" width="100px;" alt=""/><br /><sub><b>Ben Bouillet</b></sub></a><br /><a href="https://github.com/dktunited/forecast-modeling-demand/commits?author=benbouillet" title="Code">💻</a>
-    <td align="center"><a href="https://github.com/Antoine-Schwartz"><img src="https://avatars0.githubusercontent.com/u/47638933?s=460&v=4" width="100px;" alt=""/><br /><sub><b>Antoine Schwartz</b></sub></a><br /><a href="https://github.com/dktunited/forecast-modeling-demand/commits?author=Antoine-Schwartz" title="Code">💻</a>
-    <td align="center"><a href="https://github.com/BenjaminDeffarges"><img src="https://avatars1.githubusercontent.com/u/55504017?s=460&v=4" width="100px;" alt=""/><br /><sub><b>Benjamin Deffarges</b></sub></a><br /><a href="https://github.com/dktunited/forecast-modeling-demand/commits?author=BenjaminDeffarges" title="Code">💻</a>
-  </tr>
-</table>
-
-<!-- markdownlint-enable -->
-<!-- prettier-ignore-end -->
-<!-- ALL-CONTRIBUTORS-LIST:END -->
