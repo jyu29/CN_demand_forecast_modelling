@@ -10,6 +10,7 @@ from src.refining_specific_functions import (apply_lockdowns_reconstruction,
                                              features_forward_fill,
                                              initialize_df_dynamic_features,
                                              is_rec_feature_processing,
+                                             time_series_segmentation,
                                              pad_to_cutoff)
 from src.utils import (date_to_week_id, from_uri, read_yml, week_id_to_date,
                        write_df_to_parquet_on_s3, write_str_to_file_on_s3)
@@ -206,7 +207,7 @@ class DataHandler:
 
         # Refining specific
         logger.info("Starting Data Refining...")
-        self.df_target, self.df_static_features, self.df_dynamic_features = self.refining_specific()
+        self.df_target, self.df_static_features, self.df_dynamic_features, self.df_segmentation = self.refining_specific()
 
         # Formatting
         if self.algorithm == 'deepar':
@@ -218,6 +219,11 @@ class DataHandler:
             # Saving jsonline files on S3
             train_bucket, train_path = from_uri(self.output_paths['train_path'])
             predict_bucket, predict_path = from_uri(self.output_paths['predict_path'])
+            segmentatin_path = '/'.join(train_path.split('/')[:-1]) + '/times_segmentation.parquet'
+            
+            # Save segmentation data on S3
+            write_df_to_parquet_on_s3(self.df_segmentation, train_bucket, f"{segmentatin_path}")
+            logger.info(f"Time series segmentation saved at {segmentatin_path}")
 
             write_str_to_file_on_s3(train_jsonline, train_bucket, f"{train_path}")
             logger.info(f"Train jsonline file saved at {self.output_paths['train_path']}")
@@ -355,15 +361,20 @@ class DataHandler:
                                                        self.base_data['model_week_sales'],
                                                        self.base_data['model_week_tree'],
                                                        self.rec_cold_start_length,
-                                                       self.rec_cold_start_group)
+                                                       self.rec_cold_start_group,
+                                                       self.cutoff)
             logger.debug("Cold start reconstruction done.")
 
+        # Generate other static features
+        df_segmentation = time_series_segmentation(df_sales, self.cutoff)
 
         # Creating df_target
         df_target = df_sales[['model_id', 'week_id', 'sales_quantity']]
 
         # Initializing and filling df_static_features
         if self.static_features:
+            # Add static features
+            self.static_features['seasonality_label'] = df_segmentation[['model_id','seasonality_label']]            
             df_static_features = df_target[['model_id']].drop_duplicates().copy()
             for feature_name, df_new_feat in self.static_features.items():
                 df_static_features = self._add_feature(df_features=df_static_features,
@@ -404,7 +415,7 @@ class DataHandler:
                                                         feature_name=feature_name)
                 logger.debug(f"Added specific dynamic feature {feature_name} to `df_dynamic_features`")
 
-        return df_target, df_static_features, df_dynamic_features
+        return df_target, df_static_features, df_dynamic_features, df_segmentation
 
     def deepar_formatting(self, df_target, df_static_features, df_dynamic_features):
         """Method formatting datasets to Sagemaker DeepAR-specific scheme.

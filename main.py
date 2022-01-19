@@ -21,6 +21,7 @@ if __name__ == "__main__":
     ENVIRONMENT = sys.argv[1]
     LIST_CUTOFF = sys.argv[2]
     RUN_NAME = sys.argv[3]
+    CHANNEL = sys.argv[4]
 
     ut.check_environment(ENVIRONMENT)
     list_cutoff = ut.check_list_cutoff(LIST_CUTOFF)
@@ -49,7 +50,8 @@ if __name__ == "__main__":
     MODEL_WEEK_SALES_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_sales"
     MODEL_WEEK_TREE_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_tree"
     MODEL_WEEK_MRP_PATH = f"{REFINED_DATA_GLOBAL_PATH}model_week_mrp"
-    RECONSTRUCTED_SALES_LOCKDOWNS_PATH = f"{REFINED_DATA_GLOBAL_PATH}reconstructed_sales_lockdowns.parquet"
+    RECONSTRUCTED_SALES_LOCKDOWNS_PATH = f"{REFINED_DATA_GLOBAL_PATH}{CHANNEL}_reconstructed_sales_lockdowns.parquet"
+    CALENDAR_GAP_PATH = f"{REFINED_DATA_GLOBAL_PATH}calendar_gap.parquet"
 
     LIST_ALGORITHM = list(main_params['algorithm'])
     OUTPUTS_STACKING = main_params['outputs_stacking']
@@ -59,9 +61,11 @@ if __name__ == "__main__":
 
     # Data loading
     df_model_week_sales = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_SALES_PATH)
+    df_model_week_sales = df_model_week_sales[df_model_week_sales.channel == CHANNEL][['model_id','week_id','date','sales_quantity']]
     df_model_week_tree = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_TREE_PATH)
     df_model_week_mrp = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, MODEL_WEEK_MRP_PATH)
     df_reconstructed_sales_lockdowns = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, RECONSTRUCTED_SALES_LOCKDOWNS_PATH)
+    df_calendar_gap = ut.read_multipart_parquet_s3(REFINED_DATA_GLOBAL_BUCKET, CALENDAR_GAP_PATH)
 
     # Initialize df_jobs
     df_jobs = su.generate_df_jobs(list_cutoff=list_cutoff,
@@ -107,7 +111,10 @@ if __name__ == "__main__":
         else:
             static_features = None
 
-        global_dynamic_features = None
+        global_dynamic_features = {
+            'num_holiday_weekend':{'dataset':df_calendar_gap[['week_id','num_holiday_weekend']],'projection':'as_provided'},
+            'num_holiday_weekday':{'dataset':df_calendar_gap[['week_id','num_holiday_weekday']],'projection':'as_provided'}
+        }
 
         specific_dynamic_features = None
 

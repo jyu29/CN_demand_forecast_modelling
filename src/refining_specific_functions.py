@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 from src.utils import (date_to_week_id, week_id_to_date, is_iso_format)
-
+from sklearn.cluster import KMeans
+import heapq
 
 def pad_to_cutoff(df_ts: pd.DataFrame,
                   cutoff: int,
@@ -60,6 +61,7 @@ def apply_cold_start_reconstruction(df,
                                     df_model_week_tree,
                                     rec_cold_start_length,
                                     rec_cold_start_group,
+                                    cut_off,
                                     avg_impl_period_duration=8
                                     ):
     """
@@ -76,6 +78,9 @@ def apply_cold_start_reconstruction(df,
     Returns:
         complete_ts (pd.DataFrame): The sales of the time series pool including the reconstruction
     """
+    # Pad to cutoff for Sales of all available time series
+    df_model_week_sales = pad_to_cutoff(df_model_week_sales, cut_off)
+    
     # Create a complete TS dataframe
     all_model = df['model_id'].sort_values().unique()
     all_week = df_model_week_sales \
@@ -266,3 +271,46 @@ def apply_lockdowns_reconstruction(df_sales, df_sales_reconstructed):
                                           df_sales['sales_quantity'])
     df_sales.drop(columns='sales_quantity_reconstructed', inplace=True)
     return df_sales
+
+
+def time_series_segmentation(df_sales, cut_off, cluster_num=5):
+    """
+    Segment all the models into different groups based on the shape of sales curve in the previous year.
+
+    Args:
+        df_sales (pd.DataFrame): The sales dataframe after sales reconstruction
+        cut_off (int): Cutoff week in ISO 8601 Format (YYYYWW)
+        cluster_num (int): Number of cluster defined
+        
+    Returns:
+        pd.DataFrame with columns: model_id, seasonality label
+    """
+    df_sales['year'] = df_sales['week_id'].apply(lambda x:int(str(x)[:4]))
+    sales = df_sales[df_sales.year == int(str(cut_off)[:4]) - 1].groupby(by=['model_id'],as_index=False).agg({'sales_quantity':lambda x:list(x)})
+
+    sales['max_sales'] = sales['sales_quantity'].apply(lambda x:max(x))
+    sales['min_sales'] = sales['sales_quantity'].apply(lambda x:min(x))
+
+    sales['max_sales_week'] = sales['sales_quantity'].apply(lambda x:x.index(max(x)))
+    sales['min_sales_week'] = sales['sales_quantity'].apply(lambda x:x.index(min(x)))
+
+    thres = 0.2
+    sales['num_peek_sales'] = [len([x for x in i[0] if x >= i[1]*(1-thres)]) for i in zip(sales['sales_quantity'], sales.max_sales)]
+    sales['num_low_sales'] = [len([x for x in i[0] if x <= (i[1]+1)*(1+thres)]) for i in zip(sales['sales_quantity'], sales.min_sales)]
+
+    sales['std_sales'] = sales['sales_quantity'].apply(lambda x:np.std(x))
+    sales['std_sales_g'] = [1 if i <= 10 else 0 for i in sales['std_sales']]
+    
+    features = ['max_sales_week','min_sales_week','num_peek_sales','num_low_sales','std_sales_g']
+    df_features = sales[['model_id']].drop_duplicates().merge(sales[['model_id'] + features], on='model_id', how='left')
+    df_features = df_features.set_index('model_id')
+
+    # Modeling
+    X = np.array(df_features)
+    kmeans = KMeans(n_clusters=cluster_num, random_state=1124).fit(X)
+    df_features['seasonality_label'] = kmeans.predict(X)
+    df_features = df_features.reset_index()
+    
+    df_segmentation = df_features[['model_id','seasonality_label']]
+
+    return df_segmentation

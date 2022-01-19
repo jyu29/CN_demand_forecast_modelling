@@ -26,7 +26,7 @@ modeling_parameters:
       hyperparameters:
         time_freq: W
         prediction_length: 16
-        context_length: 52
+        context_length: 56
         epochs: 200
         likelihood: negative-binomial
         learning_rate: 3.5e-4
