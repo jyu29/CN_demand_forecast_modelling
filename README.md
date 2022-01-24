@@ -121,13 +121,11 @@ forecast-data-exposition-quicktest
     ├──enviroment.yml 
     ├──README.md
     ├──pytest.ini
-    ├──main_seed.ipynb
-    
+    ├──main_seed.ipynb    
 ├──config
     │- dev.yml
     │- prod.yml
-    |- seed.yml
-    
+    |- seed.yml    
 ├──deployment
     ├──sagemaker_arima
         ├──build_image.sh
