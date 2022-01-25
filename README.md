@@ -157,6 +157,9 @@ forecast-data-exposition-quicktest
         ├──01_calendar_gap.ipynb
         ├──cn_holiday.yaml
         ├──02_time_series_segmentation.ipynb
+    ├──performance_analysis
+        ├──performance_analysis.ipynb
+        ├──codeA_2021.yaml     
 ```
 Important scripts to know:
 - `main.py` is the main trigger, which will fetch functions from `src.data_handler.py`, `src.sagemaker_utils.py` and `src.outputs_stacking.py`
