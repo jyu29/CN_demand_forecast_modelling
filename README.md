@@ -92,7 +92,7 @@ The offline and online sales are split since the global refining part, thus in t
 To mitigate calendar gap year on year, another 2 global dynamic features are added:
 - num_holiday_weekend: holiday count within weekend, the iead is to identify the holiday trade-off
 - num_holiday_weekday: holiday count within weekdays
-For more details about calculating these two dynamic features, you can refer the code at ./optimization/01_calendar_gap.ipynb
+For more details about calculating these two dynamic features, you can refer the code at ./optimization/optimization_notebook/01_calendar_gap.ipynb
 
 3) **Add static features - seasonality label**
 
@@ -109,7 +109,7 @@ num_peek_sales | int64 | the number of weeks in the year when the weekly sales o
 num_low_sales | int64 | the number of weeks in the year when the weekly sales of the model is equal to its minimum weekly sales of the year
 std_sales_g | int64 | if the standard deviation of weekly sales quantity of the model in all selling weeks is less than 10, it equals to 1, else 0
 
-For more details about calculating these two dynamic features, you can refer the code at ./optimization/02_time_series_segmentation.ipynb
+For more details about calculating these two dynamic features, you can refer the code at ./optimization/optimization_notebook/02_time_series_segmentation.ipynb
 
 
 ## 4. Code Architecture 
@@ -153,9 +153,10 @@ forecast-data-exposition-quicktest
     ├──test_sagemaker_utils.py
     ├──test_utils.py 
 ├──optimization
-    ├──01_calendar_gap.ipynb
-    ├──cn_holiday.yaml
-    ├──02_time_series_segmentation.ipynb
+    ├──optimization_notebook
+        ├──01_calendar_gap.ipynb
+        ├──cn_holiday.yaml
+        ├──02_time_series_segmentation.ipynb
 ```
 Important scripts to know:
 - `main.py` is the main trigger, which will fetch functions from `src.data_handler.py`, `src.sagemaker_utils.py` and `src.outputs_stacking.py`
