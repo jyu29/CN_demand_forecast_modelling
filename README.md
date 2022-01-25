@@ -105,8 +105,8 @@ Feature Name | Data Type | Description
 model_id | int64 | the id of the model
 max_sales_week | int64 | the week with the maximum weekly sales of the model in the year
 min_sales_week | int64 | the week with the minimum weekly sales of the model in the year
-num_peek_sales | int64 | the number of weeks in the year when the weekly sales of the model is equal to its maximum weekly sales of the year
-num_low_sales | int64 | the number of weeks in the year when the weekly sales of the model is equal to its minimum weekly sales of the year
+num_peek_sales | int64 | the number of weeks in the year when the weekly sales of the model is larger than 80% of its maximum weekly sales of the year
+num_low_sales | int64 | the number of weeks in the year when the weekly sales of the model is lower than 120% of its minimum weekly sales of the year
 std_sales_g | int64 | if the standard deviation of weekly sales quantity of the model in all selling weeks is less than 10, it equals to 1, else 0
 
 For more details about calculating these two dynamic features, you can refer the code at ./optimization/optimization_notebook/02_time_series_segmentation.ipynb
@@ -285,10 +285,10 @@ Currently, we mainly leverage 5 datasets to generate the time series, static and
 </br>
 
 
-## 4. How to trigger and make adaption
-### 4.1. Task trigger
+## 6. How to trigger and make adaption
+### 6.1. Task trigger
 
-#### 4.1.1 To trigger with shell
+#### 6.1.1 To trigger with shell
 
 `main.py` is the script linking all other required scripts. Therefore, to trigger the modeling pipeline is to trigger the `main.py`. Before running the modeling part in Sagemaker, you are required to build a virtual environment via conda at first:
 
@@ -326,14 +326,14 @@ config | definition
 'online' | channel, must be 'online' or 'offline'
 
 
-#### 4.1.2 Jenkins trigger (To be updated)
+#### 6.1.2 Jenkins trigger (To be updated)
 
 
-### 4.2 Make adaption
+### 6.2 Make adaption
 
 There are several ways to add new features and we are not going to go through all the stuffs. The idea is to provide some examples could be leveraged.
 
-#### 4.2.1 Adding static features
+#### 6.2.1 Adding static features
 If you would like to add a static feature, the impacted script is `data_handler.py` (impacted function: refining_specific), adding the additional dataframe into the dictionary ***static_features***. 
 `Example:`
 ```sh
@@ -358,7 +358,7 @@ For the seasonality label case:
 df_segmentation = time_series_segmentation(df_sales, self.cutoff)
 ```
 
-#### 4.2.2 Adding global or sepcific dynamic features
+#### 6.2.2 Adding global or sepcific dynamic features
 
 If you would like to add a global dynamic feature, and the new feature is pre-calculated. We can just update the ***global_dynamic_features*** in `main.py`:
 - At first, put the additional data source to S3 bucket (suggested path: s3://fcst-workspace/forecast-cn/fcst-refined-demand-forecast-dev/global)
