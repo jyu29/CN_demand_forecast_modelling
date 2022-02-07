@@ -122,6 +122,8 @@ def apply_cold_start_reconstruction(df,
         .agg(model_scale_factor=('row_scale_factor', 'mean')) \
         .reset_index()
 
+    model_scale_factor.model_scale_factor = model_scale_factor.model_scale_factor.fillna(0)
+    
     complete_ts = pd.merge(complete_ts, model_scale_factor, how='left')
 
     # have each model a scale factor?

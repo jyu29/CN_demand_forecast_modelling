@@ -46,8 +46,8 @@ The objectives of cold start sales reconstruction:
 - Replace the sales in the first 8 weeks after new product launch, to emit the effect of implementation period
 - Make sure that there are at least 156 weeks of selling histories
 
-To reconstructe the sales of new model, firstly will calculate the average weekly sales of the same family, and then will calculate the new models's sales share of the average family sales. The share will act as a index to scale up and down the sales curve of the average family sales:
-- Calcuate the weekly average model sales within each family, then we will get a **cluster sales quantity**
+To reconstruct the sales of new model, firstly it will calculate the average weekly sales of the same family, and then will calculate the new models' sales share of the average family sales. The share will act as an index to scale up and down the sales curve of the average family sales:
+- Calculate the weekly average model sales within each family, then we will get a **cluster sales quantity**
 - Since there are weeks of sales of the new products (at least 1 week), to compare the sales between cluster sales quantity and sales of new products each week, then we will get a scale factor each week (sales of new products / cluster sales quantity), which means we will get a series of scale factor by the end of this step
 - Average all the scale factors to generate a final scale factor for each model
 - Then the reconstructed sales in each week will be: **scale factor** * **cluster sales quantity**
