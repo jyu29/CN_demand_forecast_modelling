@@ -21,7 +21,7 @@
 
 A Sagemaker-backed, DeepAR-based, machine learning application to forecast sales for the Decathlon Demand Team.
 
-Curated with :heart: by the Forecast United team.
+
 
 Model used - [**DeepAR**](https://docs.aws.amazon.com/sagemaker/latest/dg/deepar.html) developed by **AWS**.
 
