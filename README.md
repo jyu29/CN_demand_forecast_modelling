@@ -1,7 +1,7 @@
 # Decathlon Demand Forecast CN
 
 ## Context
-* [0. Project slide](#-project slide)
+* [0. Project slide](#0-project slide)
 * [1. Description](#1-description)
 * [2. Methdology Introduction](#2-methdology-introduction)
     * [2.1. Model framework](#21-model-framework)
