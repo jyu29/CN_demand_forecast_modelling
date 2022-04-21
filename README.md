@@ -19,7 +19,9 @@
 
 ## 0. Intro
 
-Project slide: [**Demand Forecast 2022**](https://docs.google.com/presentation/d/1ltZ2-cWDkzBmHQG7NZTweTnJ1tmen5OtiwcYDzwVNCY/edit#slide=id.g10e81a369af_0_848) 
+- Project slide: [**Demand Forecast 2022**](https://docs.google.com/presentation/d/1ltZ2-cWDkzBmHQG7NZTweTnJ1tmen5OtiwcYDzwVNCY/edit#slide=id.g10e81a369af_0_848) 
+- data ingest github: [**data sync**](https://github.com/jyu29/CN_demand_forecast_data_sync.git) 
+- data process github: [**data process**](https://github.com/jyu29/CN_demand_forecast_data_process) 
 
 
 ## 1. Description
