@@ -17,7 +17,7 @@
     * [6.2. Make adaption](#62-make-adaption)
 <br>
 
-## 0. Project slide
+## 0. project slide
 
 Links: [**Demand Forecast 2022**](https://docs.google.com/presentation/d/1ltZ2-cWDkzBmHQG7NZTweTnJ1tmen5OtiwcYDzwVNCY/edit#slide=id.gd1c50f97a9_2_3857) 
 
